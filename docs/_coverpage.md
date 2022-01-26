@@ -1,10 +1,8 @@
-
-
 ![logo](master.jpeg)
 
 # Master He
 
-> 学习文档。
+> 学习笔记
 
 - Java
 - Python
