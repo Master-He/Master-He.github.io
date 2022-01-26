@@ -1,5 +1,3 @@
-<!-- docs/_sidebar.md -->
-
 * [首页](README)
 * [指南](guide "The greatest guide in the world")
 
