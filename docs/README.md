@@ -9,3 +9,5 @@
 
 
 * [Java](https://master-he.github.io/#/study/Java/README.md)
+
+* [Java](study/Java/README.md)
