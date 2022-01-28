@@ -1133,7 +1133,7 @@ public interface UserMapper {
 
 测试类
 
-【注意：我们必须要讲接口注册绑定到我们的核心配置文件中！】
+【注意：我们必须要将接口注册绑定到我们的核心配置文件中！】
 
 
 
@@ -1148,7 +1148,12 @@ public interface UserMapper {
 
 **#{}     ${} 区别**
 
+```
+# 是预编译的，可以防止SQL注入
+$ 不是预编译的， 不能防止SQL注入
+```
 
+ 
 
 ## 9、Lombok
 
@@ -1162,7 +1167,7 @@ Never write another getter or equals method again, with one annotation your clas
 - build tools
 - with one annotation your class
 
-
+ 
 
 使用步骤：
 
@@ -1216,7 +1221,7 @@ Never write another getter or equals method again, with one annotation your clas
 @Getter
 ```
 
-
+ 
 
 ## 10、多对一处理
 
@@ -1237,7 +1242,7 @@ CREATE TABLE `teacher` (
   `id` INT(10) NOT NULL,
   `name` VARCHAR(30) DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=INNODB DEFAULT CHARSET=utf8
+) ENGINE=INNODB DEFAULT CHARSET=utf8mb4
 
 INSERT INTO teacher(`id`, `name`) VALUES (1, '秦老师'); 
 
@@ -1248,7 +1253,7 @@ CREATE TABLE `student` (
   PRIMARY KEY (`id`),
   KEY `fktid` (`tid`),
   CONSTRAINT `fktid` FOREIGN KEY (`tid`) REFERENCES `teacher` (`id`)
-) ENGINE=INNODB DEFAULT CHARSET=utf8
+) ENGINE=INNODB DEFAULT CHARSET=utf8mb4  
 
 
 INSERT INTO `student` (`id`, `name`, `tid`) VALUES ('1', '小明', '1'); 
@@ -1437,7 +1442,7 @@ public class Teacher {
 
 **慢SQL       1s        1000s**      
 
-面试高频
+面试必问
 
 - Mysql引擎
 - InnoDB底层原理
@@ -1474,7 +1479,7 @@ CREATE TABLE `blog` (
   `author` varchar(30) NOT NULL COMMENT '博客作者',
   `create_time` datetime NOT NULL COMMENT '创建时间',
   `views` int(30) NOT NULL COMMENT '浏览量'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 
 ```
 
