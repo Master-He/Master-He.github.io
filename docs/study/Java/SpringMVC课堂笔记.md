@@ -180,6 +180,20 @@ Model2这样不仅提高的代码的复用率与项目的扩展性，且大大�
    - localhost:8080/user?method=add
    - localhost:8080/user?method=delete
 
+Mac配置Tomcat
+
+1.下载
+
+![image-20220129163016184](/Users/hwj/project/Master-He.github.io/docs/study/Java/SpringMVC课堂笔记.assets/image-20220129163016184.png)
+
+
+
+2. cd到bin目录下， 给sh脚本加权限： sudo chmod 755 *.sh
+3. ./startup.sh运行tomcat
+4. ./shutdown.sh关闭tomcat
+
+
+
 **MVC框架要做哪些事情**
 
 1. 将url映射到java类或java类的方法 .
@@ -2349,7 +2363,7 @@ jQuery.ajax(...)
           }
        </style>
        <script>
-
+    
            // 2.步骤二
            // 定义demo函数 (分析接口、数据)
            function demo(data){
@@ -2367,13 +2381,13 @@ jQuery.ajax(...)
                    Ul.innerHTML = html;
               }
           }
-
+    
            // 1.步骤一
            window.onload = function(){
                // 获取输入框和ul
                var Q = document.getElementById('q');
                var Ul = document.getElementById('ul');
-
+    
                // 事件鼠标抬起时候
                Q.onkeyup = function(){
                    // 如果输入框不等于空
@@ -2391,11 +2405,11 @@ jQuery.ajax(...)
           }
        </script>
     </head>
-
+    
     <body>
     <input type="text" id="q" />
     <ul id="ul">
-
+    
     </ul>
     </body>
     </html>
