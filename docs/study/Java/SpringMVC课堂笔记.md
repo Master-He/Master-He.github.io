@@ -531,7 +531,7 @@ DispatcherServlet的作用是将请求分发到不同的处理器。从Spring 2.
    
       <!-- 自动扫描包，让指定包下的注解生效,由IOC容器统一管理 -->
       <context:component-scan base-package="nuc.ss.controller"/>
-      <!-- 让Spring MVC不处理静态资源 -->
+      <!-- 让Spring MVC不处理静态资源； 过滤调用html, css, js等静态文件-->
       <mvc:default-servlet-handler />
       <!--
       支持mvc注解驱动
@@ -728,6 +728,12 @@ public interface Controller {
 ### 使用注解@Controller
 
 - @Controller注解类型用于声明Spring类的实例是一个控制器（在讲IOC时还提到了另外3个注解）；
+
+- 和@Conponent(组件)注解相同功能的注解有
+
+  - @Service (service)
+  - @Controller(controller)
+  - @Repository(dao)
 
 - Spring可以使用扫描机制来找到应用程序中所有基于注解的控制器类，为了保证Spring能找到你的控制器，需要在配置文件中声明组件扫描。
 
