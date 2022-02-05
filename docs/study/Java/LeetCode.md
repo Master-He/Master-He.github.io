@@ -1,8 +1,14 @@
-## Day1
+## 参考
+
+https://leetcode-cn.com/leetbook/read/illustration-of-algorithm/px2ds5/
 
 
 
-1. 用两个栈实现队列
+## Day1 栈与队列（简单）
+
+
+
+### 1.  用两个栈实现队列
 
 用两个栈实现一个队列。队列的声明如下，请实现它的两个函数 appendTail 和 deleteHead ，分别完成在队列尾部插入整数和在队列头部删除整数的功能。(若队列中没有元素，deleteHead 操作返回 -1 )
 
@@ -86,7 +92,7 @@ public class CQueue {
 
 
 
-2.包含 min 函数的栈
+### 2. 包含 min 函数的栈
 
 定义栈的数据结构，请在该类型中实现一个能够得到栈的最小元素的 min 函数在该栈中，调用 min、push 及 pop 的时间复杂度都是 O(1)。
 
@@ -140,9 +146,9 @@ public class MinStack {
 
 
 
-## Day2
+## Day2 链表（简单）
 
-1. 从尾到头打印链表
+### 1. 从尾到头打印链表
 输入一个链表的头节点，从尾到头反过来返回每个节点的值（用数组返回）。
 
  示例 1：
@@ -201,7 +207,7 @@ class Solution {
 
 
 
-2.反转链表
+### 2. 反转链表
 定义一个函数，输入一个链表的头节点，反转该链表并输出反转后链表的头节点。
 
 示例:
@@ -257,7 +263,7 @@ class Solution {
 
 
 
-3.复杂链表的复制
+### 3. 复杂链表的复制
 请实现 copyRandomList 函数，复制一个复杂链表。在复杂链表中，每个节点除了有一个 next 指针指向下一个节点，还有一个 random 指针指向链表中的任意节点或者 null。
 
 ```java
@@ -284,10 +290,6 @@ class Solution {
     }
 }
 
-作者：Krahets
-链接：https://leetcode-cn.com/leetbook/read/illustration-of-algorithm/9plk45/
-来源：力扣（LeetCode）
-著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
 ```
 
 
@@ -326,9 +328,396 @@ class Solution {
     }
 }
 
-作者：Krahets
-链接：https://leetcode-cn.com/leetbook/read/illustration-of-algorithm/9plk45/
-来源：力扣（LeetCode）
-著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
 ```
+
+
+
+## Day3 字符串（简单）
+
+
+### 1. 替换空格
+请实现一个函数，把字符串 s 中的每个空格替换成"%20"。
+
+示例 1：
+
+输入：s = "We are happy."
+输出："We%20are%20happy."
+
+```java
+class Solution {
+    public String replaceSpace(String s) {
+        StringBuilder res = new StringBuilder();
+        for(Character c : s.toCharArray())
+        {
+            if(c == ' ') res.append("%20");
+            else res.append(c);
+        }
+        return res.toString();
+    }
+}
+
+```
+
+
+
+### 2. 左旋转字符串
+字符串的左旋转操作是把字符串前面的若干个字符转移到字符串的尾部。请定义一个函数实现字符串左旋转操作的功能。比如，输入字符串"abcdefg"和数字2，该函数将返回左旋转两位得到的结果"cdefgab"。
+
+示例 1：
+
+输入: s = "abcdefg", k = 2
+输出: "cdefgab"
+
+```java
+// 方法1 切片
+class Solution {
+    public String reverseLeftWords(String s, int n) {
+        return s.substring(n, s.length()) + s.substring(0, n);
+    }
+}
+
+```
+
+```java
+// 方法2
+class Solution {
+    public String reverseLeftWords(String s, int n) {
+        StringBuilder res = new StringBuilder();
+        for(int i = n; i < s.length(); i++)
+            res.append(s.charAt(i));
+        for(int i = 0; i < n; i++)
+            res.append(s.charAt(i));
+        return res.toString();
+    }
+}
+
+
+利用求余运算，可以简化代码。
+class Solution {
+    public String reverseLeftWords(String s, int n) {
+        StringBuilder res = new StringBuilder();
+        for(int i = n; i < n + s.length(); i++)
+            res.append(s.charAt(i % s.length()));
+        return res.toString();
+    }
+}
+
+```
+
+
+
+## Day4 查找算法（简单）
+
+### 1.  数组中重复的数字
+找出数组中重复的数字。
+
+
+在一个长度为 n 的数组 nums 里的所有数字都在 0～n-1 的范围内。数组中某些数字是重复的，但不知道有几个数字重复了，也不知道每个数字重复了几次。请找出数组中任意一个重复的数字。
+
+示例 1：
+
+输入：
+[2, 3, 1, 0, 2, 5, 3]
+输出：2 或 3
+
+```java
+// 利用hash表
+class Solution {
+    public int findRepeatNumber(int[] nums) {
+        Set<Integer> dic = new HashSet<>();
+        for(int num : nums) {
+            if(dic.contains(num)) return num;
+            dic.add(num);
+        }
+        return -1;
+    }
+}
+
+```
+
+```java
+// 方法二：原地交换
+class Solution {
+    public int findRepeatNumber(int[] nums) {
+        int i = 0;
+        while(i < nums.length) {
+            if(nums[i] == i) {
+                i++;
+                continue;
+            }
+            if(nums[nums[i]] == nums[i]) return nums[i];
+            int tmp = nums[i];
+            nums[i] = nums[tmp];
+            nums[tmp] = tmp;
+        }
+        return -1;
+    }
+}
+
+```
+
+
+
+### 2. 在排序数组中查找数字 I
+
+统计一个数字在排序数组中出现的次数。
+
+示例 1:
+
+输入: nums = [5,7,7,8,8,10], target = 8
+输出: 2
+示例 2:
+
+输入: nums = [5,7,7,8,8,10], target = 6
+输出: 0
+
+```java
+// 思路： target的右边界坐标 减去 (target-1)的右边界坐标
+public int search(int[] nums, int target) {
+        return searchRight(nums, target) - searchRight(nums, target-1);
+    }
+
+    private int searchRight(int[] nums, int target) {
+        int start = 0;
+        int end = nums.length - 1;
+        while (start <= end) {
+            int middle = (start + end) / 2;
+            if (nums[middle] <= target) {
+                start = middle + 1;
+            } else {
+                end = middle - 1;
+            }
+        }
+        return start;
+    }
+```
+
+
+
+复习一下二分查找
+
+```java
+public static int search2(int[] nums, int target) {
+    int start = 0;
+    int end = nums.length - 1;
+    while (start <= end) {
+      int middle = (start + end) / 2;
+      if (nums[middle] < target) {
+        start = middle + 1;
+      } else if (nums[middle] > target) {
+        end = middle - 1;
+      } else {
+        return middle;
+      }
+    }
+    return -1;
+}
+```
+
+
+
+### 3. 0～n-1 中缺失的数字
+一个长度为n-1的递增排序数组中的所有数字都是唯一的，并且每个数字都在范围0～n-1之内。在范围0～n-1内的n个数字中有且只有一个数字不在该数组中，请找出这个数字。
+
+```java
+// 暴力法
+class Solution {
+    public int missingNumber(int[] nums) {
+        for (int i=0; i<nums.length; i++) {
+            if (i != nums[i]) {
+                return i;
+            }
+        }
+        return nums.length;
+    }
+}
+```
+
+```java
+// 二分法
+// 若 nums[m] == m ，则 缺失的元素 一定在闭区间 [m + 1, j]中，因此执行 i = m + 1
+// 若 nums[m] != m ，则 缺失的元素 一定在闭区间 [i, m - 1]中，因此执行 j = m - 1
+// i指的是start, j指的是end;
+
+class Solution {
+    public int missingNumber(int[] nums) {
+        int start = 0;
+        int end = nums.length - 1;
+        while (start <= end) {
+            int middle = (start + end) / 2;
+            if (nums[middle] == middle) {
+                start = middle + 1;
+            } else {
+                end = middle - 1;
+            }
+        }
+        return start;
+    }
+}
+```
+
+
+
+
+
+## Day5 查找算法（中等）
+
+
+
+### 1. 二维数组中的查找
+在一个 n * m 的二维数组中，每一行都按照从左到右递增的顺序排序，每一列都按照从上到下递增的顺序排序。请完成一个高效的函数，输入这样的一个二维数组和一个整数，判断数组中是否含有该整数。 
+
+示例:
+
+现有矩阵 matrix 如下：
+
+[
+  [1,   4,  7, 11, 15],
+  [2,   5,  8, 12, 19],
+  [3,   6,  9, 16, 22],
+  [10, 13, 14, 17, 24],
+  [18, 21, 23, 26, 30]
+]
+给定 target = 5，返回 true。
+
+给定 target = 20，返回 false。
+
+```java
+class Solution {
+    public boolean findNumberIn2DArray(int[][] matrix, int target) {
+        if (matrix.length == 0) {
+            return false;
+        }
+        int i = matrix.length - 1;
+        int j = 0;
+        while (i >=0 && j < matrix[0].length) {
+            if(target < matrix[i][j]) {
+                i--;
+            } else if (target>matrix[i][j]) {
+                j++;
+            } else {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+```
+
+
+
+
+
+
+
+### 2. 旋转数组的最小数字
+
+把一个数组最开始的若干个元素搬到数组的末尾，我们称之为数组的旋转。
+
+给你一个可能存在 重复 元素值的数组 numbers ，它原来是一个升序排列的数组，并按上述情形进行了一次旋转。请返回旋转数组的最小元素。例如，数组 [3,4,5,1,2] 为 [1,2,3,4,5] 的一次旋转，该数组的最小值为1。  
+
+示例 1：
+
+输入：[3,4,5,1,2]
+输出：1
+示例 2：
+
+输入：[2,2,2,0,1]
+输出：0
+
+```java
+// 暴力法
+class Solution {
+    public int minArray(int[] numbers) {
+        for (int i = numbers.length-1; i>0; i--) {
+            if (numbers[i-1] > numbers[i]) {
+                return numbers[i];
+            }
+        }
+        return numbers[0];
+    }
+}
+```
+
+```java
+//二分法
+class Solution {
+    public int minArray(int[] numbers) {
+        int i = 0;
+        int j = numbers.length - 1;
+        while (i != j) {
+            int m = (i+j) / 2;
+            if (numbers[m] > numbers[j]) {
+                i = m + 1;
+            } else if (numbers[m] < numbers[j]) {
+                j = m;
+            } else {
+                j--;
+            }
+        }
+        return numbers[i];
+    }
+}
+```
+
+
+
+
+
+
+
+### 3. 第一个只出现一次的字符
+在字符串 s 中找出第一个只出现一次的字符。如果没有，返回一个单空格。 s 只包含小写字母。
+
+示例 1:
+
+输入：s = "abaccdeff"
+输出：'b'
+示例 2:
+
+输入：s = "" 
+输出：' '
+
+```java
+//方法一：哈希表
+class Solution {
+    public char firstUniqChar(String s) {
+        HashMap<Character, Boolean> map = new HashMap<>();
+        char[] chars = s.toCharArray();
+        for (char aChar : chars) {
+            if (!map.containsKey(aChar)) {
+                map.put(aChar, true);
+            } else {
+                map.put(aChar, false);
+            }
+        }
+        for (char aChar : chars) {
+            if (map.get(aChar)) {
+                return aChar;
+            }
+        }
+        return ' ';
+    }
+}
+
+```
+
+```java
+//方法二：有序哈希表
+class Solution {
+    public char firstUniqChar(String s) {
+        Map<Character, Boolean> dic = new LinkedHashMap<>();
+        char[] sc = s.toCharArray();
+        for(char c : sc)
+            dic.put(c, !dic.containsKey(c));
+        for(Map.Entry<Character, Boolean> d : dic.entrySet()){
+           if(d.getValue()) return d.getKey();
+        }
+        return ' ';
+    }
+}
+
+```
+
+
 
