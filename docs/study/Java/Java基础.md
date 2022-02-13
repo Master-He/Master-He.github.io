@@ -196,6 +196,23 @@ public static void stringToSetAndList() {
 
 
 
+数组初始化
+
+```java
+// 初始化空数组
+new int[0];
+new Integer[0];
+// 初始化数组
+new int[] {1,2,3};
+
+```
+
+
+
+
+
+
+
 ### 正则操作
 
 参考https://www.runoob.com/java/java-regular-expressions.html
