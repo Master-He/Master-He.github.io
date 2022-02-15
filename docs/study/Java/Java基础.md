@@ -1,5 +1,4 @@
-## Java 基础语法
-### List操作总结
+## List操作总结
 
 
 
@@ -89,7 +88,7 @@ public static void main(String[] args) {
 
 
 
-### Map操作总结
+## Map操作总结
 
 map初始化
 
@@ -113,11 +112,11 @@ map初始化
 
 
 
-### Set操作总结
+## Set操作总结
 
 
 
-### Stream操作总结
+## Stream操作总结
 
 参考  https://www.jianshu.com/p/0687e7003eb2
 
@@ -144,27 +143,80 @@ System.out.println(Arrays.toString(floats1));
 
 
 
+## Stack操作总结
 
-
-
-
-### 字符串操作
-
-判断是否是全字母  https://www.itranslater.com/qa/details/2136843502934819840
+栈是Vector的一个子类，它实现了一个标准的后进先出的栈。
 
 ```java
+//常用的方法
+Object peek( ) // 查看堆栈顶部的对象，但不从堆栈中移除它。
+Object pop( ) // 移除堆栈顶部的对象，并作为此函数的值返回该对象。
+Object push(Object element)  // 把项压入堆栈顶部。
+```
+
+
+
+Vector操作总结
+
+
+
+
+
+
+
+## 字符串操作
+
+**字符串自带的常用方法** (参考菜鸟教程https://www.runoob.com/java/java-string.html)
+
+```java
+char charAt(int index);  //返回指定索引处的 char 值。
+int compareTo(String anotherString) // 按ASCII字典顺序比较两个字符串。返回ASCII差值， 如果两个字符前面相同则返回长度差值
+int compareToIgnoreCase(String str) // 按字典顺序比较两个字符串，不考虑大小写。
+String concat(String str)  // 将指定字符串连接到此字符串的结尾。
+boolean startsWith(String prefix)  // 测试此字符串是否以指定的前缀开始。
+boolean endsWith(String suffix) // 测试此字符串是否以指定的后缀结束。
+boolean equals(Object anObject)  // 将此字符串与指定的对象比较。
+boolean equalsIgnoreCase(String anotherString) // 将此 String 与另一个 String 比较，不考虑大小写。
+byte[] getBytes(String charsetName) // 使用指定的字符集将此 String 编码为 byte 序列，并将结果存储到一个新的 byte 数组中。
+int indexOf(String str) // 返回指定字符在字符串中第一次出现处的索引，如果此字符串中没有这样的字符，则返回 -1
+int lastIndexOf(String str) // 返回指定子字符串在此字符串中最右边出现处的索引，如果此字符串中没有这样的字符，则返回 -1。
+int length() // 方法用于返回字符串的长度。
+boolean matches(String regex)  // 效果等同于Pattern.matches(regex, str) 用于检测字符串是否匹配给定的正则表达式。
+String replace(char searchChar, char newChar) // 方法通过用 newChar 字符替换字符串中出现的所有 searchChar 字符，并返回替换后的新字符串。
+String replaceAll(String regex, String replacement) // 使用给定的参数 replacement 替换字符串所有匹配给定的正则表达式的子字符串。
+String replaceAll(String regex, String replacement) // 使用给定的参数 replacement 替换字符串第一个匹配给定的正则表达式的子字符串。
+String[] split(String regex, int limit) // split() 方法根据匹配给定的正则表达式来拆分字符串。
+//注意： . 、 $、 | 和 * 等转义字符，必须得加 \\。
+//注意：多个分隔符，可以用 | 作为连字符。
+String trim() // 返回字符串的副本，忽略前导空白和尾部空白。
+String valueOf(primitive data type x) //返回给定data type类型x参数的字符串表示形式。
+```
+
+
+
+**判断是否是全字母**  https://www.itranslater.com/qa/details/2136843502934819840
+
+```xml
+<dependency>
+    <groupId>org.apache.commons</groupId>
+    <artifactId>commons-lang3</artifactId>
+    <version>3.12.0</version>
+</dependency>
+```
+
+```java
+// StringUtils 是org.apache.commons的commons-lang3包
 public static void stringAllIsAlpha() {
     String str = "test1";
     System.out.println("test1 is all alpha? ==>" + StringUtils.isAlpha(str));  // false
 
     str = "test";
     System.out.println("test is all alpha? ==>" + StringUtils.isAlpha(str));  // true
-
 }
 ```
 
 ```java
-boolean allLetters = someString.chars().allMatch(Character::isLetter);
+boolean allLetters = someString.chars().allMatch(Character::isLetter);  // chars()是stream流
 ```
 
 ```
@@ -175,11 +227,28 @@ public boolean isAlpha(String name) {
 
 
 
+**StringBuilder** 
+
+StringBuffer 之间的最大不同在于 StringBuilder 的方法不是线程安全的（不能同步访问）。
+
+StringBuffer常用方法
+
+```java
+public StringBuffer append(String s) // 将指定的字符串追加到此字符序列。
+public StringBuffer reverse() // 将此字符序列用其反转形式取代。
+replace(int start, int end, String str) // 使用给定 String 中的字符替换此序列的子字符串中的字符。
+char charAt(int index) // 返回此序列中指定索引处的 char 值。
+```
 
 
 
 
-### 数组操作
+
+
+
+
+
+## 数组操作
 
 // String转 ==》 char[]数组 ==》  转List
 // 即String 转 List<Character>
@@ -213,7 +282,7 @@ new int[] {1,2,3};
 
 
 
-### 正则操作
+## 正则操作
 
 参考https://www.runoob.com/java/java-regular-expressions.html
 
@@ -282,7 +351,7 @@ public String replaceFirst(String replacement)
 
 
 
-### 日志操作
+## 日志操作
 
 // 日志打印错误信息， 打印错误堆栈信息
 
@@ -294,7 +363,7 @@ logger.error(org.apache.commons.lang3.exception.ExceptionUtils.getStackTrace(e))
 
 
 
-### 异常处理
+## 异常处理
 
 ```java
 
@@ -302,7 +371,7 @@ logger.error(org.apache.commons.lang3.exception.ExceptionUtils.getStackTrace(e))
 
 
 
-### 文件IO操作
+## 文件IO操作
 
 ```java
 import org.apache.commons.io.FileUtils;
@@ -324,13 +393,13 @@ graph.importGraphDef(graphBytes);
 
 
 
-### float double精度
+## float double精度
 
 
 
 
 
-### java 对象销毁时操作
+## java 对象销毁时操作
 
 // 重写finalize方法， jvm会调用
 

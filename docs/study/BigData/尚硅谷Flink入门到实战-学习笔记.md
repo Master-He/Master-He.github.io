@@ -6,6 +6,9 @@
 >
 > 中间会把自己认为较重要的点做做标记（下划线、加粗等）
 
+> 资料百度网盘链接：https://pan.baidu.com/s/1Q-Cy48xGi7AoKK655_Sgew?pwd=g4du 
+> 提取码：g4du
+
 # 1. Flink的特点
 
 + 事件驱动（Event-driven）
@@ -22,10 +25,10 @@
 ## 1.1 Flink vs Spark Streaming
 
 + 数据模型
-  + Spark采用RDD模型，spark streaming的DStream实际上也就是一组组小批数据RDD的集合
+  + Spark采用RDD(全称Resilient Distributed Dataset 弹性分布式数据集)模型，spark streaming的DStream实际上也就是一组组小批数据RDD的集合
   + flink基本数据模型是数据流，以及事件（Event）序列
 + 运行时架构
-  + spark是批计算，将DAG划分为不同的stage，一个完成后才可以计算下一个
+  + spark是批计算，将DAG(全称 Directed Acyclic Graph，有向无环图。)划分为不同的stage，一个完成后才可以计算下一个
   + flink是标准的流执行模式，一个事件在一个节点处理完后可以直接发往下一个节点处理
 
 # 2. 快速上手
@@ -33,6 +36,8 @@
 ## 2.1 批处理实现WordCount
 
 > *flink-streaming-scala_2.12 => org.apache.flink:flink-runtime_2.12:1.12.1 => com.typesafe.akka:akka-actor_2.12:2.5.21，akka就是用scala实现的。即使这里我们用java语言，还是用到了scala实现的包*
+
+> 在百度云网盘中有相应的课程源码
 
 pom依赖
 
@@ -58,18 +63,54 @@ pom依赖
         <dependency>
             <groupId>org.apache.flink</groupId>
             <artifactId>flink-java</artifactId>
-            <version>${flink.version}</version>
+            <version>1.10.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.flink</groupId>
-            <artifactId>flink-streaming-scala_${scala.binary.version}</artifactId>
-            <version>${flink.version}</version>
+            <artifactId>flink-streaming-java_2.12</artifactId>
+            <version>1.10.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.flink</groupId>
-            <artifactId>flink-clients_${scala.binary.version}</artifactId>
-            <version>${flink.version}</version>
+            <artifactId>flink-connector-kafka-0.11_2.12</artifactId>
+            <version>1.10.1</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.bahir</groupId>
+            <artifactId>flink-connector-redis_2.11</artifactId>
+            <version>1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-connector-elasticsearch6_2.12</artifactId>
+            <version>1.10.1</version>
+        </dependency>
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>5.1.44</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-statebackend-rocksdb_2.12</artifactId>
+            <version>1.10.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-table-planner_2.12</artifactId>
+            <version>1.10.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-table-planner-blink_2.12</artifactId>
+            <version>1.10.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-csv</artifactId>
+            <version>1.10.1</version>
+        </dependency>
+
     </dependencies>
 
 </project>
@@ -78,67 +119,86 @@ pom依赖
 代码实现
 
 ```java
+package com.atguigu.wc;/**
+ * Copyright (c) 2018-2028 尚硅谷 All Rights Reserved
+ * <p>
+ * Project: FlinkTutorial
+ * Package: com.atguigu.wc
+ * Version: 1.0
+ * <p>
+ * Created by wushengran on 2020/11/6 11:22
+ */
+
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
+import org.apache.flink.api.java.operators.DataSource;
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.util.Collector;
 
 /**
- * @author : Ashiamd email: ashiamd@foxmail.com
- * @date : 2021/1/29 10:46 PM
- * 批处理 wordcount
+ * @ClassName: WordCount
+ * @Description:
+ * @Author: wushengran on 2020/11/6 11:22
+ * @Version: 1.0
  */
+
+// 批处理word count
 public class WordCount {
-  public static void main(String[] args) throws Exception {
-    // 创建执行环境
-    ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
+    public static void main(String[] args) throws Exception{
+        // 创建执行环境
+        ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
 
-    // 从文件中读取数据
-    String inputPath = "/tmp/Flink_Tutorial/src/main/resources/hello.txt";
-    DataSet<String> inputDataSet = env.readTextFile(inputPath);
+        // 从文件中读取数据
+        String inputPath = "D:\\Document\\课件\\尚硅谷Flink资料\\4.代码\\FlinkTutorial\\src\\main\\resources\\hello.txt";
+        DataSet<String> inputDataSet = env.readTextFile(inputPath);
+        inputDataSet.print();
+        // 对数据集进行处理，按空格分词展开，转换成(word, 1)二元组进行统计
+        DataSet<Tuple2<String, Integer>> resultSet = inputDataSet.flatMap(new MyFlatMapper())
+                .groupBy(0)    // 按照第一个位置的word分组  批处理用groupBy, 流处理才用keyBy
+                .sum(1);    // 将第二个位置上的数据求和
 
-    // 对数据集进行处理，按空格分词展开，转换成(word, 1)二元组进行统计
-    // 按照第一个位置的word分组
-    // 按照第二个位置上的数据求和
-    DataSet<Tuple2<String, Integer>> resultSet = inputDataSet.flatMap(new MyFlatMapper())
-      .groupBy(0)
-      .sum(1);
-
-    resultSet.print();
-  }
-
-  // 自定义类，实现FlatMapFunction接口
-  public static class MyFlatMapper implements FlatMapFunction<String, Tuple2<String, Integer>> {
-
-    @Override
-    public void flatMap(String s, Collector<Tuple2<String, Integer>> out) throws Exception {
-      // 按空格分词
-      String[] words = s.split(" ");
-      // 遍历所有word，包成二元组输出
-      for (String str : words) {
-        out.collect(new Tuple2<>(str, 1));
-      }
+        resultSet.print();
     }
-  }
 
+    // 自定义类，实现FlatMapFunction接口
+    public static class MyFlatMapper implements FlatMapFunction<String, Tuple2<String, Integer>> {
+        @Override
+        public void flatMap(String value, Collector<Tuple2<String, Integer>> out) throws Exception {
+            // 按空格分词
+            String[] words = value.split(" ");
+            // 遍历所有word，包成二元组输出
+            for (String word : words) {
+                out.collect(new Tuple2<>(word, 1));
+            }
+        }
+    }
 }
+
 ```
 
 输出：
 
 ```shell
-(scala,1)
+hello spark
+fine thank you
+hello scala
+hello world
+hello flink
+how are you
+and you
+(fine,1)
 (flink,1)
 (world,1)
-(hello,4)
-(and,1)
-(fine,1)
-(how,1)
+(thank,1)
+(are,1)
+(scala,1)
 (spark,1)
 (you,3)
-(are,1)
-(thank,1)
+(and,1)
+(hello,4)
+(how,1)
 ```
 
 > [解决 Flink 升级1.11 报错 No ExecutorFactory found to execute the application](https://blog.csdn.net/qq_41398614/article/details/107553604)
