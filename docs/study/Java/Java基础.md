@@ -156,7 +156,41 @@ Object push(Object element)  // 把项压入堆栈顶部。
 
 
 
-Vector操作总结
+## Vector操作总结
+
+暂无
+
+
+
+## Queue操作总结
+
+队列接口方法
+
+```java
+add // 增加一个元索 如果队列已满，则抛出一个IIIegaISlabEepeplian异常
+offer // 添加一个元素并返回true 如果队列已满，则返回false
+put // 添加一个元素 如果队列满，则阻塞
+
+remove // 移除并返回队列头部的元素 如果队列为空，则抛出一个NoSuchElementException异常
+poll // 移除并返问队列头部的元素 如果队列为空，则返回null
+take // 移除并返回队列头部的元素 如果队列为空，则阻塞
+element // 返回队列头部的元素 如果队列为空，则抛出一个NoSuchElementException异常
+peek // 返回队列头部的元素 如果队列为空，则返回null
+```
+
+实现队列接口的类
+
+```java
+Java 集合中的 Queue 继承自 Collection 接口 ， Deque, LinkedList, PriorityQueue, BlockingQueue 等类都实现了它。
+```
+
+队列方法总结
+
+| 总结    | 抛出异常  | 返回特殊值 |
+| ------- | --------- | ---------- |
+| Insert  | add(e)    | offer(e)   |
+| Remove  | remove()  | poll()     |
+| Examine | element() | peek()     |
 
 
 
