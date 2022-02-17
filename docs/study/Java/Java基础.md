@@ -86,8 +86,6 @@ public static void main(String[] args) {
 
 
 
-
-
 ## Map操作总结
 
 map初始化
@@ -439,6 +437,20 @@ public class demo {
 
 
 
+数组填充默认值
+
+```java
+Long[] tsArray = new Long[10];
+Arrays.fill(tsArray, 1645065478000L);
+List<Long> tsList = Arrays.stream(tsArray).collect(Collectors.toList());
+// 或者 List<Long> tsList = Arrays.asList(tsArray);
+// 参考https://blog.csdn.net/yhf597869822/article/details/104626838
+```
+
+
+
+
+
 
 
 ## 正则操作
@@ -525,8 +537,37 @@ logger.error(org.apache.commons.lang3.exception.ExceptionUtils.getStackTrace(e))
 ## 异常处理
 
 ```java
+// 抛出异常和返回一个值类似，可以直接抛出一个异常类，也可以返回一个异常对象，对象也可以自定义异常信息 	
+	@Rule
+    public ExpectedException thrown = ExpectedException.none();
 
+    @Test
+    public void testThenThrow() {
+        List mockedList = mock(List.class);
+        when(mockedList.size()).thenReturn(2);
+        when(mockedList.get(0)).thenReturn("foo");
+        when(mockedList.get(1)).thenReturn("bar");
+        when(mockedList.get(2)).thenThrow(IndexOutOfBoundsException.class);
+        when(mockedList.remove(2)).thenThrow(new IndexOutOfBoundsException("Max index is 1."));
+
+        Assert.assertEquals(2, mockedList.size());
+        Assert.assertEquals("foo", mockedList.get(0));
+        Assert.assertEquals("bar", mockedList.get(1));
+
+        thrown.expect(IndexOutOfBoundsException.class);
+        mockedList.get(2);
+
+        thrown.expect(IndexOutOfBoundsException.class);
+        thrown.expectMessage("Max index is 1.");
+        mockedList.remove(2);
+    }
 ```
+
+
+
+## 时间
+
+
 
 
 
