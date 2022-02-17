@@ -104,6 +104,20 @@ map初始化
     };
 ```
 
+map转list
+
+```java
+public static void main(String[] args) {
+    Map<String, String> map = new HashMap<>();
+    map.put("123","===123===");
+    map.put("456","===456===");
+    List<String> list = new ArrayList<>(map.values());
+    System.out.println(list);
+}
+```
+
+
+
 
 
 
@@ -113,6 +127,23 @@ map初始化
 
 
 ## Set操作总结
+
+```java
+// 测试Set<Integer> contains int
+public static final int RCODE_OK = 0;
+public static final int RCODE_ERROR = 2;
+public static final int RCODE_NOT_FIND = 3;
+public static final Set<Integer> RCODE_TYPES = new HashSet<>(Arrays.asList(RCODE_OK, RCODE_NOT_FIND));
+```
+
+```java
+System.out.println("abc.com".substring(3));
+System.out.println(RCODE_TYPES.contains(0));
+```
+
+
+
+
 
 
 
@@ -140,6 +171,29 @@ ArrayList<Float> floats = new ArrayList<>(Arrays.asList(1f, 2f, 3f, 4f, 5f));
 float[] floats1 = ArrayUtils.toPrimitive(floats.toArray(new Float[0]), 0.0f); 
 System.out.println(Arrays.toString(floats1));
 ```
+
+
+
+字符串去重
+
+```java
+Set<Character> collect = "abcdefabcdef".chars().mapToObj(i -> (char) i).collect(Collectors.toSet());
+        System.out.println(collect);
+
+```
+
+
+
+提取出list中bean的某一属性
+
+```java
+// DetectData是一个bean
+List<String> domainList = detectDataList.stream().map(DetectData::getDomain).collect(Collectors.toList());
+```
+
+
+
+
 
 
 
@@ -282,6 +336,10 @@ char charAt(int index) // 返回此序列中指定索引处的 char 值。
 
 
 
+
+
+
+
 ## 数组操作
 
 // String转 ==》 char[]数组 ==》  转List
@@ -311,6 +369,73 @@ new int[] {1,2,3};
 ```
 
 
+
+二维数组的维度会改变， 并不是固定死的
+
+```java
+public static void main(String[] args) {
+    float[][] floats = new float[5][10];
+    System.out.println(Arrays.deepToString(floats));  // 打印出来是5*10
+    for (int i = 0; i < floats.length; i++) {
+        floats[i] = new float[]{i * 1f, i * 2f, i * 3f, i * 4f, i * 5f};
+    }
+    System.out.println(Arrays.deepToString(floats));  // 打印出来是5*5
+}
+```
+
+
+
+降维
+
+```java
+// float[5][1]降维成float[5]
+private static void test() {
+    float[][] rawResults = new float[][] {{1f},{2f},{3f},{4f},{5f}};
+    System.out.println(Arrays.deepToString(rawResults));
+    // 降维
+    List<Float> blackDomainProbabilities = new ArrayList<>();
+    for (float[] rawResult : rawResults) {
+        blackDomainProbabilities.add(rawResult[0]);
+    }
+    System.out.println(blackDomainProbabilities);
+}
+```
+
+
+
+
+
+
+
+数组长度不足则高位填充0 , 比如要求输出是int[10]，给的输入是[1,2,3] 。 输出结果是[0,0,0,0,0,0,0,1,2,3]
+
+下面给出一个类似的例子
+
+```java
+public class demo {
+    public static void main(String[] args) {
+        float[][] floats = padSequences(new float[][]{{1.0f, 2.0f, 3.0f}}, 10);
+        System.out.println(Arrays.deepToString(floats));
+    }
+    /**
+     * @param domainVectorArray 域名向量数组
+     * @param n 需要返回的数组维度
+     * @return 返回高位填充0的域名向量数组 domainVectorArrayWithPad
+     * @Description: 例如要求返回数组float[10]，若输入[[1.0, 2.0, 3.0]] 则输出[[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 2.0, 3.0]]
+     */
+    private static float[][] padSequences(float[][] domainVectorArray, int n) {
+        for (int i = 0; i < domainVectorArray.length; i++) {
+            float[] domainVector = domainVectorArray[i];
+            float[] domainVectorWithPad = new float[n];
+            for (int j = 1; j <= domainVector.length; j++) {
+                domainVectorWithPad[domainVectorWithPad.length - j] = domainVector[domainVector.length - j];
+            }
+            domainVectorArray[i] = domainVectorWithPad;
+        }
+        return domainVectorArray;
+    }
+}
+```
 
 
 
@@ -423,13 +548,18 @@ byte[] graphBytes = IOUtils.toByteArray(new FileInputStream(TestModel.class.getR
 graph.importGraphDef(graphBytes);
 ```
 
-
-
-
-
-## float double精度
-
-
+```java
+// 按行读文件，读成set
+public static void main(String[] args) {
+    String path = FileDemo.class.getResource("/a.txt").getPath();
+    try {
+        System.out.println(new HashSet<>(FileUtils.readLines(new File(path), StandardCharsets.UTF_8)));
+    } catch (IOException e) {
+        logger.error("loadWords [" + path + "] failed.");
+        logger.error(ExceptionUtils.getStackTrace(e));
+    }
+}
+```
 
 
 
@@ -483,3 +613,38 @@ https://yfsyfs.github.io/2019/06/28/%E4%B8%BA%E4%BB%80%E4%B9%88%E5%B0%BD%E9%87%8
 
 
 可以使用try(){}语句 : try()括号中的资源会自动调用close()方法
+
+
+
+
+
+## 图算法
+DFS（Depth-First-Search）
+BFS（Breadth-First-Search）
+
+
+
+
+
+## 为啥要实现Serializable接口？
+https://zhuanlan.zhihu.com/p/66210653
+
+
+
+
+
+## 单例
+
+```java
+// 懒汉模式， 静态
+public class PwdUEBAKeyword {
+	private static final class InstanceHolder {
+        static final PwdUEBAKeyword instance = new PwdUEBAKeyword();
+    }
+
+    public static PwdUEBAKeyword getInstance() {
+        return InstanceHolder.instance;
+    }
+}
+```
+
