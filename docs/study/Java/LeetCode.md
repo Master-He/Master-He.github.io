@@ -1084,7 +1084,8 @@ public class Solution {
 
 ## Day14 搜索与回溯算法（中等）
 
-矩阵中的路径
+### 1. 矩阵中的路径
+
 给定一个 m x n 二维字符网格 board 和一个字符串单词 word 。如果 word 存在于网格中，返回 true ；否则，返回 false 。
 单词必须按照字母顺序，通过相邻的单元格内的字母构成，其中“相邻”单元格是那些水平相邻或垂直相邻的单元格。同一个单元格内的字母不允许被重复使用。
 
@@ -1101,6 +1102,193 @@ public class Solution {
 1 <= board[i].length <= 200
 board 和 word 仅由大小写英文字母组成
 
-作者：Krahets
-链接：https://leetcode-cn.com/leetbook/read/illustration-of-algorithm/58wowd/
+```java
+class Solution {
+    public boolean exist(char[][] board, String word) {
+        char[] words = word.toCharArray();
+        for(int i = 0; i < board.length; i++) {
+            for(int j = 0; j < board[0].length; j++) {
+                if(dfs(board, words, i, j, 0)) return true;
+            }
+        }
+        return false;
+    }
+    boolean dfs(char[][] board, char[] word, int i, int j, int k) {
+        if(i >= board.length || i < 0 || j >= board[0].length || j < 0 || board[i][j] != word[k]) return false;
+        if(k == word.length - 1) return true;
+        board[i][j] = '\0';
+        boolean res = dfs(board, word, i + 1, j, k + 1) || dfs(board, word, i - 1, j, k + 1) || 
+                      dfs(board, word, i, j + 1, k + 1) || dfs(board, word, i , j - 1, k + 1);
+        board[i][j] = word[k];
+        return res;
+    }
+}
+```
 
+
+
+### 2. 机器人的运动范围
+地上有一个m行n列的方格，从坐标 [0,0] 到坐标 [m-1,n-1] 。一个机器人从坐标 [0, 0] 的格子开始移动，它每次可以向左、右、上、下移动一格（不能移动到方格外），也不能进入行坐标和列坐标的数位之和大于k的格子。例如，当k为18时，机器人能够进入方格 [35, 37] ，因为3+5+3+7=18。但它不能进入方格 [35, 38]，因为3+5+3+8=19。请问该机器人能够到达多少个格子？
+
+示例 1：
+
+输入：m = 2, n = 3, k = 1
+输出：3
+示例 2：
+
+输入：m = 3, n = 1, k = 0
+输出：1
+提示：
+
+1 <= n,m <= 100
+0 <= k <= 20
+
+```java
+// 深度优先遍历 DFS
+class Solution {
+    int m, n, k;
+    boolean[][] visited;
+    public int movingCount(int m, int n, int k) {
+        this.m = m; this.n = n; this.k = k;
+        this.visited = new boolean[m][n];
+        return dfs(0, 0, 0, 0);
+    }
+    public int dfs(int i, int j, int si, int sj) {
+        if(i >= m || j >= n || k < si + sj || visited[i][j]) return 0;
+        visited[i][j] = true;
+        return 1 + dfs(i + 1, j, (i + 1) % 10 != 0 ? si + 1 : si - 8, sj) + dfs(i, j + 1, si, (j + 1) % 10 != 0 ? sj + 1 : sj - 8);
+    }
+}
+```
+
+
+
+```java
+// 广度有限优先BFS
+class Solution {
+    public int movingCount(int m, int n, int k) {
+        boolean[][] visited = new boolean[m][n];
+        int res = 0;
+        Queue<int[]> queue= new LinkedList<int[]>();
+        queue.add(new int[] { 0, 0, 0, 0 });
+        while(queue.size() > 0) {
+            int[] x = queue.poll();
+            int i = x[0], j = x[1], si = x[2], sj = x[3];
+            if(i >= m || j >= n || k < si + sj || visited[i][j]) continue;
+            visited[i][j] = true;
+            res ++;
+            queue.add(new int[] { i + 1, j, (i + 1) % 10 != 0 ? si + 1 : si - 8, sj });
+            queue.add(new int[] { i, j + 1, si, (j + 1) % 10 != 0 ? sj + 1 : sj - 8 });
+        }
+        return res;
+    }
+}
+```
+
+
+
+## Day15 搜索与回溯算法（中等）
+
+### 1. 二叉树中和为某一值的路径
+
+给你二叉树的根节点 root 和一个整数目标和 targetSum ，找出所有 从根节点到叶子节点 路径总和等于给定目标和的路径。
+
+叶子节点 是指没有子节点的节点。
+
+示例 1：
+![image-20220216204650666](LeetCode.assets/image-20220216204650666.png)
+输入：root = [5,4,8,11,null,13,4,7,2,null,null,5,1], targetSum = 22
+输出：[[5,4,11,2],[5,8,4,5]]
+
+示例 2：
+![image-20220216204730736](LeetCode.assets/image-20220216204730736.png)
+输入：root = [1,2,3], targetSum = 5
+输出：[]
+
+示例 3：
+输入：root = [1,2], targetSum = 0
+输出：[]
+
+```java
+public class TreeNode {
+    int val;
+    TreeNode left;
+    TreeNode right;
+
+    public TreeNode() {
+    }
+
+    public TreeNode(int val) {
+        this.val = val;
+    }
+
+    public TreeNode(int val, TreeNode left, TreeNode right) {
+        this.val = val;
+        this.left = left;
+        this.right = right;
+    }
+}
+```
+
+```java
+// 参考答案
+public class Solution {
+    LinkedList<List<Integer>> res = new LinkedList<List<Integer>>();
+    LinkedList<Integer> path = new LinkedList<Integer>();
+
+    public List<List<Integer>> pathSum(TreeNode root, int target) {
+        recur(root, target);
+        return res;
+    }
+
+    public void recur(TreeNode node, int target) {
+        if (node == null) {
+            return;
+        }
+        path.add(node.val);
+        target -= node.val;
+        if (target == 0 && node.left == null && node.right == null) {
+            res.add(new LinkedList<Integer>(path));
+        }
+        recur(node.left, target);
+        recur(node.right, target);
+        path.removeLast();
+    }
+
+    public static void main(String[] args) {
+        Solution solution = new Solution();
+        TreeNode treeNode1 = new TreeNode(7);
+        TreeNode treeNode2 = new TreeNode(2);
+        TreeNode treeNode3 = new TreeNode(5);
+        TreeNode treeNode4 = new TreeNode(1);
+
+        TreeNode treeNode5 = new TreeNode(11, treeNode1, treeNode2);
+        TreeNode treeNode6 = new TreeNode(13);
+        TreeNode treeNode7 = new TreeNode(4, treeNode3, treeNode4);
+
+        TreeNode treeNode8 = new TreeNode(4, treeNode5, null);
+        TreeNode treeNode9 = new TreeNode(8, treeNode6, treeNode7);
+
+        TreeNode treeNode10 = new TreeNode(5, treeNode8, treeNode9);
+
+        System.out.println(solution.pathSum(treeNode10, 22));
+    }
+}
+```
+
+
+
+###2. 二叉搜索树与双向链表
+输入一棵二叉搜索树，将该二叉搜索树转换成一个排序的循环双向链表。要求不能创建任何新的节点，只能调整树中节点指针的指向。
+
+为了让您更好地理解问题，以下面的二叉搜索树为例：
+
+![image-20220217002406768](LeetCode.assets/image-20220217002406768.png)
+
+我们希望将这个二叉搜索树转化为双向循环链表。链表中的每个节点都有一个前驱和后继指针。对于双向循环链表，第一个节点的前驱是最后一个节点，最后一个节点的后继是第一个节点。
+
+下图展示了上面的二叉搜索树转化成的链表。“head” 表示指向链表中有最小元素的节点。
+
+![image-20220217002430486](LeetCode.assets/image-20220217002430486.png)
+
+特别地，我们希望可以就地完成转换操作。当转化完成以后，树中节点的左指针需要指向前驱，树中节点的右指针需要指向后继。还需要返回链表中的第一个节点的指针。

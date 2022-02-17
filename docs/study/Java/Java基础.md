@@ -86,6 +86,14 @@ public static void main(String[] args) {
 
 
 
+### LinkedList
+
+LinkedList是双向链接串列(doubly LinkedList)。
+
+LinkedList插入和删除比ArrayList更快，但是需要更多的内存，访问速度更慢。
+
+
+
 ## Map操作总结
 
 map初始化
