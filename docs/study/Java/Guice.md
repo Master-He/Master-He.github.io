@@ -53,3 +53,12 @@ Guice官方推荐我们首选JSR-330标准的注解。
 | [@Singleton](https://link.jianshu.com?t=http://javax-inject.github.io/javax-inject/api/javax/inject/Singleton.html) | [@Singleton](https://link.jianshu.com?t=http://google.github.io/guice/api-docs/latest/javadoc/com/google/inject/Singleton.html) | 可互换                                 |
 | [Provider](https://link.jianshu.com?t=http://javax-inject.github.io/javax-inject/api/javax/inject/Provider.html) | [Provider](https://link.jianshu.com?t=http://google.github.io/guice/api-docs/latest/javadoc/com/google/inject/Provider.html) | Guice的Provider继承了JSR-330的Provider |
 
+
+
+**简单的依赖注入**
+
+首先来配置依赖关系。我们继承`AbstractModule`类，并重写`configure`方法即可。在`configure`方法中，我们可以调用`AbstractModule`类提供的一些方法来配置依赖关系。最常用的方式就是`bind(接口或父类).to(实现类或子类)`的方式来设置依赖关系。
+
+当Guice遇到接口或父类需要注入具体实现的时候，就会使用这里配置的实现类或子类来注入。如果希望在构造器中注入依赖的话，只需要添加`@Inject`注解即可。
+
+Guice配置完之后，我们需要调用`Guice.createInjector`方法传入配置类来创建一个注入器，然后使用注入器的`getInstance`方法获取目标类，Guice会按照配置帮我们注入所有依赖。我们使用单元测试来看看效果。
