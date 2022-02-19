@@ -665,13 +665,22 @@ https://yfsyfs.github.io/2019/06/28/%E4%B8%BA%E4%BB%80%E4%B9%88%E5%B0%BD%E9%87%8
 
 
 
+## Maven
 
+菜鸟教程 https://www.runoob.com/maven/maven-pom.html
 
-## 图算法
-DFS（Depth-First-Search）
-BFS（Breadth-First-Search）
+视频https://www.bilibili.com/video/BV1Fz4y167p5?p=10&spm_id_from=pageDriver
 
+常用命令
 
+```shell
+mvn compile  #编译
+mvn exec:java -Dexec.mainClass="com.xxx.demo.Hello"  # 启动项目
+mvn package -Dmaven.test.skip=true  # 打包跳过测试
+mvn packge -Pdev  # 指定dev开发环境的profile进行打包（还有测试环境，生产环境）
+```
+
+ 
 
 
 
@@ -693,6 +702,68 @@ public class PwdUEBAKeyword {
 
     public static PwdUEBAKeyword getInstance() {
         return InstanceHolder.instance;
+    }
+}
+```
+
+
+
+## 排序
+
+参考https://zhuanlan.zhihu.com/p/376672600
+
+java种默认的排序用的是什么算法？
+
+**Arrays.sort()** 看底层代码，对于int[]数组，当数组长度len<47用插入排序，47<len<286的用双轴快排， len>286的用归并排序
+
+**Collections.sort()**用的是Arrays.sort() 的其中一种重载方法, Arrays.sort()根据情况使用TimSort排序或者传统的归并排序
+
+双轴快速排序， TimSort， 归并排序介绍文章https://blog.51cto.com/u_15103028/2647024
+
+排序算法有9种
+
+**分类**
+
+- **插入排序：** 直接插入排序、二分法插入排序、希尔排序
+- **选择排序：** 简单选择排序、堆排序
+- **交换排序：** 冒泡排序、快速排序(分治)
+- **归并排序**
+- **基数排序**
+
+```java
+// 快速排序： 选一个基准元素，把小于基准元素的放在左边，大于基准元素的放在右边。 然后左右两边的按同样的方式递归
+public class QuickSort {
+    public static void main(String[] args) {
+        int[] nums = new int[]{3, 1, 4, 2, 5};
+        System.out.println("排序前" + Arrays.toString(nums));
+        quickSort(nums, 0, nums.length - 1);
+        System.out.println("排序后" + Arrays.toString(nums));
+    }
+
+    private static void quickSort(int[] nums, int l, int r) {
+        if (l >= r) {
+            return;
+        }
+        int i = l;
+        int j = r;
+        int tmp = nums[i];
+        while (i < j) {
+            // 基准元素是nums[l]
+            while (i < j && nums[j] >= nums[l]) {
+                j--;
+            }
+            while (i < j && nums[i] <= nums[l]) {
+                i++;
+            }
+            tmp = nums[i];
+            nums[i] = nums[j];
+            nums[j] = tmp;
+        }
+        // 这个时候i=j, num[i]和基准元素互换(tmp=num[i]在上面已经定义)
+        nums[i] = nums[l];
+        nums[l] = tmp;
+        quickSort(nums, l, i - 1);
+        quickSort(nums, i + 1, r);
     }
 }
 ```

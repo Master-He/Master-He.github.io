@@ -1278,8 +1278,8 @@ public class Solution {
 
 
 
-###2. 二叉搜索树与双向链表
-输入一棵二叉搜索树，将该二叉搜索树转换成一个排序的循环双向链表。要求不能创建任何新的节点，只能调整树中节点指针的指向。
+### 2. 二叉搜索树与双向链表
+输入一棵二叉搜索树，将该**二叉搜索树**转换成一个**排序的循环双向链表**。要求不能创建任何新的节点，只能调整树中节点指针的指向。
 
 为了让您更好地理解问题，以下面的二叉搜索树为例：
 
@@ -1292,3 +1292,350 @@ public class Solution {
 ![image-20220217002430486](LeetCode.assets/image-20220217002430486.png)
 
 特别地，我们希望可以就地完成转换操作。当转化完成以后，树中节点的左指针需要指向前驱，树中节点的右指针需要指向后继。还需要返回链表中的第一个节点的指针。
+
+```java
+// 节点
+public class Node {
+    public int val;
+    public Node left;
+    public Node right;
+
+    public Node() {
+    }
+
+    public Node(int _val) {
+        this.val = _val;
+    }
+
+    public Node(int _val, Node _left, Node _right) {
+        this.val = _val;
+        this.left = _left;
+        this.right = _right;
+    }
+}
+
+```
+
+
+
+```java
+// 使用深度优先遍历的中序优先遍历（先遍历左节点，然后遍历根节点，最后遍历右节点）
+public class Solution {
+
+    public Node pre;
+    public Node head;
+    public Node treeToDoublyList(Node root) {
+        if (root == null) {
+            return null;
+        }
+        dfs(root);
+        // 首尾互联
+        pre.right = head;
+        head.left = pre;
+        return head;
+    }
+
+    public void dfs(Node node) {
+        if (node == null) {
+            return;
+        }
+        // 先处理左节点
+        dfs(node.left);
+        // 然后处理根节点
+        if (pre != null) {
+            pre.right = node;
+            node.left = pre;
+        } else {
+            head = node;
+        }
+        pre = node;
+        // 最后处理右节点
+        dfs(node.right);
+    }
+
+    public static void main(String[] args) {
+        Solution solution = new Solution();
+
+        Node node1 = new Node(1);
+        Node node2 = new Node(2);
+        Node node3 = new Node(3);
+        Node node4 = new Node(4);
+        Node node5 = new Node(5);
+
+        node4.left = node2;
+        node4.right = node5;
+        node2.left = node1;
+        node2.right = node3;
+
+        Node head = solution.treeToDoublyList(node4);
+        // 这里打断点看head结构
+        System.out.println(head);
+        Node cur = head;
+        while (cur.right != head) {
+            System.out.println(cur.val);
+            cur = cur.right;
+        }
+        System.out.println(cur.val);
+    }
+}
+
+```
+
+
+
+### 3. 二叉搜索树的第 k 大节点
+给定一棵二叉搜索树，请找出其中第 k 大的节点的值。
+示例 1:
+输入: root = [3,1,4,null,2], k = 1
+   3
+  / \
+ 1   4
+  \
+   2
+输出: 4
+
+示例 2:
+输入: root = [5,3,6,2,4,null,null,1], k = 3
+       5
+      / \
+     3   6
+    / \
+   2   4
+  /
+ 1
+输出: 4
+
+限制：
+1 ≤ k ≤ 二叉搜索树元素个数
+
+```java
+// 自己写的，有点蠢
+public class Solution {
+    TreeNode pre;
+
+    public int kthLargest(TreeNode root, int k) {
+        if (root == null) {
+            return 0;
+        }
+        // 中序遍历形成 1<-2<-3<-4<-5
+        dfs(root);
+        // 然后倒着数
+        for (int i = k - 1; i > 0; i--) {
+            pre = pre.left;
+        }
+        return pre.val;
+    }
+
+    public void dfs(TreeNode node) {
+        if (node == null) {
+            return;
+        }
+        dfs(node.left);
+        node.left = pre != null ? pre : null;
+        pre = node;
+        dfs(node.right);
+    }
+
+    public static void main(String[] args) {
+        Solution solution = new Solution();
+        TreeNode treeNode1 = new TreeNode(1);
+        TreeNode treeNode2 = new TreeNode(2);
+        TreeNode treeNode3 = new TreeNode(2);
+        TreeNode treeNode4 = new TreeNode(4);
+        TreeNode treeNode5 = new TreeNode(5);
+        TreeNode treeNode6 = new TreeNode(6);
+
+        treeNode5.left = treeNode3;
+        treeNode5.right = treeNode6;
+        treeNode3.left = treeNode2;
+        treeNode3.right = treeNode4;
+        treeNode2.left = treeNode1;
+        System.out.println(solution.kthLargest(treeNode5, 3));
+    }
+}
+```
+
+
+
+```java
+// 参考答案的
+public class Solution2 {
+
+    int res;
+    int k;
+    public int kthLargest(TreeNode root, int k) {
+        this.k = k;
+        dfs(root);
+        return res;
+    }
+
+    public void dfs(TreeNode node) {
+        if (node == null) {
+            return;
+        }
+        dfs(node.right);
+        if (k == 0) {
+            return;
+        }
+        if (--k == 0) {
+            res = node.val;
+        }
+        dfs(node.left);
+    }
+
+    public static void main(String[] args) {
+        Solution2 solution = new Solution2();
+        TreeNode treeNode1 = new TreeNode(1);
+        TreeNode treeNode2 = new TreeNode(2);
+        TreeNode treeNode3 = new TreeNode(2);
+        TreeNode treeNode4 = new TreeNode(4);
+        TreeNode treeNode5 = new TreeNode(5);
+        TreeNode treeNode6 = new TreeNode(6);
+
+        treeNode5.left = treeNode3;
+        treeNode5.right = treeNode6;
+        treeNode3.left = treeNode2;
+        treeNode3.right = treeNode4;
+        treeNode2.left = treeNode1;
+        System.out.println(solution.kthLargest(treeNode5, 3));
+    }
+}
+```
+
+
+
+## Day16 排序（简单）
+
+###  1. 把数组排成最小的数
+
+输入一个非负整数数组，把数组里所有数字拼接起来排成一个数，打印能拼接出的所有数字中最小的一个。
+
+**示例 1:**
+
+```
+输入: [10,2]
+输出: "102"
+```
+
+**示例 2:**
+
+```
+输入: [3,30,34,5,9]
+输出: "3033459"
+```
+
+提示:
+0 < nums.length <= 100
+说明:
+输出结果可能非常大，所以你需要返回一个字符串而不是整数
+拼接起来的数字可能会有前导 0，最后结果不需要去掉前导 0
+
+```java
+// 参考答案
+public class Solution {
+    public String minNumber(int[] nums) {
+        String[] strs = new String[nums.length];
+        for (int i = 0; i < nums.length; i++) {
+            strs[i] = String.valueOf(nums[i]);
+        }
+        quickSort(strs, 0, strs.length - 1);
+        StringBuilder res = new StringBuilder();
+        for (String str : strs) {
+            res.append(str);
+        }
+        return res.toString();
+    }
+
+    private void quickSort(String[] strs, int l, int r) {
+        if (l >= r) {
+            return;
+        }
+        int i = l;
+        int j = r;
+        String tmp = strs[l];
+        while (i < j) {
+            while (i < j && (strs[j] + strs[l]).compareTo(strs[l] + strs[j]) >= 0) {
+                j--;
+            }
+            while (i < j && (strs[i] + strs[l]).compareTo(strs[l] + strs[i]) <= 0) {
+                i++;
+            }
+            tmp = strs[i];
+            strs[i] = strs[j];
+            strs[j] = tmp;
+        }
+        strs[i] = strs[l];
+        strs[l] = tmp;
+        quickSort(strs, l, i - 1);
+        quickSort(strs, i + 1, r);
+    }
+
+    public static void main(String[] args) {
+        Solution solution = new Solution();
+        System.out.println(solution.minNumber(new int[]{3, 30, 34, 5, 9}));
+    }
+}
+```
+
+
+
+
+
+### 2扑克牌中的顺子
+从若干副扑克牌中随机抽 5 张牌，判断是不是一个顺子，即这5张牌是不是连续的。2～10为数字本身，A为1，J为11，Q为12，K为13，而大、小王为 0 ，可以看成任意数字。A 不能视为 14。
+
+示例 1:
+输入: [1,2,3,4,5]
+输出: True
+
+示例 2:
+输入: [0,0,1,2,5]
+输出: True
+
+限制：
+数组长度为 5 
+数组的数取值为 [0, 13] 
+
+```java
+// 方法一： 集合 Set + 遍历
+class Solution {
+    public boolean isStraight(int[] nums) {
+        Set<Integer> repeat = new HashSet<>();
+        int max = 0, min = 14;
+        for(int num : nums) {
+            if(num == 0) continue; // 跳过大小王
+            max = Math.max(max, num); // 最大牌
+            min = Math.min(min, num); // 最小牌
+            if(repeat.contains(num)) return false; // 若有重复，提前返回 false
+            repeat.add(num); // 添加此牌至 Set
+        }
+        return max - min < 5; // 最大牌 - 最小牌 < 5 则可构成顺子
+    }
+}
+```
+
+
+
+```java
+// 方法二：排序 + 遍历
+class Solution {
+    public boolean isStraight(int[] nums) {
+        int joker = 0;
+        Arrays.sort(nums); // 数组排序
+        for(int i = 0; i < 4; i++) {
+            if(nums[i] == 0) joker++; // 统计大小王数量
+            else if(nums[i] == nums[i + 1]) return false; // 若有重复，提前返回 false
+        }
+        return nums[4] - nums[joker] < 5; // 最大牌 - 最小牌 < 5 则可构成顺子
+    }
+}
+```
+
+
+
+参考答案解题思路
+
+![image-20220220011925327](LeetCode.assets/image-20220220011925327.png)
+
+
+

@@ -1,6 +1,4 @@
-
-
-python 常见排序
+### 常见排序算法
 
 ```python
 def bubble_sort(lst):
