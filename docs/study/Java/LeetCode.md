@@ -1581,7 +1581,7 @@ public class Solution {
 
 
 
-### 2扑克牌中的顺子
+### 2. 扑克牌中的顺子
 从若干副扑克牌中随机抽 5 张牌，判断是不是一个顺子，即这5张牌是不是连续的。2～10为数字本身，A为1，J为11，Q为12，K为13，而大、小王为 0 ，可以看成任意数字。A 不能视为 14。
 
 示例 1:
@@ -1636,6 +1636,340 @@ class Solution {
 参考答案解题思路
 
 ![image-20220220011925327](LeetCode.assets/image-20220220011925327.png)
+
+
+
+
+
+## Day17 排序（中等）
+
+### 1. 最小的 k 个数
+输入整数数组 arr ，找出其中最小的 k 个数。例如，输入4、5、1、6、2、7、3、8这8个数字，则最小的4个数字是1、2、3、4。
+
+ 
+
+示例 1：
+
+```
+输入：arr = [3,2,1], k = 2
+输出：[1,2] 或者 [2,1]
+```
+
+
+示例 2：
+
+```
+输入：arr = [0,1,2,1], k = 1
+输出：[0]
+```
+
+
+限制：
+
+0 <= k <= arr.length <= 10000
+0 <= arr[i] <= 10000
+
+
+
+```java
+// 你的答案 才打败30%的人
+public int[] getLeastNumbers(int[] arr, int k) {
+        quickSort(arr, 0, arr.length - 1);
+        int[] res = new int[k];
+        for (int i = 0; i < res.length; i++) {
+            res[i] = arr[i];
+        }
+        return res;
+    }
+
+    public void quickSort(int[] nums, int l, int r) {
+        if (l >= r) {
+            return;
+        }
+        int i = l;
+        int j = r;
+        int tmp = nums[i];
+        while (i < j) {
+            while (i < j && nums[j] >= nums[l]) {
+                j--;
+            }
+            while (i < j && nums[i] <= nums[l]) {
+                i++;
+            }
+            tmp = nums[i];
+            nums[i] = nums[j];
+            nums[j] = tmp;
+        }
+        nums[i] = nums[l];
+        nums[l] = tmp;
+        quickSort(nums, l, i - 1);
+        quickSort(nums, i + 1, r);
+    }
+```
+
+
+
+```java
+// 官方的答案，打败了95%的人 
+// 思路是最小的 k 个数不一定要排序， 只要是最小的k个数即可！
+class Solution {
+    public int[] getLeastNumbers(int[] arr, int k) {
+        if (k >= arr.length) return arr;
+        return quickSort(arr, k, 0, arr.length - 1);
+    }
+    private int[] quickSort(int[] arr, int k, int l, int r) {
+        int i = l, j = r;
+        while (i < j) {
+            while (i < j && arr[j] >= arr[l]) j--;
+            while (i < j && arr[i] <= arr[l]) i++;
+            swap(arr, i, j);
+        }
+        swap(arr, i, l);
+        if (i > k) return quickSort(arr, k, l, i - 1);
+        if (i < k) return quickSort(arr, k, i + 1, r);
+        return Arrays.copyOf(arr, k);
+    }
+    private void swap(int[] arr, int i, int j) {
+        int tmp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = tmp;
+    }
+}
+```
+
+
+
+
+
+### 2. 数据流中的中位数
+如何得到一个数据流中的中位数？如果从数据流中读出奇数个数值，那么中位数就是所有数值排序之后位于中间的数值。如果从数据流中读出偶数个数值，那么中位数就是所有数值排序之后中间两个数的平均值。
+
+例如
+[2,3,4] 的中位数是 3
+[2,3] 的中位数是 (2 + 3) / 2 = 2.5
+设计一个支持以下两种操作的数据结构：
+void addNum(int num) - 从数据流中添加一个整数到数据结构中。
+double findMedian() - 返回目前所有元素的中位数。
+
+示例 1：
+
+```text
+输入：
+["MedianFinder","addNum","addNum","findMedian","addNum","findMedian"]
+[[],[1],[2],[],[3],[]]
+输出：[null,null,null,1.50000,null,2.00000]
+```
+
+示例 2：
+
+```text
+输入：
+["MedianFinder","addNum","findMedian","addNum","findMedian"]
+[[],[2],[],[3],[]]
+输出：[null,null,2.00000,null,2.50000]
+```
+
+限制：
+最多会对 addNum、findMedian 进行 50000 次调用。
+
+
+
+参考答案
+
+```java
+class MedianFinder {
+    Queue<Integer> A, B;
+    public MedianFinder() {
+        A = new PriorityQueue<>(); // 小顶堆，保存较大的一半
+        B = new PriorityQueue<>((x, y) -> (y - x)); // 大顶堆，保存较小的一半
+    }
+    public void addNum(int num) {
+        if(A.size() != B.size()) {
+            A.add(num);
+            B.add(A.poll());
+        } else {
+            B.add(num);
+            A.add(B.poll());
+        }
+    }
+    public double findMedian() {
+        return A.size() != B.size() ? A.peek() : (A.peek() + B.peek()) / 2.0;
+    }
+}
+```
+
+
+
+### 扩展知识： 顶堆是什么？
+
+https://juejin.cn/post/6844903869332324365#heading-6
+
+1、大顶堆
+
+- 根结点（亦称为堆顶）的关键字是堆里所有结点关键字中最大者，称为大顶堆。大根堆要求根节点的关键字既大于或等于左子树的关键字值，又大于或等于右子树的关键字值。
+
+2、小顶堆
+
+- 根结点（亦称为堆顶）的关键字是堆里所有结点关键字中最小者，称为小顶堆。小根堆要求根节点的关键字既小于或等于左子树的关键字值，又小于或等于右子树的关键字值。
+
+
+
+## Day18 搜索与回溯算法（中等）
+
+### 1. 二叉树的深度
+
+输入一棵二叉树的根节点，求该树的深度。从根节点到叶节点依次经过的节点（含根、叶节点）形成树的一条路径，最长路径的长度为树的深度。
+
+例如：
+
+给定二叉树 [3,9,20,null,null,15,7]，
+
+        3
+       / \
+      9   20
+         /  \
+        15   7
+
+返回它的最大深度 3 。
+
+提示：
+
+节点总数 <= 10000
+
+
+
+```java
+// 深度优先遍历 效率高一点 代码也简单
+class Solution {
+    public int  (TreeNode root) {
+        if(root == null) return 0;
+        // 后序遍历， 左，右，根， 这里的的根是“+1”，个人理解，表述多少有点不妥
+        return Math.max(maxDepth(root.left), maxDepth(root.right)) + 1;
+    }
+}
+```
+
+```java
+// 广度优先遍历 效率低一点 代码也复杂点
+class Solution {
+    public int maxDepth(TreeNode root) {
+        if(root == null) return 0;
+        List<TreeNode> queue = new LinkedList<>() {{ add(root); }}, tmp;
+        int res = 0;
+        while(!queue.isEmpty()) {
+            tmp = new LinkedList<>();
+            // 开始遍历一层的节点， 如果遍历的节点有左右子节点，则加入tmp队列
+            for(TreeNode node : queue) {
+                if(node.left != null) tmp.add(node.left);
+                if(node.right != null) tmp.add(node.right);
+            }
+            // 一层遍历完，将下一层节点tmp队列赋值给queue
+            queue = tmp;
+            // 层数加1
+            res++;
+        }
+        return res;
+    }
+}
+
+```
+
+### 2. 平衡二叉树
+输入一棵二叉树的根节点，判断该树是不是平衡二叉树。如果某二叉树中任意节点的左右子树的深度相差不超过1，那么它就是一棵平衡二叉树。
+
+
+
+示例 1: 给定二叉树 [3,9,20,null,null,15,7]
+
+```java
+    3
+   / \
+  9  20
+    /  \
+   15   7
+```
+
+返回 true 。
+
+示例 2: 给定二叉树 [1,2,2,3,3,null,null,4,4]
+
+```java
+       1
+      / \
+     2   2
+    / \
+   3   3
+  / \
+ 4   4
+```
+
+返回 false 。
+
+限制：
+
+0 <= 树的结点个数 <= 10000
+
+
+
+```java
+// 参考答案
+public class Solution {
+    public boolean isBalanced(TreeNode root) {
+        return recur(root) != -1;
+    }
+
+    private int recur(TreeNode root) {
+        if (root == null) {
+            return 0;
+        }
+        int left = recur(root.left);
+        if (left == -1) {
+            return -1;
+        }
+        int right = recur(root.right);
+        if (right == -1) {
+            return -1;
+        }
+        return Math.abs(left - right) < 2 ? Math.max(left, right) + 1: -1;
+    }
+}
+```
+
+
+
+```java
+// 比较挫的方法， 效率比较低， 和上一题有关系
+class Solution {
+    public boolean isBalanced(TreeNode root) {
+        if (root == null) return true;
+        // 需要注意判断左右子树本身是否平衡 isBalanced(root.left) && isBalanced(root.right);
+        return Math.abs(depth(root.left) - depth(root.right)) <= 1 && isBalanced(root.left) && isBalanced(root.right);
+    }
+
+    private int depth(TreeNode root) {
+        if (root == null) return 0;
+        return Math.max(depth(root.left), depth(root.right)) + 1;
+    }
+}
+```
+
+
+
+
+
+## Day19 搜索与回溯算法（中等）
+
+### 1. 1 + 2 + … + n
+求 1+2+...+n ，要求不能使用乘除法、for、while、if、else、switch、case等关键字及条件判断语句（A?B:C）。
+
+示例 1：
+
+输入: n = 3
+输出: 6
+示例 2：
+
+输入: n = 9
+输出: 45
 
 
 

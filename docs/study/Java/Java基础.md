@@ -241,7 +241,7 @@ peek // 返回队列头部的元素 如果队列为空，则返回null
 实现队列接口的类
 
 ```java
-Java 集合中的 Queue 继承自 Collection 接口 ， Deque, LinkedList, PriorityQueue, BlockingQueue 等类都实现了它。
+Java 集合中的 Queue 继承自 Collection 接口 ， Deque(双端队列), LinkedList(双向链表), PriorityQueue, BlockingQueue 等类都实现了它。
 ```
 
 队列方法总结
@@ -371,7 +371,19 @@ new int[0];
 new Integer[0];
 // 初始化数组
 new int[] {1,2,3};
+// 初始化多维数组
+int[][] ints = {{1, 2, 3}, {3, 4, 5}};
+```
 
+
+
+数组拷贝
+
+```java
+    public static void main(String[] args) {
+        int[] ints = {1, 2, 3, 4, 5, 6};
+        System.out.println(Arrays.toString(Arrays.copyOf(ints, 3))); // [1, 2, 3]
+    }
 ```
 
 
@@ -766,5 +778,31 @@ public class QuickSort {
         quickSort(nums, i + 1, r);
     }
 }
+```
+
+
+
+```java
+// 快速排序简洁版
+private void quickSort(int[] arr, int l, int r) {
+        // 子数组长度为 1 时终止递归
+        if (l >= r) return;
+        // 哨兵划分操作（以 arr[l] 作为基准数）
+        int i = l, j = r;
+        while (i < j) {
+            while (i < j && arr[j] >= arr[l]) j--;
+            while (i < j && arr[i] <= arr[l]) i++;
+            swap(arr, i, j);
+        }
+        swap(arr, i, l);
+        // 递归左（右）子数组执行哨兵划分
+        quickSort(arr, l, i - 1);
+        quickSort(arr, i + 1, r);
+    }
+private void swap(int[] arr, int i, int j) {
+        int tmp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = tmp;
+    }
 ```
 
