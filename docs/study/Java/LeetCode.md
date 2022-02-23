@@ -2054,12 +2054,9 @@ class Solution {
 
 
 
-## Day19  分治算法（中等）
+## Day20  分治算法（中等）
 
-
-
-
-重建二叉树
+### 1. 重建二叉树
 
 输入某二叉树的前序遍历和中序遍历的结果，请构建该二叉树并返回其根节点。
 
@@ -2193,4 +2190,201 @@ class Solution {
 ```
 
 
+
+### 2. 数值的整数次方
+
+实现 pow(x, n) ，即计算 x 的 n 次幂函数（即，xn）。不得使用库函数，同时不需要考虑大数问题。
+
+示例 1：
+输入：x = 2.00000, n = 10
+输出：1024.00000
+
+示例 2：
+输入：x = 2.10000, n = 3
+输出：9.26100
+
+示例 3：
+输入：x = 2.00000, n = -2
+输出：0.25000
+解释：2-2 = 1/22 = 1/4 = 0.25
+
+提示：
+-100.0 < x < 100.0
+-231 <= n <= 231-1
+-104 <= xn <= 104
+
+```java
+// 自己写的
+class Solution {
+    public double myPow(double x, int n) {
+        long N = n;
+        return N>=0 ? myPowHelper(x, N): 1.0/myPowHelper(x, -N);
+    }
+    public double myPowHelper(double x, long n) {
+        if (n == 0 || x == 1) {
+            return 1.0;
+        }
+        double y = myPowHelper(x, n/2);
+        return n%2==0 ? y*y : y*y*x;
+    }
+}
+```
+
+
+
+```java
+// 视频解法
+class Solution {
+    public double myPow(double x, int n) {
+        long N = n;
+        return N >= 0 ? quickMul(x, N) : 1.0 / quickMul(x, -N);
+    }
+
+    public double quickMul(double x, long N) {
+        if (N == 0) {
+            return 1.0;
+        }
+        double y = quickMul(x, N / 2);
+        return N % 2 == 0 ? y * y : y * y * x;
+    }
+}
+
+作者：LeetCode-Solution
+链接：https://leetcode-cn.com/problems/powx-n/solution/powx-n-by-leetcode-solution/
+来源：力扣（LeetCode）
+著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
+```
+
+
+
+### 3.二叉搜索树的后序遍历序列
+
+输入一个整数数组，判断该数组是不是某二叉搜索树的后序遍历结果。如果是则返回 true，否则返回 false。假设输入的数组的任意两个数字都互不相同。
+
+参考以下这颗二叉搜索树：
+
+         5
+    	  / \
+       2   6
+      / \
+     1   3
+
+示例 1：
+输入: [1,6,3,2,5]
+输出: false
+
+示例 2：
+输入: [1,3,2,6,5]
+输出: true
+
+**提示：**
+1. 数组长度 <= 1000
+
+```java
+```
+
+
+
+
+
+
+## Day21  位运算（简单）
+
+
+
+### 1. 二进制中 1 的个数
+
+编写一个函数，输入是一个无符号整数（以二进制串的形式），返回其二进制表达式中数字位数为 '1' 的个数（也被称为 汉明重量).）。
+
+提示：
+
+请注意，在某些语言（如 Java）中，没有无符号整数类型。在这种情况下，输入和输出都将被指定为有符号整数类型，并且不应影响您的实现，因为无论整数是有符号的还是无符号的，其内部的二进制表示形式都是相同的。
+在 Java 中，编译器使用 二进制补码 记法来表示有符号整数。因此，在上面的 示例 3 中，输入表示有符号整数 -3。
+
+示例 1：
+输入：n = 11 (控制台输入 00000000000000000000000000001011)
+输出：3
+解释：输入的二进制串 00000000000000000000000000001011 中，共有三位为 '1'。
+
+示例 2：
+输入：n = 128 (控制台输入 00000000000000000000000010000000)
+输出：1
+解释：输入的二进制串 00000000000000000000000010000000 中，共有一位为 '1'。
+
+示例 3：
+输入：n = 4294967293 (控制台输入 11111111111111111111111111111101，部分语言中 n = -3）
+输出：31
+解释：输入的二进制串 11111111111111111111111111111101 中，共有 31 位为 '1'。
+
+提示：
+输入必须是长度为 32 的 二进制串 。
+
+
+```java
+public class Solution {
+    // you need to treat n as an unsigned value
+    public int hammingWeight(int n) {
+        int count = 0;
+        while(n!=0) {
+            count += n & 1;
+            n = n>>>1;
+        }
+        return count;
+    }
+}
+```
+
+
+
+方法2
+
+<img src="/Users/hwj/project/Master-He.github.io/docs/study/Java/LeetCode.assets/image-20220223230112889.png" alt="image-20220223230112889" style="zoom:50%;" />
+
+```java
+// 巧用 n \& (n - 1)n&(n−1)
+// (n - 1)(n−1) 解析： 二进制数字 nn 最右边的 11 变成 00 ，此 11 右边的 00 都变成 11 。
+// n \& (n - 1)n&(n−1) 解析： 二进制数字 nn 最右边的 11 变成 00 ，其余不变。
+public class Solution {
+    // you need to treat n as an unsigned value
+    public int hammingWeight(int n) {
+        int count = 0;
+        while(n!=0) {
+            n = n&(n-1);
+            count++;
+        }
+        return count;
+    }
+}
+```
+
+
+
+
+
+## Day30
+
+### 1. 打印从 1 到最大的 n 位数
+
+输入数字 n，按顺序打印出从 1 到最大的 n 位十进制数。比如输入 3，则打印出 1、2、3 一直到最大的 3 位数 999。
+
+示例 1:
+输入: n = 1
+输出: [1,2,3,4,5,6,7,8,9]
+
+说明：
+用返回一个整数列表来代替打印
+n 为正整数
+
+```java
+//感觉这题意义不大
+class Solution {
+    public int[] printNumbers(int n) {
+        int end = (int)Math.pow(10, n) - 1;
+        int[] res = new int[end];
+        for(int i = 0; i < end; i++)
+            res[i] = i + 1;
+        return res;
+    }
+}
+```
 
