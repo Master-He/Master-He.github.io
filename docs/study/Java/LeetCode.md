@@ -2280,7 +2280,35 @@ class Solution {
 **提示：**
 1. 数组长度 <= 1000
 
+
+
+题解：
+
+主要是清楚后序遍历的定义，二叉树的定义
+
+**后序遍历定义：** `[ 左子树 | 右子树 | 根节点 ]` ，即遍历顺序为 “左、右、根” 。
+
+**二叉搜索树定义：** 左子树中所有节点的值 << 根节点的值；右子树中所有节点的值 >> 根节点的值；其左、右子树也分别为二叉搜索树。
+
 ```java
+class Solution {
+    public boolean verifyPostorder(int[] postorder) {
+        return recur(postorder, 0, postorder.length - 1);
+    }
+    boolean recur(int[] postorder, int i, int j) {
+        if(i >= j) return true;
+        int p = i;
+        while(postorder[p] < postorder[j]) p++;
+        int m = p;
+        while(postorder[p] > postorder[j]) p++;
+        return p == j && recur(postorder, i, m - 1) && recur(postorder, m, j - 1);
+    }
+}
+
+作者：Krahets
+链接：https://leetcode-cn.com/leetbook/read/illustration-of-algorithm/5vwbf6/
+来源：力扣（LeetCode）
+著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
 ```
 
 
@@ -2361,6 +2389,340 @@ public class Solution {
 
 
 
+### 2.不用加减乘除做加法
+
+写一个函数，求两个整数之和，要求在函数体内不得使用 “+”、“-”、“*”、“/” 四则运算符号。
+
+示例:
+输入: a = 1, b = 1
+输出: 2
+
+提示：
+a, b 均可能是负数或 0
+结果不会溢出 32 位整数
+
+
+
+题解：
+
+<img src="/Users/hwj/project/Master-He.github.io/docs/study/Java/LeetCode.assets/image-20220225080107376.png" alt="image-20220225080107376" style="zoom:40%;" />
+
+<img src="/Users/hwj/project/Master-He.github.io/docs/study/Java/LeetCode.assets/image-20220225080121947.png" alt="image-20220225080121947" style="zoom:50%;" />
+
+```java
+class Solution {
+    public int add(int a, int b) {
+        while (b!=0) {
+            int c = (a&b) << 1  // 注意 & 符号的优先级比 << 低，所以要用括号括起来！ 所以要记住 & 通常要用上()
+            a = a^b;
+            b = c;
+        }
+        return a;
+    }
+}
+```
+
+
+
+
+
+## Day22 位运算（中等）
+
+### 1.数组中数字出现的次数
+
+一个整型数组 nums 里除两个数字之外，其他数字都出现了两次。请写程序找出这两个只出现一次的数字。要求时间复杂度是O(n)，空间复杂度是O(1)。
+
+示例 1：
+输入：nums = [4,1,4,6]
+输出：[1,6] 或 [6,1]
+
+示例 2：
+输入：nums = [1,2,10,4,1,4,3,3]
+输出：[2,10] 或 [10,2]
+
+限制：
+2 <= nums.length <= 10000
+
+
+
+题解
+
+![image-20220225082403549](/Users/hwj/project/Master-He.github.io/docs/study/Java/LeetCode.assets/image-20220225082403549.png)
+
+```java
+class Solution {
+    public int[] singleNumbers(int[] nums) {
+        int x = 0, y = 0, n = 0, m = 1;
+        for(int num : nums)               // 1. 遍历异或
+            n ^= num;
+        while((n & m) == 0)               // 2. 循环左移，计算 m
+            m <<= 1;
+        for(int num: nums) {              // 3. 遍历 nums 分组
+            if((num & m) != 0) x ^= num;  // 4. 当 num & m != 0
+            else y ^= num;                // 4. 当 num & m == 0
+        }
+        return new int[] {x, y};          // 5. 返回出现一次的数字
+    }
+}
+```
+
+
+
+### 2. 数组中数字出现的次数 II
+
+在一个数组 nums 中除一个数字只出现一次之外，其他数字都出现了三次。请找出那个只出现一次的数字。
+
+示例 1：
+输入：nums = [3,4,3,3]
+输出：4
+
+示例 2：
+输入：nums = [9,1,7,9,7,9,7]
+输出：1
+
+限制：
+1 <= nums.length <= 10000
+1 <= nums[i] < 2^31
+
+
+
+题解
+
+
+
+<img src="/Users/hwj/project/Master-He.github.io/docs/study/Java/LeetCode.assets/image-20220226100330355.png" alt="image-20220226100330355" style="zoom:50%;" />
+
+发现到了 ^ 的运算符优先级比 & 的低。
+
+<img src="/Users/hwj/project/Master-He.github.io/docs/study/Java/LeetCode.assets/image-20220226101202441.png" alt="image-20220226101202441" style="zoom:50%;" />
+
+
+
+**有限状态自动机**
+各二进制位的 位运算规则相同 ，因此只需考虑一位即可。如下图所示，对于所有数字中的某二进制位 1 的个数，存在 3 种状态，即对 3 余数为 0, 1, 2 。
+
+若输入二进制位 11 ，则状态按照以下顺序转换；
+若输入二进制位 00 ，则状态不变。
+	0→1→2→0→⋯
+
+<img src="/Users/hwj/project/Master-He.github.io/docs/study/Java/LeetCode.assets/image-20220226101329662.png" alt="image-20220226101329662" style="zoom:50%;" />
+
+如下图所示，由于二进制只能表示 0, 1 ，因此需要使用两个二进制位来表示 3 个状态。设此两位分别为 two , one ，则状态转换变为：
+00→01→10→00→⋯
+
+<img src="/Users/hwj/project/Master-He.github.io/docs/study/Java/LeetCode.assets/image-20220226101408394.png" alt="image-20220226101408394" style="zoom:50%;" />
+
+```java
+// 插入一些位运算的知识点
+// 异或运算：x ^ 0 = x ， x ^ 1 = ~x   // 与0异或不变，与1异或取反
+// 换句话说 x^n == > 就是如果n==0, x==x； 如果n==1, x==~x;
+// 与运算：x & 0 = 0 ， x & 1 = x   // 与0与为0，与1与不变
+```
+
+
+计算 one
+
+<img src="/Users/hwj/project/Master-He.github.io/docs/study/Java/LeetCode.assets/image-20220226101453627.png" alt="image-20220226101453627" style="zoom:50%;" />
+
+```java
+// 个人理解
+if two == 0:
+  if n == 0:
+    one = one
+  if n == 1:
+    one = ~one
+if two == 1:
+    one = 0
+// 上面简化成这样
+if two == 0:
+    one = one ^ n
+if two == 1:
+    one = 0
+// 最后简化成这样   
+one = ~two & n ^ one   // 注意 & 的优先级比 ^ 高
+// 个人理解 
+// 当two为1时，one不管输入n的值是0还是1，one的结果还是0。 所以有~two
+// 当two为0时，输入n=0时，one不变， 输入n=1时，one取反。 所以有n^one
+```
+
+计算two
+
+草稿纸上画出状态机图，然后写最基本的if else，就容易懂了
+
+<img src="/Users/hwj/project/Master-He.github.io/docs/study/Java/LeetCode.assets/image-20220226110203088.png" alt="image-20220226110203088" style="zoom:50%;" />
+
+这里我就不进行位置对调，写出two的计算过程，看最后计算公式是不是和one的计算公式一样
+
+<img src="/Users/hwj/project/Master-He.github.io/docs/study/Java/LeetCode.assets/image-20220226111342125.png" alt="image-20220226111342125" style="zoom: 50%;" />
+
+```
+// 伪代码
+if one == 0:
+		if n == 1:
+				two = ~two
+		if n == 0:
+				two = two
+if one == 1:
+		if n == 1:
+				two = 0
+		if n == 0:
+				two = 0;
+
+// 简化
+if one == 0:
+  two = n ^ two  // 根据与1异或取反，与0异或不变的特点
+if one == 1:
+  two = 0
+
+// 再简化
+two = ~one & n ^ two
+```
+
+发现和计算one的公式（one = ~two & n ^ one）一样
+
+
+
+```java
+class Solution {
+    public int singleNumber(int[] nums) {
+        int ones = 0, twos = 0;
+        for(int num : nums){
+            ones = ones ^ num & ~twos;  // 测试换成~twos & num ^ ones;没问题，而且还更好理解
+            twos = twos ^ num & ~ones; 
+        }
+        return ones;
+    }
+}
+作者：Krahets
+链接：https://leetcode-cn.com/leetbook/read/illustration-of-algorithm/9hctss/
+来源：力扣（LeetCode）
+著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
+```
+
+
+
+https://leetcode-cn.com/leetbook/read/illustration-of-algorithm/9hctss/ 下有个评论（感觉不错）：
+
+<img src="/Users/hwj/project/Master-He.github.io/docs/study/Java/LeetCode.assets/image-20220226105523072.png" alt="image-20220226105523072" style="zoom:50%;" />
+
+<img src="/Users/hwj/project/Master-He.github.io/docs/study/Java/LeetCode.assets/image-20220226105559627.png" alt="image-20220226105559627" style="zoom:40%;" />
+
+<img src="/Users/hwj/project/Master-He.github.io/docs/study/Java/LeetCode.assets/image-20220226105624754.png" alt="image-20220226105624754" style="zoom:40%;" />
+
+<img src="/Users/hwj/project/Master-He.github.io/docs/study/Java/LeetCode.assets/image-20220226105641124.png" alt="image-20220226105641124" style="zoom:40%;" />
+
+## Day23 数学（简单）
+
+### 1.数组中出现次数超过一半的数字
+
+数组中有一个数字出现的次数超过数组长度的一半，请找出这个数字。
+你可以假设数组是非空的，并且给定的数组总是存在多数元素。
+
+示例 1:
+输入: [1, 2, 3, 2, 2, 2, 5, 4, 2]
+输出: 2
+
+限制：
+1 <= 数组长度 <= 50000
+
+```java
+// 第一时间想到的代码 // 哈哈只打败了15%的人
+class Solution {
+    public int majorityElement(int[] nums) {
+        HashMap<Integer, Integer> map = new HashMap<>();
+        for (int num : nums) {
+            map.computeIfPresent(num, (key, value) -> value + 1);
+            map.putIfAbsent(num, 1);
+        }
+        int halfLen = nums.length / 2;
+        int res = 0;
+        for (Map.Entry<Integer, Integer> keyValue : map.entrySet()) {
+            if (keyValue.getValue() > halfLen) {
+                res = keyValue.getKey();
+            }
+        }
+        return res;
+    }
+}
+```
+
+
+
+```java
+// 题解的 // 看不懂先不做。。。
+```
+
+
+
+### 2.构建乘积数组
+
+给定一个数组 A[0,1,…,n-1]，请构建一个数组 B[0,1,…,n-1]，其中 B[i] 的值是数组 A 中除了下标 i 以外的元素的积, 即 B[i]=A[0]×A[1]×…×A[i-1]×A[i+1]×…×A[n-1]。不能使用除法。
+
+示例:
+输入: [1,2,3,4,5]
+输出: [120,60,40,30,24]
+
+提示：
+所有元素乘积之和不会溢出 32 位整数
+a.length <= 100000
+
+```java
+// 题解的 // 看不懂先不做。。。
+```
+
+
+
+## Day24 数学（中等）
+
+### 1.剪绳子
+给你一根长度为 n 的绳子，请把绳子剪成整数长度的 m 段（m、n都是整数，n>1并且m>1），每段绳子的长度记为 k[0],k[1]...k[m-1] 。请问 k[0]*k[1]*...*k[m-1] 可能的最大乘积是多少？例如，当绳子的长度是8时，我们把它剪成长度分别为2、3、3的三段，此时得到的最大乘积是18。
+
+示例 1：
+输入: 2
+输出: 1
+解释: 2 = 1 + 1, 1 × 1 = 1
+
+示例 2:
+输入: 10
+输出: 36
+解释: 10 = 3 + 3 + 4, 3 × 3 × 4 = 36
+
+提示：
+2 <= n <= 58
+
+
+
+```java
+ 暂时不写数学类型的题目
+```
+
+
+
+
+
+
+
+### 2. 暂时不写数学类型的题目
+
+
+
+### 3. 暂时不写数学类型的题目
+
+
+
+## Day25
+
+## Day26
+
+## Day27
+
+## Day28
+
+## Day29
+
+
+
+
 ## Day30
 
 ### 1. 打印从 1 到最大的 n 位数
@@ -2388,3 +2750,6 @@ class Solution {
 }
 ```
 
+
+
+## Day31
