@@ -86,6 +86,18 @@ public static void main(String[] args) {
 
 
 
+/guava创建空列表
+
+```java
+import com.google.common.collect.Lists; 
+Lists.newArrayList()
+   
+```
+
+ 空的map set同理
+
+
+
 ### LinkedList
 
 LinkedList是双向链接串列(doubly LinkedList)。
@@ -124,7 +136,15 @@ public static void main(String[] args) {
 
 
 
+HashMap computeIfAbsent() 方法 作用？
+就很像python 的setdefault(), 参考： https://www.runoob.com/java/java-hashmap-computeifabsent.html
+类似的有putIfAbsent() ,参考： https://www.runoob.com/java/java-hashmap-putifabsent.html
 
+
+
+guava 的 ImmutableMap
+
+ImmutableMap.of(k1, v1, k2,v2  ....)
 
 
 
@@ -155,9 +175,11 @@ System.out.println(RCODE_TYPES.contains(0));
 
 ## Stream操作总结
 
+入门： https://zhuanlan.zhihu.com/p/299064490
+
+
+
 参考  https://www.jianshu.com/p/0687e7003eb2
-
-
 
 List<Float> 转换成 float[]   参考：https://stackoverflow.com/questions/4837568/java-convert-arraylistfloat-to-float
 
@@ -198,6 +220,69 @@ List<String> domainList = detectDataList.stream().map(DetectData::getDomain).col
 ```
 
 
+
+**java8Stream map和flatmap的区别**
+
+https://www.cnblogs.com/wangjing666/p/9999666.html
+
+```java
+public class demo {
+    public static void main(String[] args) {
+        testMap();
+        testFlatMap();
+    }
+
+    public static void testMap() {
+        String[] words = new String[]{"Hello", "World"};
+        List<String[]> a = Arrays.stream(words)
+                .map(word -> word.split(""))
+                .distinct()
+                .collect(Collectors.toList());
+        System.out.println(a);  // [[Ljava.lang.String;@25f38edc, [Ljava.lang.String;@1a86f2f1]
+    }
+
+    public static void testFlatMap() {
+        String[] words = new String[]{"Hello","World"};
+        List<String> a = Arrays.stream(words)
+                .map(word -> word.split(""))
+                .flatMap(Arrays::stream)
+                .distinct()
+                .collect(Collectors.toList());
+        a.forEach(System.out::print);  // HeloWrd
+    }
+
+}
+```
+
+
+
+flatMap等价写法
+
+```java
+// 第一种
+String[] words = new String[]{"Hello","World"};
+List<String> a = Arrays.stream(words)
+        .map(word -> word.split(""))
+        .flatMap(Arrays::stream)
+        .distinct()
+        .collect(toList());
+a.forEach(System.out::print);
+```
+
+
+
+```java
+// 第二种
+String[] words = new String[]{"Hello","World"};
+List<String> collect = Stream.of(words).map(i -> i.split("")).flatMap(Stream::of).collect(toList());
+```
+
+
+
+```java
+// 第三种
+List<String> collect = Stream.of(words).flatMap(word -> Stream.of(word.split(""))).collect(toList());
+```
 
 
 
@@ -690,6 +775,7 @@ mvn compile  #编译
 mvn exec:java -Dexec.mainClass="com.xxx.demo.Hello"  # 启动项目
 mvn package -Dmaven.test.skip=true  # 打包跳过测试
 mvn packge -Pdev  # 指定dev开发环境的profile进行打包（还有测试环境，生产环境）
+mvn -Dtest=TestSquare,TestCi*le test #maven运行特定的test case
 ```
 
  
@@ -804,5 +890,41 @@ private void swap(int[] arr, int i, int j) {
         arr[i] = arr[j];
         arr[j] = tmp;
     }
+```
+
+
+
+## jd-gui.exe
+
+java 反编译软件http://java-decompiler.github.io/
+
+
+
+## IDEA diagrams使用
+
+https://blog.csdn.net/ttzommed/article/details/114905865
+
+类图维基百科  https://zh.wikipedia.org/wiki/%E9%A1%9E%E5%88%A5%E5%9C%96 
+
+
+
+## lambda表达式
+
+```java
+Arrays.sort(array, (s1, s2) -> s1.compareTo(s2));
+```
+
+
+
+## 怎么看回调函数的调用栈
+
+```java
+StackTraceElement[] stackElements = Thread.currentThread().getStackTrace();
+for (StackTraceElement stackElement : stackElements) {
+    System.out.print(stackElement.getClassName() + "/t");
+    System.out.print(stackElement.getFileName() + "/t");
+    System.out.print(stackElement.getLineNumber() + "/t");
+    System.out.println(stackElement.getMethodName());
+}
 ```
 
