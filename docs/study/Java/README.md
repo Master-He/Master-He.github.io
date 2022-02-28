@@ -1,6 +1,7 @@
 # Java目录
 
 * [Java基础](/study/Java/Java基础)
+* [Java并发编程](/study/Java/Java并发编程)
 * [LeetCode](/study/Java/LeetCode)
 * [JavaWeb](/study/Java/01.JavaWeb入门)
 * [Mybatis](/study/Java/Mybatis课堂笔记)
