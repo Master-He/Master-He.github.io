@@ -223,6 +223,8 @@ List<String> domainList = detectDataList.stream().map(DetectData::getDomain).col
 
 **java8Stream map和flatmap的区别**
 
+flatmap可以将map生成的单个流合并成一个流，即扁平化成一个流。
+
 https://www.cnblogs.com/wangjing666/p/9999666.html
 
 ```java
@@ -269,15 +271,11 @@ List<String> a = Arrays.stream(words)
 a.forEach(System.out::print);
 ```
 
-
-
 ```java
 // 第二种
 String[] words = new String[]{"Hello","World"};
 List<String> collect = Stream.of(words).map(i -> i.split("")).flatMap(Stream::of).collect(toList());
 ```
-
-
 
 ```java
 // 第三种
@@ -908,11 +906,27 @@ https://blog.csdn.net/ttzommed/article/details/114905865
 
 
 
-## lambda表达式
+## lambda
+
+在lambda表达式执行时，jvm会先为该lambda生成一个java类，然后再创建一个该类对应的对象。
+
+参考：https://cloud.tencent.com/developer/article/1572212
+
+
+
+参考：https://www.bilibili.com/read/cv8023087
+
+lambda表达式示例
 
 ```java
 Arrays.sort(array, (s1, s2) -> s1.compareTo(s2));
 ```
+
+```java
+list.forEach(System.out::println) //也是Java 8中的Lambda写法之一
+```
+
+
 
 
 
@@ -926,5 +940,16 @@ for (StackTraceElement stackElement : stackElements) {
     System.out.print(stackElement.getLineNumber() + "/t");
     System.out.println(stackElement.getMethodName());
 }
+```
+
+
+
+## jar包相关
+
+linux 下单java文件编译和导入jar包， jar包放在/xxx/lib/下
+
+```shell
+javac -Djava.ext.dirs=/xxx/lib/ Test.java
+java -Djava.ext.dirs=/xxx/lib/ Test
 ```
 
