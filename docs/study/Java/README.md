@@ -1,6 +1,8 @@
 # Java目录
 
 * [Java基础](/study/Java/Java基础)
+* [Java并发编程](/study/Java/Java并发编程)
+* [JUC](/study/Java/JUC)
 * [LeetCode](/study/Java/LeetCode)
 * [JavaWeb](/study/Java/01.JavaWeb入门)
 * [Mybatis](/study/Java/Mybatis课堂笔记)
@@ -11,6 +13,9 @@
 * [Guice](/study/Java/Guice)
 * [设计模式](/study/Java/设计模式)
 * [Quartz](/study/Java/Quartz)
+* [常见模块使用](/study/Java/常见模块使用)
+
+
 
 
 

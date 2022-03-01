@@ -1,3 +1,97 @@
+## 构造方法
+
+```
+识别合法的构造方法；
+  1：构造方法可以被重载，一个构造方法可以通过this关键字调用另一个构造方法，this语句必须位于构造方法的第一行；
+    重载：方法的重载(overload)：重载构成的条件：方法的名称相同，但参数类型或参数个数不同，才能构成方法的重载。 
+  2 当一个类中没有定义任何构造方法，Java将自动提供一个缺省构造方法；
+  3 子类通过super关键字调用父类的一个构造方法；（super和this必须在构造方法第一行）
+  4 当子类的某个构造方法没有通过super关键字调用父类的构造方法，通过这个构造方法创建子类对象时，会自动先调用父类的缺省构造方法
+  5 构造方法不能被static、final、synchronized、abstract、native修饰，但可以被public、private、protected修饰；
+  6 构造方法不是类的成员方法；
+  7 构造方法不能被继承。
+```
+
+
+
+
+
+## 权限控制修饰符
+
+![img](/Users/hwj/project/Master-He.github.io/docs/study/Java/Java基础.assets/6589111_1495116648005_163162-20160121105831078-570590712.png)
+
+default 就是上面也不写
+
+- **default** (即默认，什么也不写）: 在同一包内可见，不使用任何修饰符。使用对象：类、接口、变量、方法。
+- **private** : 在同一类内可见。使用对象：变量、方法。 **注意：不能修饰类（外部类）**
+- **public** : 对所有类可见。使用对象：类、接口、变量、方法
+- **protected** : 对同一包内的类和所有子类可见。使用对象：变量、方法。 **注意：不能修饰类（外部类）**。protect 详解https://www.runoob.com/w3cnote/java-protected-keyword-detailed-explanation.html (**说实话没完全明白**)
+
+## IO流
+
+参考https://www.cnblogs.com/oubo/archive/2012/01/06/2394638.html
+
+<img src="/Users/hwj/project/Master-He.github.io/docs/study/Java/Java基础.assets/2012031413373126.jpg" alt="img" style="zoom: 67%;" />
+
+参考：https://www.cnblogs.com/hopeyes/p/9736642.html
+
+![img](/Users/hwj/project/Master-He.github.io/docs/study/Java/Java基础.assets/1490873-20181009205826281-2118584242.png)
+
+字节流和字符流的区别 https://blog.csdn.net/u011578734/article/details/108346469
+
+字节流操作的基本单元为字节；字符流操作的基本单元为Unicode码元。
+
+
+
+## 文件IO操作
+
+```java
+import org.apache.commons.io.FileUtils;
+
+// 实际路径是resources/acdgadetect/wordsCh.json 
+String wordsPath = /acdgadetect/wordsCh.json  
+    
+String path = 指定类.class.getResource(wordsPath).getPath();
+String jsonStr = FileUtils.readFileToString(new File(path), StandardCharsets.UTF_8);
+```
+
+```java
+//导入图
+byte[] graphBytes = IOUtils.toByteArray(new FileInputStream(TestModel.class.getResource(PB_FILE_PATH).getPath()));
+graph.importGraphDef(graphBytes);
+```
+
+```java
+// 按行读文件，读成set
+public static void main(String[] args) {
+    String path = FileDemo.class.getResource("/a.txt").getPath();
+    try {
+        System.out.println(new HashSet<>(FileUtils.readLines(new File(path), StandardCharsets.UTF_8)));
+    } catch (IOException e) {
+        logger.error("loadWords [" + path + "] failed.");
+        logger.error(ExceptionUtils.getStackTrace(e));
+    }
+}
+```
+
+
+
+## 集合
+
+![图片](https://mmbiz.qpic.cn/mmbiz_jpg/2BGWl1qPxib2CZJ5rW93t1ZycoBZQ0PXqF18MXEMS3zItFohm5WVYnQrWhjQ7Fk2z1xXHFBDlAPv3MzXPTjianUg/640?wx_fmt=jpeg&wxfrom=5&wx_lazy=1&wx_co=1)
+
+
+
+外网版本（用浏览器新建页面查看）
+
+![img](https://img-blog.csdn.net/20160124221843905)
+
+本地版
+
+![img](/Users/hwj/project/Master-He.github.io/docs/study/Java/Java基础.assets/20160124221843905.png)
+
+
+
 ## List操作总结
 
 
@@ -674,37 +768,6 @@ logger.error(org.apache.commons.lang3.exception.ExceptionUtils.getStackTrace(e))
 
 
 
-## 文件IO操作
-
-```java
-import org.apache.commons.io.FileUtils;
-
-// 实际路径是resources/acdgadetect/wordsCh.json 
-String wordsPath = /acdgadetect/wordsCh.json  
-    
-String path = 指定类.class.getResource(wordsPath).getPath();
-String jsonStr = FileUtils.readFileToString(new File(path), StandardCharsets.UTF_8);
-```
-
-```java
-//导入图
-byte[] graphBytes = IOUtils.toByteArray(new FileInputStream(TestModel.class.getResource(PB_FILE_PATH).getPath()));
-graph.importGraphDef(graphBytes);
-```
-
-```java
-// 按行读文件，读成set
-public static void main(String[] args) {
-    String path = FileDemo.class.getResource("/a.txt").getPath();
-    try {
-        System.out.println(new HashSet<>(FileUtils.readLines(new File(path), StandardCharsets.UTF_8)));
-    } catch (IOException e) {
-        logger.error("loadWords [" + path + "] failed.");
-        logger.error(ExceptionUtils.getStackTrace(e));
-    }
-}
-```
-
 
 
 ## java 对象销毁时操作
@@ -892,9 +955,21 @@ private void swap(int[] arr, int i, int j) {
 
 
 
-## jd-gui.exe
+## jd-gui
 
 java 反编译软件http://java-decompiler.github.io/
+
+
+
+mac 版本不兼容问题
+
+修改jd-gui的包，也就是Applications/JD-GUI.app/Contents/MacOS/universalJavaApplicationStub.sh文件
+
+```shell
+export JAVA_HOME=$(/usr/libexec/java_home -v11)
+```
+
+参考 https://github.com/java-decompiler/jd-gui/issues/332
 
 
 
@@ -944,6 +1019,7 @@ for (StackTraceElement stackElement : stackElements) {
 
 
 
+
 ## jar包相关
 
 linux 下单java文件编译和导入jar包， jar包放在/xxx/lib/下
@@ -952,4 +1028,44 @@ linux 下单java文件编译和导入jar包， jar包放在/xxx/lib/下
 javac -Djava.ext.dirs=/xxx/lib/ Test.java
 java -Djava.ext.dirs=/xxx/lib/ Test
 ```
+
+
+## 安装java
+
+mac系统， 我的mac统自带Java ， 目录在/Library/Java/JavaVirtualMachines/adoptopenjdk-8-openj9.jdk/Contents/Home
+
+可以直接用java -version和javac -version命令，但是有些软件还是会需要JAVA_HOME环境变量，这里记录一下配置
+
+```shell
+$ open -e .bash_profile  # 或者vim ~/.bash_profile
+```
+.bash_profile 文件后面加上这6行
+```
+JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-11.jdk/Contents/Home
+PATH=$JAVA_HOME/bin:$PATH:.
+CLASSPATH=$JAVA_HOME/lib/tools.jar:$JAVA_HOME/lib/dt.jar:.
+export JAVA_HOME
+export PATH
+export CLASSPATH
+```
+
+```shell
+# 验证设置
+source ~/.bash_profile
+echo $JAVA_HOME
+```
+
+
+
+## 练手项目
+
+- Java 实现简单计算器：https://www.lanqiao.cn/courses/185
+- Eclipse 实现 Java 编辑器：https://www.lanqiao.cn/courses/287
+- 一本糊涂账：https://how2j.cn/module/104.html
+- Java 五子棋：https://blog.csdn.net/cnlht/article/details/8176130
+- Java 中国象棋：https://blog.csdn.net/cnlht/article/details/8205733
+- JAVA GUI 图书馆管理系统：https://github.com/uboger/LibraryManager
+- JAVA 坦克大战小游戏：https://github.com/wangzhengyi/TankWar
+- Swing 编写的俄罗斯方块：https://github.com/HelloClyde/Tetris-Swing
+- 小小记账本：https://github.com/xenv/SmallAccount （适合了解数据库的同学）
 
