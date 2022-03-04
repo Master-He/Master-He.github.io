@@ -839,12 +839,58 @@ mvn packge -Pdev  # 指定dev开发环境的profile进行打包（还有测试�
 mvn -Dtest=TestSquare,TestCi*le test #maven运行特定的test case
 ```
 
- 
+
+
+ maven 导入本地jar
+
+https://blog.csdn.net/wangjian1204/article/details/54563988
+
+https://blog.csdn.net/w605283073/article/details/90120722
+
+
+
+maven build
+
+```xml
+<build>
+        <finalName>test-yara</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>2.4</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>com.xxx.yyy.Main</mainClass>
+                        </manifest>
+                        <manifestEntries>
+                            <Class-Path>.</Class-Path>
+                        </manifestEntries>
+                    </archive>
+                    <!-- exclude resource files or directories -->
+                    <excludes>
+                    </excludes>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+```
+
+
 
 
 
 ## 为啥要实现Serializable接口？
 https://zhuanlan.zhihu.com/p/66210653
+
+
+
+## 同步异步
+
+应用一个第三方模块的时候，要注意第三方模块是同步还是异步的， 线程安全的还是线程不安全的
+
+比如yara代码， 快速循环10000次同样的代码，如果每次都能马上获取到结果，那就是同步的，如果10000次里面有一次结果没有马上获取到，结果为空则可能是异步的
 
 
 
@@ -1030,6 +1076,113 @@ java -Djava.ext.dirs=/xxx/lib/ Test
 ```
 
 
+
+运行jar包
+
+```shell
+java -jar xxx.jar
+```
+
+
+
+怎么build jar包？ pom指定入口
+
+```xml
+<build>
+        <finalName>test-yara</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>2.4</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>com.sangfor.yara.Main</mainClass>
+                        </manifest>
+                        <manifestEntries>
+                            <Class-Path>.</Class-Path>
+                        </manifestEntries>
+                    </archive>
+                    <!-- exclude resource files or directories -->
+                    <excludes>
+                    </excludes>
+                    <includes>
+
+                    </includes>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+```
+
+
+
+## JNI
+
+JNI 的hello world  demo参考
+
+https://stackoverflow.com/questions/761639/why-am-i-getting-this-unsatisfiedlinkerror-with-native-code
+
+创建`HelloWorld.c`:
+
+```c
+#include <jni.h>
+#include <stdio.h>
+#include "HelloWorld.h"
+
+/* shamelessly stolen from the book 'The Java Native Interface: Programmer's
+   Guide and Specification' */
+JNIEXPORT void JNICALL
+Java_HelloWorld_print (JNIEnv *env, jobject obj) {
+    printf("Hello World!\n");
+}
+```
+
+创建`HelloWorld.java`:
+
+```java
+class HelloWorld {
+     private native void print();
+     public static void main(String[] args) {
+         new HelloWorld().print();
+     }
+     static {
+         System.loadLibrary("HelloWorld");
+     }
+ }
+```
+
+绑定和测试 Building and testing:
+
+```java
+$ javac HelloWorld.java
+$ javah -classpath . HelloWorld
+$ gcc -shared -fPIC -I $JAVA_HOME/include -I $JAVA_HOME/include/linux HelloWorld.c -o libHelloWorld.so
+$ java -classpath . -Djava.library.path=. HelloWorld
+Hello World!
+```
+
+**注意 ：put `lib` at the beginning of the library's filename **
+
+
+
+echo $LD_LIBRARY_PATH 可以查看动态链接库路径
+
+
+
+## JNA
+
+JNA是建立在JNI技术基础之上的一个Java类库，它使您可以方便地使用java直接访问动态链接库中的函数。原来使用JNI，你必须手工用C写一个动态链接库，在C语言中映射Java的数据类型。JNA中，它提供了一个动态的C语言编写的转发器，可以自动实现Java和C的数据类型映射。你不再需要编写C动态链接库。当然，这也意味着，使用JNA技术比使用JNI技术调用动态链接库会有些微的性能损失。可能速度会降低十几倍。就看你的需求来用了。https://blog.csdn.net/hqy1719239337/article/details/88966183
+
+
+
+JNA的使用参考问题，但是这个有点问题（文件命名问题）
+
+https://blog.csdn.net/todorovchen/article/details/21319033
+
+
+
 ## 安装java
 
 mac系统， 我的mac统自带Java ， 目录在/Library/Java/JavaVirtualMachines/adoptopenjdk-8-openj9.jdk/Contents/Home
@@ -1054,6 +1207,22 @@ export CLASSPATH
 source ~/.bash_profile
 echo $JAVA_HOME
 ```
+
+
+
+
+
+## 文件监控
+
+使用java.nio.file.FileSystems的WatchService监听文件变化
+
+https://www.xncoding.com/2017/09/21/java/watchservice.html
+
+
+
+
+
+
 
 
 
