@@ -849,7 +849,7 @@ https://blog.csdn.net/w605283073/article/details/90120722
 
 
 
-maven build
+maven build jar包
 
 ```xml
 <build>
@@ -876,6 +876,61 @@ maven build
         </plugins>
     </build>
 ```
+
+
+
+Maven打jar包把配置文件放在META-INF目录下
+
+https://codeantenna.com/a/B0elYtcAXh
+
+```xml
+<build>
+    <resources>
+        <resource>
+            <directory>src/main/resources</directory>
+            <targetPath>META-INF/</targetPath>
+        </resource>
+    </resources>
+</build>
+```
+
+
+
+将项目使用的包依赖和项目一同打进jar包， （忘了参考哪个博客了。）
+
+```xml
+<plugins>
+    <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <version>3.0.0</version>
+        <configuration>
+            <archive>
+                <manifest>
+                    <mainClass>com.sangfor.detect.wsk.Jwskiller</mainClass>
+                </manifest>
+                <manifestEntries>
+                    <Class-Path>.</Class-Path>
+                </manifestEntries>
+            </archive>
+            <descriptorRefs>
+                <descriptorRef>jar-with-dependencies</descriptorRef>
+            </descriptorRefs>
+        </configuration>
+        <executions>
+            <execution>
+                <id>make-assembly</id> <!-- this is used for inheritance merges -->
+                <phase>package</phase> <!-- 指定在打包节点执行jar包合并操作 -->
+                <goals>
+                    <goal>single</goal>
+                </goals>
+            </execution>
+        </executions>
+    </plugin>
+</plugins>
+```
+
+
 
 
 
