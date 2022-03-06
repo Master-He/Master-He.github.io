@@ -37,3 +37,68 @@ yield()只能使同优先级或更高优先级的线程有执行的机会。
 等待该线程终止。
 
 等待调用join方法的线程结束，再继续执行。如：t.join();//主要用于等待t线程运行结束，若无此句，main则会执行完毕，导致结果不可预测。
+
+
+
+基本的Java多线程
+
+```java
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
+
+public class ThreadHello{
+
+    public static void main(String[] args) {
+        // Runnable
+        R r = new R();
+        new Thread(r).start();
+        try {
+            TimeUnit.SECONDS.sleep(3);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        r.stop();
+
+        // Callable
+        FutureTask<String> target = new FutureTask<>(new C());
+        new Thread(target).start();
+        try {
+            System.out.println(target.get());
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+class R implements Runnable {
+    private boolean isStop = false;
+
+
+    @Override
+    public void run() {
+        while (!isStop) {
+            try {
+                TimeUnit.SECONDS.sleep(1);
+                System.out.println("hello");
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public void stop() {
+        isStop = true;
+    }
+}
+
+class C implements Callable<String> {
+    @Override
+    public String call() throws Exception {
+        System.out.println("callable hello");
+        return "success";
+    }
+}
+```
+

@@ -1,3 +1,17 @@
+# 0. 环境准备
+
+IDEA设置成java8
+
+![image-20220301001017575](/Users/hwj/project/Master-He.github.io/docs/study/Java/JUC.assets/image-20220301001017575.png)
+
+![image-20220301001126308](/Users/hwj/project/Master-He.github.io/docs/study/Java/JUC.assets/image-20220301001126308.png)
+
+![image-20220301001210454](/Users/hwj/project/Master-He.github.io/docs/study/Java/JUC.assets/image-20220301001210454.png)
+
+
+
+
+
 # 1. 什么是JUC
 
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20200917184122493.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center)
@@ -16,6 +30,14 @@ private native void start0();
   - 我的电脑-右键管理-设备管理器-处理器
 
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/2020091719015659.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center)
+
+获取CPU核数
+
+```
+System.out.println(Runtime.getRuntime().availableProcessors());
+```
+
+
 
 
 
@@ -40,9 +62,19 @@ public enum State {
 
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/2020091719120031.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center)
 
+wait/sleep区别
+
+1. 来自不同的类， wait是Object类的， sleep是Thread类的
+2. wait会释放锁，sleep是抱着锁睡的
+3. wait必须在同步代码块中
+
+wait/sleep相同点
+
+4. wait和sleep都要捕获**中断异常**
 
 
-# 3. Lock锁
+
+# 3. Lock锁（重点）
 
 - idea 快捷键 `Ctrl + Alt +T`
 
@@ -54,7 +86,7 @@ public enum State {
 
 **非公平锁：十分不公平，可以插队（默认）**
 
-- Synchronized
+- Synchronized 
 
 ```java
 package com.xiaofan;
@@ -135,13 +167,14 @@ class Ticket2 {
 }
 ```
 
-- Synchronized 和 Lock的区别
-  1. Synchronized 内置的Java关键字， Lock是一个Java类
-  2. Synchronized 无法判断获取锁的状态， Lock可以判断是否获取到了锁
-  3. Synchronized 会自动释放锁， Lock必须要手动释放锁，如果不释放锁，死锁！
-  4. Synchronized 线程1（获得锁，阻塞）、线程2（等待，傻傻的等）；Lock锁就不一定会等待下去
-  5. Synchronized 可重入锁，不可以中断的，非公平锁；Lock，可重入锁，可以判断锁，非公平锁（可自己设置）
-  6. Synchronized 适合锁少量的代码同步问题， Lock适合锁大量的同步代码！
+> Synchronized 和 Lock的区别
+
+1. Synchronized 内置的Java关键字， Lock是一个Java类
+2. Synchronized 无法判断获取锁的状态， Lock可以判断是否获取到了锁
+3. Synchronized 会自动释放锁， Lock必须要手动释放锁，如果不释放锁，死锁！
+4. Synchronized 线程1（获得锁，阻塞）、线程2（等待，傻傻的等）；Lock锁就不一定会等待下去(更灵活自由)
+5. Synchronized 可重入锁，不可以中断的，非公平锁；Lock，可重入锁，可以判断锁，非公平锁（可自己设置）
+6. Synchronized 适合锁少量的代码同步问题， Lock适合锁大量的同步代码！
 
 
 
@@ -220,6 +253,8 @@ class Data {
 
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20200918094928811.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center)
 
+在wait和notify一块使用时，**如果使用if作为条件时，会有虚假唤醒的情况发生，所以必须使用while作为循环条件**。
+
 ```java
 package com.xiaofan.pc;
 
@@ -275,7 +310,7 @@ class Data {
 
     //+1
     public synchronized void increment() throws InterruptedException {
-        while (number != 0) {
+        while (number != 0) {   // 这里修改成了while，原来是if
             this.wait();
         }
         number ++;
@@ -286,7 +321,7 @@ class Data {
 
     //-1
     public synchronized void decrement() throws InterruptedException {
-        while (number == 0) {
+        while (number == 0) {   // 这里修改成了while，原来是if
             this.wait();
         }
         number --;
@@ -298,6 +333,10 @@ class Data {
 ```
 
 ## 4.2. JUC版本的生产者和消费者
+
+<img src="/Users/hwj/project/Master-He.github.io/docs/study/Java/JUC.assets/image-20220304211920627.png" alt="image-20220304211920627" style="zoom:50%;" />
+
+左边是Synchronized版， 右边是JUC版
 
 ```java
 package com.xiaofan.pc;
@@ -479,7 +518,11 @@ class Data3 {
   - new this 具体的一个对象
   - static Class 唯一的一个模板
 
+
+
 # 6. 集合类不安全
+
+不安全的集合类，并发修改时会出现并发修改异常ConcurrentModificationException
 
 ## 6.1. List不安全
 
@@ -556,7 +599,7 @@ public HashSet() {
     map = new HashMap<>();
 }
 
-// add set 本质就是map的key是无法重复的！
+// add set 本质就是map， key是无法重复的！
 public boolean add(E e) {
     return map.put(e, PRESENT)==null;
 }
@@ -565,6 +608,12 @@ private static final Object PRESENT = new Object();
 ```
 
 ## 6.3. Map不安全
+
+map的加载因子，初始化容量
+
+参考文档： https://www.cnblogs.com/xumBlog/p/12104274.html
+
+
 
 ```java
 package com.xiaofan.unsafe;
@@ -631,6 +680,8 @@ public class MapTest {
 
 # 7. Callable
 
+<img src="/Users/hwj/project/Master-He.github.io/docs/study/Java/JUC.assets/image-20220305085404476.png" alt="image-20220305085404476" style="zoom:50%;" />
+
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20200918164549815.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center)
 
 - 可以有返回值
@@ -683,9 +734,9 @@ class MyThread implements Callable<String> {
 
 CountDownLatch是计数器，线程完成一个记录一个，只不过计数不是递增而是递减，而CyclicBarrier更像是一个阀门，需要所有线程都到达，阀门才能打开，然后继续执行。
 
-# ## 8.1.CountDownLatch
+## 8.1 CountDownLatch
 
-**减计数器**
+减法计数器**
 
 ```java
 package com.xiaofan;
@@ -713,7 +764,15 @@ public class CountDownLatchDemo {
 
 
 
-# ## 8.2. CyclicBarrier
+countDownLatch.countDown();  // 数量-1
+
+countDownLatch.await();   // 阻塞等待，等待计数器归零
+
+
+
+## 8.2 CyclicBarrier
+
+
 
 **加法计数器**
 
@@ -755,7 +814,9 @@ public class CyclicBarrierDemo {
 }
 ```
 
-# ## 8.3. Semaphore
+
+
+## 8.3 Semaphore
 
 **信号量**
 
@@ -909,6 +970,8 @@ class MyCacheLock {
 
 # 10. 阻塞队列
 
+## 10.1 ArrayBlockingQueue
+
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20200918193612804.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center)
 
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20200918194101908.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center)
@@ -925,9 +988,9 @@ class MyCacheLock {
 
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20200920100220103.png#pic_center)
 
-1. 抛出异常
+1. 抛出异常（添加成功返回true,  失败抛 queue full异常， 移除成功返回元素值，失败抛 not such element异常）
 
-2. 不会抛出异常
+2. 不会抛出异常（添加成功返回true,  失败返回false， 移除成功返回元素值，失败返回null值）
 
 3. 阻塞等待
 
@@ -1033,7 +1096,7 @@ public class Test {
 
 ```
 
-# 10.1. SynchronousQueue 同步队列
+## 10.2 SynchronousQueue 同步队列
 
 没有容量，放进去一个元素，必须等待取出来之后，才能再往里面放一个元素！
 
@@ -1306,7 +1369,7 @@ public class Demo03 {
 
 # 12. 四大函数式接口
 
-新时代的攻城狮：`lambda表达式`,`连式编程`,`函数式接口`,`Stream流式计算`
+新时代的攻城狮：`lambda表达式`,`链式编程`,`函数式接口`,`Stream流式计算`， `泛型`，`枚举`，`反射`
 
 函数式接口：只有一个方法的接口
 
@@ -1484,6 +1547,14 @@ public class Test {
 
 # 14. 分支合并ForkJoin
 
+fork join 思想
+
+<img src="/Users/hwj/project/Master-He.github.io/docs/study/Java/JUC.assets/image-20220305214102683.png" alt="image-20220305214102683" style="zoom:50%;" />
+
+> ForkJoin特点： 工作窃取
+
+
+
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/2020092018054970.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center)
 
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20200920180717206.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center)
@@ -1593,6 +1664,8 @@ public class Test {
 
 # 15. 异步回调
 
+
+
 - 没有返回值的runAsync
 
 ```java
@@ -1624,6 +1697,7 @@ public class Demo01 {
         });
 
         System.out.println("111");
+        // System.out.println("如果主线程也sleep 5秒，获取结果就不会阻塞，因为子线程已经sleep 5秒了， 这就是异步调用");
         future.get();   // 获取阻塞执行结果
     }
 }
@@ -1693,6 +1767,26 @@ public class Demo02 {
 
 - [Java内存模型](https://www.cnblogs.com/null-qige/p/9481900.html)
 
+内存交互操作有8种，虚拟机实现必须保证每一个操作都是原子的，不可在分的（对于double和long类型的变量来说，load、store、read和write操作在某些平台上允许例外）
+- - lock   （锁定）：作用于主内存的变量，把一个变量标识为线程独占状态
+	- unlock （解锁）：作用于主内存的变量，它把一个处于锁定状态的变量释放出来，释放后的变量才可以被其他线程锁定
+	- read  （读取）：作用于主内存变量，它把一个变量的值从主内存传输到线程的工作内存中，以便随后的load动作使用
+	- load   （载入）：作用于**工作内存**的变量，它把read操作从主存中变量放入工作内存中
+	- use   （使用）：作用于**工作内存**中的变量，它把工作内存中的变量传输给执行引擎，每当虚拟机遇到一个需要使用到变量的值，就会使用到这个指令
+	- assign （赋值）：作用于**工作内存**中的变量，它把一个从执行引擎中接受到的值放入工作内存的变量副本中
+	- store  （存储）：作用于主内存中的变量，它把一个从工作内存中一个变量的值传送到主内存中，以便后续的write使用
+	- write 　（写入）：作用于主内存中的变量，它把store操作从工作内存中得到的变量的值放入主内存的变量中
+
+　　JMM对这八种指令的使用，制定了如下规则：
+- - 不允许read和load、store和write操作之一单独出现。即使用了read必须load，使用了store必须write
+	- 不允许线程丢弃他最近的assign操作，即工作变量的数据改变了之后，必须告知主存
+	- 不允许一个线程将没有assign的数据从工作内存同步回主内存
+	- 一个新的变量必须在主内存中诞生，不允许工作内存直接使用一个未被初始化的变量。就是怼变量实施use、store操作之前，必须经过assign和load操作
+	- 一个变量同一时间只有一个线程能对其进行lock。多次lock后，必须执行相同次数的unlock才能解锁
+	- 如果对一个变量进行lock操作，会清空所有工作内存中此变量的值，在执行引擎使用这个变量前，必须重新load或assign操作初始化变量的值
+	- 如果一个变量没有被lock，就不能对其进行unlock操作。也不能unlock一个被其他线程锁住的变量
+	- 对一个变量进行unlock操作之前，必须把此变量同步回主内存
+
 
 
 
@@ -1705,7 +1799,7 @@ public class Demo02 {
 
   1. 保证可见性
   2. **不保证原子性**
-  3. 禁止指令重排
+  3. 禁止指令重排  小灰图解: https://blog.51cto.com/u_15127650/2834299
 
 - 保证可见性
 
@@ -1792,7 +1886,7 @@ public class VDemo {
     private static AtomicInteger num = new AtomicInteger();
 
     public static void add() {
-        // num ++; 不是一个原子操作
+        // num ++; //不是一个原子操作
         num.getAndIncrement();  // +1 , CAS
     }
 
@@ -1805,7 +1899,7 @@ public class VDemo {
             }).start();
         }
 
-        while(Thread.activeCount() > 2) {   // main gc
+        while(Thread.activeCount() > 2) {   // main gc  //IDEA环境下运行可能会多一个Monitor Ctrl-Break线程
             Thread.yield();
         }
 
@@ -1835,7 +1929,11 @@ public class VDemo {
 
 # 18. 深入单例模式
 
-- 饿汉式
+单例要将构造器私有化
+
+jad.exe软件是一款专业的反编译软件, https://blog.51cto.com/u_2324584/2933417
+
+## 饿汉式 
 
 ```java
 package com.xiaofan.single;
@@ -1844,7 +1942,7 @@ package com.xiaofan.single;
  * 饿汉式单例
  */
 public class HungryMan {
-    // 可能会浪费空间
+    // 如果这个类不用的话，会浪费空间
     private byte[] data1 = new byte[1024*1024];
     private byte[] data2 = new byte[1024*1024];
     private byte[] data3 = new byte[1024*1024];
@@ -1860,7 +1958,7 @@ public class HungryMan {
 }
 ```
 
-- 懒汉式
+## 懒汉式
 
 **双重检测**，避免不了反射破坏
 
@@ -1879,13 +1977,13 @@ public class LazyMan {
     private LazyMan() {
         System.out.println(Thread.currentThread().getName() + "ok");
         synchronized (LazyMan.class) {
-            if (lazyMan != null) {
+            if (lazyMan != null) {  // 尽管这样还是会有问题，只要lazyMan不被初始化，反射还是可以破坏单例
                 throw new RuntimeException("不要视图通过反射破坏单 例！");
             }
         }
 
     }
-    // 禁止指令重拍
+    // 禁止指令重排
     private volatile static LazyMan lazyMan;
 
     // 双重检测锁模式 懒汉式单例 DCL 懒汉式
@@ -1900,8 +1998,8 @@ public class LazyMan {
                      * 3. 把这个对象指向这个空间
                      *
                      * 123
-                     * 132  A
-                     *      B // 此时lazyMan还没有完成构造
+                     * 132  A线程运行是指令顺序可能是132,导致他可能还没有构造对象
+                     *      B // 此时A只运行了指令1和3， lazyMan还没有完成构造，但是B认为已经构造完成了导致返回lazyMan=null
                      */
                 }
             }
@@ -1924,95 +2022,57 @@ public class LazyMan {
 
 ```
 
-- 枚举实现单例(**枚举本身就是一种类**)
-  - 杜绝了反射破坏，抛出异常
-  - 序列化之后，仍是同一个对象
+## 枚举实现单例
+
+- 枚举本身就是一种类
+
+- 杜绝了反射破坏，抛出异常
+- 序列化之后，仍是同一个对象
 
 ```java
-package com.xiaofan.single;
+package single;
 
-import java.io.*;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 
-/**
- * 懒汉式
- */
-public class LazyManApp {
-    // 私有化构造方法
-    private LazyManApp() {}
+public enum EnumSingleton {
+    INSTANCE;
 
-
-    //定义一个静态枚举类
-    static enum SingletonEnum{
-        //创建一个枚举对象，该对象天生为单例
-        INSTANCE;
-
-        private LazyManApp lazyManApp;
-
-        //私有化枚举的构造函数
-        private SingletonEnum(){
-            lazyManApp = new LazyManApp();
-        }
-        public LazyManApp getInstance(){
-            return lazyManApp;
-        }
+    public int add(int a, int b) {
+        return a+b;
     }
 
-    //对外暴露一个获取LazyManApp对象的静态方法
-    public static LazyManApp getInstance(){
-        return LazyManApp.SingletonEnum.INSTANCE.getInstance();
+    public EnumSingleton getInstance() {
+        return INSTANCE;
     }
+}
 
+class test {
+    public static void main(String[] args) throws Exception {
+        EnumSingleton instance = EnumSingleton.INSTANCE;
+        System.out.println(instance.add(1, 2));
+        EnumSingleton instance1 = instance.getInstance();
 
-    public static void main(String[] args) throws IOException, ClassNotFoundException, InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
-        test1();
-    }
+        System.out.println(instance.hashCode());
+        System.out.println(instance1.hashCode());
 
-    // 测试序列化
-    public static void test3() throws IOException, ClassNotFoundException {
-        SingletonEnum s = SingletonEnum.INSTANCE;
-        ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("SerEnumSingleton.obj"));
-        oos.writeObject(s);
-        oos.flush();
-        oos.close();
+        Constructor<EnumSingleton> declaredConstructor = EnumSingleton.class.getDeclaredConstructor(String.class, int.class);
+        declaredConstructor.setAccessible(true);
+        EnumSingleton instance2 = declaredConstructor.newInstance();
+        System.out.println(instance2.hashCode());
 
-        FileInputStream fis = new FileInputStream("SerEnumSingleton.obj");
-        ObjectInputStream ois = new ObjectInputStream(fis);
-        SingletonEnum s1 = (SingletonEnum)ois.readObject();
-        ois.close();
-        System.out.println(s+"\n"+s1);
-        System.out.println("枚举序列化前后两个是否同一个："+(s==s1));
-    }
-
-    // 测试反射
-    public static void test2() throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
-        Constructor<SingletonEnum> constructor = SingletonEnum.class.getDeclaredConstructor(String.class, int.class);
-        constructor.setAccessible(true);
-        SingletonEnum lazyMan1 = constructor.newInstance();
-        SingletonEnum lazyMan2 = constructor.newInstance();
-        System.out.println(lazyMan1.getInstance());
-        System.out.println(lazyMan2.getInstance());
-    }
-
-    // 测试并发
-    public static void test1() {
-        for (int i = 0; i < 20; i++) {
-            new Thread(()->{
-                System.out.println(Thread.currentThread().getName() + LazyManApp.getInstance());
-            }).start();
-        }
     }
 }
 ```
 
 # 19. 深入理解CAS
 
+cas就是compare and swap 比较并交换
+
+cas就是如果期望值符合，则更新，否则不更新，cas是CPU的并发原语
+
 - [CAS原理](https://www.jianshu.com/p/ab2c8fce878b)
 
 ```java
-package com.xiaofan.cas;
-
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class CasDemo {
@@ -2021,26 +2081,63 @@ public class CasDemo {
 
         // 期望、更新
         // public final boolean compareAndSet(int expect, int update)
-        System.out.println(atomicInteger.compareAndSet(2020, 2021));
-        System.out.println(atomicInteger.get());
+        System.out.println(atomicInteger.compareAndSet(2020, 2021)); // false
+        System.out.println(atomicInteger.get());  // 2021
 
-        System.out.println(atomicInteger.compareAndSet(2020, 2021));
-        System.out.println(atomicInteger.get());
+        System.out.println(atomicInteger.compareAndSet(2020, 2021)); // false
+        System.out.println(atomicInteger.get());  // 2021 
     }
 }
 ```
 
 
 
-![在这里插入图片描述](https://img-blog.csdnimg.cn/20200921165245938.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center)
+<img src="https://img-blog.csdnimg.cn/20200921165245938.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center" alt="在这里插入图片描述" style="zoom: 67%;" />
 
-- Unsafe
+- Unsafe 
 
-![在这里插入图片描述](https://img-blog.csdnimg.cn/20200921165521424.png#pic_center)
+<img src="https://img-blog.csdnimg.cn/20200921165521424.png#pic_center" alt="在这里插入图片描述" style="zoom: 67%;" />
 
-- ABA问题
 
-![在这里插入图片描述](https://img-blog.csdnimg.cn/20200921170934139.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center)
+
+自旋锁
+
+<img src="/Users/hwj/project/Master-He.github.io/docs/study/Java/JUC.assets/image-20220307000018749.png" alt="image-20220307000018749" style="zoom:50%;" />
+
+
+
+cas缺点：
+
+- 循环会耗时
+- 一次只能保证一个变量的原子性
+
+- 存在ABA问题（狸猫换太子）
+
+<img src="https://img-blog.csdnimg.cn/20200921170934139.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center" alt="在这里插入图片描述" style="zoom:50%;" />
+
+```java
+package cas;
+
+import java.util.concurrent.atomic.AtomicInteger;
+
+// 这个例子不是很合理，因为没有用多线程
+public class CAS {
+    public static void main(String[] args) {
+        AtomicInteger atomicInteger = new AtomicInteger(2020);
+
+        // ===捣乱的线程===
+        System.out.println(atomicInteger.compareAndSet(2020, 2021));
+        System.out.println(atomicInteger.get());
+
+        System.out.println(atomicInteger.compareAndSet(2021, 2020));
+        System.out.println(atomicInteger.get());
+
+        // ===期望的线程===
+        System.out.println(atomicInteger.compareAndSet(2020, 6666));
+        System.out.println(atomicInteger.get());
+    }
+}
+```
 
 
 
@@ -2055,8 +2152,6 @@ public class CasDemo {
 
 
 ```java
-package com.xiaofan.cas;
-
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicStampedReference;

@@ -198,6 +198,16 @@ LinkedList是双向链接串列(doubly LinkedList)。
 
 LinkedList插入和删除比ArrayList更快，但是需要更多的内存，访问速度更慢。
 
+```java
+LinkedList<Integer> list = new LinkedList<Integer>() {{
+    add(1);
+    add(2);
+    add(3);
+}};
+```
+
+
+
 
 
 ## Map操作总结
@@ -1277,7 +1287,11 @@ https://www.xncoding.com/2017/09/21/java/watchservice.html
 
 
 
+什么是写时复制？
 
+大多数操作系统都采用**写时复制（copy-on-write）来优化子进程的使用效率**
+
+https://juejin.cn/post/6844903702373859335
 
 
 
