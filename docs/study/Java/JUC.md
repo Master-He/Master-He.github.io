@@ -2205,13 +2205,88 @@ public class CasSolveABADemo {
 
 # 21. 可重入锁、公平锁、非公平锁、自旋锁、死锁
 
-- 可重入锁
+- 可重入锁（递归锁）
   - 锁套锁 对于Lock而言，加锁和解锁必须配对
 - 公平、非公平锁
 
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20200921175728820.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center)
 
 - 自旋锁
+
+```java
+package lock;
+
+import java.util.concurrent.atomic.AtomicReference;
+
+public class SpinLockDemo {
+    AtomicReference<Thread> atomicReference = new AtomicReference<>();
+
+    public void myLock() {
+        Thread thread = Thread.currentThread();
+        System.out.println(thread.getName() + "==> my lock");
+
+        while (!atomicReference.compareAndSet(null, thread)) {
+
+        }
+    }
+
+    public void myUnLock() {
+        Thread thread = Thread.currentThread();
+        System.out.println(thread.getName() + "==> my unlock");
+        atomicReference.compareAndSet(thread, null);
+    }
+}
+
+```
+
+```java
+package lock;
+
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
+
+public class SpinLockTest {
+    public static void main(String[] args) throws InterruptedException {
+        // 类似于
+//        ReentrantLock reentrantLock = new ReentrantLock();
+//        reentrantLock.lock();
+//        reentrantLock.unlock();
+
+        // 底层使用的是自旋锁CAS
+        SpinLockDemo lock = new SpinLockDemo();
+
+        new Thread(()->{
+            lock.myLock();
+            try {
+                TimeUnit.SECONDS.sleep(5);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            } finally {
+                lock.myUnLock();
+            }
+        }, "T1").start();
+
+        TimeUnit.SECONDS.sleep(1);
+
+        new Thread(()->{
+            lock.myLock();
+            try {
+                TimeUnit.SECONDS.sleep(1);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            } finally {
+                lock.myUnLock();
+            }
+        }, "T2").start();
+    }
+}
+
+```
+
+
+
+
+
 
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20210204084354916.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70)
 
