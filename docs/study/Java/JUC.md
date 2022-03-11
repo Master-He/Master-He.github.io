@@ -2213,6 +2213,8 @@ public class CasSolveABADemo {
 
 - 自旋锁
 
+自旋锁（spinlock）：是指当一个线程在获取锁的时候，如果锁已经被其它线程获取，那么该线程将循环等待，然后不断的判断锁是否能够被成功获取，直到获取到锁才会退出循环。 
+
 ```java
 package lock;
 
@@ -2256,7 +2258,7 @@ public class SpinLockTest {
         SpinLockDemo lock = new SpinLockDemo();
 
         new Thread(()->{
-            lock.myLock();
+            lock.myLock();  // 线程T1获取锁， 需要等T1释放锁，其他线程才能获取锁
             try {
                 TimeUnit.SECONDS.sleep(5);
             } catch (InterruptedException e) {
@@ -2269,9 +2271,10 @@ public class SpinLockTest {
         TimeUnit.SECONDS.sleep(1);
 
         new Thread(()->{
-            lock.myLock();
+            lock.myLock();  // 线程T2获取锁， 需要等T1释放锁，T2才能获取锁
             try {
-                TimeUnit.SECONDS.sleep(1);
+                System.out.println("获取锁后等2秒");
+                TimeUnit.SECONDS.sleep(2);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             } finally {

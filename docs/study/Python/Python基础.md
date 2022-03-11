@@ -126,3 +126,16 @@ print("merge sort", merge_sort(a_list))
 
 ```
 
+
+
+### 字符问题
+
+报错： UnicodeDecodeError: 'utf8' codec can't decode byte 0x82 in position 35
+
+然后google搜索 `json dumps error ignored`
+
+```python
+json.dumps(packet, default=lambda o: '<not serializable>')
+```
+
+https://stackoverflow.com/questions/51674222/how-to-make-json-dumps-in-python-ignore-a-non-serializable-field

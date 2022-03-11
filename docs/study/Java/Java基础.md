@@ -388,6 +388,13 @@ List<String> collect = Stream.of(words).flatMap(word -> Stream.of(word.split("")
 
 
 
+> 去几个值中的最小值
+
+```java
+Optional<Integer> proofCountOptional = Stream.of(subDomains.size(), answers.size(), tsList.size(), 20).min(Integer::compareTo);
+        int proofCount = proofCountOptional.orElse(0);
+```
+
 
 
 ## Stack操作总结
