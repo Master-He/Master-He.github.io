@@ -678,7 +678,9 @@ public class MapTest {
 
 ## 6.6. ConcurrentHashMap的原理
 
-# 7. Callable
+
+
+# 7. Callable（简单）
 
 <img src="/Users/hwj/project/Master-He.github.io/docs/study/Java/JUC.assets/image-20220305085404476.png" alt="image-20220305085404476" style="zoom:50%;" />
 
@@ -722,7 +724,7 @@ class MyThread implements Callable<String> {
 }
 ```
 
-# 8. 常用辅助类
+# 8. 常用辅助类（必会）
 
 - [循环屏障CyclicBarrier以及和CountDownLatch的区别](https://www.cnblogs.com/twoheads/p/9555867.html)
 
@@ -736,7 +738,7 @@ CountDownLatch是计数器，线程完成一个记录一个，只不过计数不
 
 ## 8.1 CountDownLatch
 
-减法计数器**
+**减法计数器**
 
 ```java
 package com.xiaofan;
@@ -1367,7 +1369,7 @@ public class Demo03 {
 }
 ```
 
-# 12. 四大函数式接口
+# 12. 四大函数式接口（必须掌握）
 
 新时代的攻城狮：`lambda表达式`,`链式编程`,`函数式接口`,`Stream流式计算`， `泛型`，`枚举`，`反射`
 
@@ -1933,7 +1935,7 @@ public class VDemo {
 
 jad.exe软件是一款专业的反编译软件, https://blog.51cto.com/u_2324584/2933417
 
-## 饿汉式 
+## 18.1 饿汉式 
 
 ```java
 package com.xiaofan.single;
@@ -1958,7 +1960,7 @@ public class HungryMan {
 }
 ```
 
-## 懒汉式
+## 18.2 懒汉式
 
 **双重检测**，避免不了反射破坏
 
@@ -2022,7 +2024,7 @@ public class LazyMan {
 
 ```
 
-## 枚举实现单例
+## 18.3 枚举实现单例
 
 - 枚举本身就是一种类
 
@@ -2287,16 +2289,100 @@ public class SpinLockTest {
 ```
 
 
-
-
-
-
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20210204084354916.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70)
 
 - 死锁
+
+```java
+package com.hwj.lock;
+
+import java.util.concurrent.TimeUnit;
+
+public class DeadLockDemo {
+
+    public static void main(String[] args) {
+        String lock1 = "lock1";
+        String lock2 = "lock2";
+
+        new Thread(new MyThread(lock1, lock2), "T1").start();
+        new Thread(new MyThread(lock2, lock1), "T2").start();
+
+    }
+
+
+}
+
+class MyThread implements Runnable {
+    private final String lockA;
+    private final String lockB;
+
+    public MyThread(String lockA, String lockB) {
+        this.lockA = lockA;
+        this.lockB = lockB;
+    }
+
+    @Override
+    public void run() {
+        synchronized (lockA) {
+            System.out.println(Thread.currentThread().getName() + " got " + lockA + " and ready to get " + lockB);
+
+            try {
+                TimeUnit.SECONDS.sleep(1);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            synchronized (lockB) {
+                // 死锁，两个线程都不到这里
+                System.out.println(Thread.currentThread().getName() + "lock:" + lockB);
+            }
+        }
+    }
+}
+```
+
+打印输出
+
+```
+T1 got lock1 and ready to get lock2
+T2 got lock2 and ready to get lock1
+```
+
+
+
+
 
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20210204085638622.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70)
 
 - 查看进程号：`jps -l`
 - 查看堆栈信息：`jstack 进程号`
+
+![image-20220312120320021](JUC.assets/image-20220312120320021.png)
+
+![image-20220312120345715](JUC.assets/image-20220312120345715.png)
+
+
+
+
+
+> 扩展： 我发现了jmap工具
+
+jmap是JDK自带的堆信息查看和调试工具，可以将堆信息导出到文件分析，可以查看堆空间分配等信息，是java性能调优常用工具之一。
+
+参考文档
+
+https://support.huaweicloud.com/tuningtip-kunpenggrf/kunpengtuning_12_0060.html
+https://lihuimintu.github.io/2019/10/24/jmap/
+
+
+
+```shell
+jmap [pid]  #不知道看的啥
+jmap -heap [pid] # 查看整个JVM内存状态
+jmap -histo  [pid]  # 查看JVM堆中对象详细占用情况 jmap -histo:live 这个命令执行，JVM会先触发gc，然后再统计信息。
+jmap -dump:live,format=b,file=/lihm.hprof 129665 # dump堆到文件，format指定输出格式，live指明是活着的对象，file指定文件名
+jhat # 查看dump的文件  jhat -J-Xmx1024M lihm.hprof
+```
+
+
 

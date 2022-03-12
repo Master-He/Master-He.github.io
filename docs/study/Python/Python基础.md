@@ -128,6 +128,22 @@ print("merge sort", merge_sort(a_list))
 
 
 
+### 多线程
+
+https://www.runoob.com/python/python-multithreading.html
+
+#### 用类的方式实现多线程
+
+pass...
+
+
+
+#### 用函数的方式实现多线程
+
+pass...
+
+
+
 ### 字符问题
 
 报错： UnicodeDecodeError: 'utf8' codec can't decode byte 0x82 in position 35
@@ -139,3 +155,112 @@ json.dumps(packet, default=lambda o: '<not serializable>')
 ```
 
 https://stackoverflow.com/questions/51674222/how-to-make-json-dumps-in-python-ignore-a-non-serializable-field
+
+
+
+
+
+### 死锁问题
+
+工作中遇到： python常驻进程CPU占用100%-->无法调试（因为不知道是哪里报错）--> 然后用strace命令发现是进程在不断获取锁卡死了， 然后修改了代码后， CPU的占用100%的问题就解决了。
+
+另外举个例子
+
+```python
+import time
+import threading
+
+class MyThread(threading.Thread):
+    def __init__(self, name, lock1, lock2):
+        # type: (str, threading.Lock, threading.Lock) -> None
+        super(MyThread, self).__init__()
+        self.name = name
+        self.lock1 = lock1
+        self.lock2 = lock2
+
+    def run(self):
+        self.lock1.acquire()
+        print "{} got lock: {}, and ready to get lock: {}".format(threading.current_thread().name, self.lock1, self.lock2)
+        time.sleep(1)
+        self.lock2.acquire()
+        print "{} got lock: {}".format(threading.current_thread().name, self.lock2)
+        self.lock1.release()
+        self.lock2.release()
+
+
+def main():
+    lock1 = threading.Lock()
+    lock2 = threading.Lock()
+    print "there are {} and {}".format(lock1, lock2)
+    MyThread("T1", lock1, lock2).start()
+    MyThread("T2", lock2, lock1).start()
+
+
+if __name__ == '__main__':
+    main()
+```
+
+然后程序打印
+
+```
+T1 got lock1 and ready to get lock2
+T2 got lock2 and ready to get lock1
+```
+
+用strace -p pid命令
+
+![image-20220312113908818](Python基础.assets/image-20220312113908818.png)
+
+不难发现是futex锁的问题
+
+
+
+> pystack工具
+
+```shell
+pip install pystack-debugger
+```
+
+然后pystack 【pid】
+
+![image-20220312115738038](Python基础.assets/image-20220312115738038.png)
+
+
+
+
+
+### 检测安全性
+
+RestrictedPython
+
+
+
+
+
+### Python2的类型提示
+
+python3.5之后才内置了typing包。python2需要自己安装
+
+```shell
+pip install typing
+```
+
+
+
+怎么指定一个类的类型提示？ How to Specify a Class Rather Than an Instance Thereof
+
+https://adamj.eu/tech/2021/05/16/python-type-hints-return-class-not-instance/
+
+https://mypy.readthedocs.io/en/stable/cheat_sheet.html
+
+```python
+def __init__(self, lock1, lock2):
+    # type: (threading.Lock, threading.Lock) -> None   # 后来发现不import typing包就可以不用pip install typing
+    self.lock1 = lock1
+    self.lock2 = lock2
+```
+
+
+
+
+
