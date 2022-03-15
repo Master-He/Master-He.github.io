@@ -12,6 +12,8 @@ IDEA设置成java8
 
 
 
+
+
 # 1. 什么是JUC
 
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20200917184122493.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center)
@@ -1384,7 +1386,7 @@ public interface Runnable {
 
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20210203092150533.png)
 
-- 函数式接口 Function
+## 12.1 函数式接口 Function
 
 ```java
 package com.xiaofan.function;
@@ -1416,7 +1418,7 @@ public class Demo01 {
 }
 ```
 
-- 断定型接口 Predicate
+## 12.2 断定型接口 Predicate
 
 ```java
 package com.xiaofan.function;
@@ -1447,7 +1449,7 @@ public class Demo02 {
 }
 ```
 
-- 供给型接口 Supplier
+## 12.3 供给型接口 Supplier
 
 ```java
 package com.xiaofan.function;
@@ -1475,7 +1477,7 @@ public class Demo03 {
 }
 ```
 
-- 消费型接口 Consumer
+## 12.4 消费型接口 Consumer
 
 ```java
 package com.xiaofan.function;

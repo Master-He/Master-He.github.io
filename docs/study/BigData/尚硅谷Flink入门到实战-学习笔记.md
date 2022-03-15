@@ -9,6 +9,28 @@
 > 资料百度网盘链接：https://pan.baidu.com/s/1Q-Cy48xGi7AoKK655_Sgew?pwd=g4du 
 > 提取码：g4du
 
+
+
+官方文档最新版（加个/zh/就变中文了！）
+
+https://nightlies.apache.org/flink/flink-docs-master/
+
+https://nightlies.apache.org/flink/flink-docs-master/zh/
+
+官方文档1.14版
+
+https://nightlies.apache.org/flink/flink-docs-release-1.14/
+
+https://nightlies.apache.org/flink/flink-docs-release-1.14/zh/
+
+官方文档版本选择目录
+
+https://nightlies.apache.org/flink/
+
+
+
+
+
 # 1. Flink的特点
 
 + 事件驱动（Event-driven）
@@ -55,8 +77,6 @@ pom依赖
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
-        <flink.version>1.12.1</flink.version>
-        <scala.binary.version>2.12</scala.binary.version>
     </properties>
 
     <dependencies>
@@ -110,7 +130,19 @@ pom依赖
             <artifactId>flink-csv</artifactId>
             <version>1.10.1</version>
         </dependency>
-
+        <!-- https://mvnrepository.com/artifact/org.apache.flink/flink-test-utils -->
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-test-utils_2.12</artifactId>
+            <version>1.10.3</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.11</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
 </project>
@@ -119,30 +151,12 @@ pom依赖
 代码实现
 
 ```java
-package com.atguigu.wc;/**
- * Copyright (c) 2018-2028 尚硅谷 All Rights Reserved
- * <p>
- * Project: FlinkTutorial
- * Package: com.atguigu.wc
- * Version: 1.0
- * <p>
- * Created by wushengran on 2020/11/6 11:22
- */
-
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
-import org.apache.flink.api.java.operators.DataSource;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.util.Collector;
 
-/**
- * @ClassName: WordCount
- * @Description:
- * @Author: wushengran on 2020/11/6 11:22
- * @Version: 1.0
- */
 
 // 批处理word count
 public class WordCount {
@@ -150,12 +164,13 @@ public class WordCount {
         // 创建执行环境
         ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
 
-        // 从文件中读取数据
-        String inputPath = "D:\\Document\\课件\\尚硅谷Flink资料\\4.代码\\FlinkTutorial\\src\\main\\resources\\hello.txt";
+        // 从文件中读取数据， windows下
+        String inputPath = WordCount.class.getResource("/hello.txt").toURI().getPath();
         DataSet<String> inputDataSet = env.readTextFile(inputPath);
         inputDataSet.print();
         // 对数据集进行处理，按空格分词展开，转换成(word, 1)二元组进行统计
-        DataSet<Tuple2<String, Integer>> resultSet = inputDataSet.flatMap(new MyFlatMapper())
+        DataSet<Tuple2<String, Integer>> resultSet = inputDataSet
+                .flatMap(new MyFlatMapper())
                 .groupBy(0)    // 按照第一个位置的word分组  批处理用groupBy, 流处理才用keyBy
                 .sum(1);    // 将第二个位置上的数据求和
 
@@ -175,18 +190,17 @@ public class WordCount {
         }
     }
 }
-
 ```
 
 输出：
 
 ```shell
-hello spark
-fine thank you
+how are you
 hello scala
 hello world
 hello flink
-how are you
+hello spark
+fine thank you
 and you
 (fine,1)
 (flink,1)
@@ -203,6 +217,8 @@ and you
 
 > [解决 Flink 升级1.11 报错 No ExecutorFactory found to execute the application](https://blog.csdn.net/qq_41398614/article/details/107553604)
 
+
+
 ## 2.2 流处理实现WordCount
 
 在2.1批处理的基础上，新建一个类进行改动。
@@ -216,35 +232,31 @@ and you
 代码实现
 
 ```java
-package wc;
-
+import com.atguigu.wc.WordCount;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.client.program.StreamContextEnvironment;
+import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 
-/**
- * @author : Ashiamd email: ashiamd@foxmail.com
- * @date : 2021/1/29 11:13 PM
- */
+
 public class StreamWordCount {
-
-    public static void main(String[] args) throws Exception {
-
+    public static void main(String[] args) throws Exception{
         // 创建流处理执行环境
-        StreamExecutionEnvironment env = StreamContextEnvironment.getExecutionEnvironment();
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-      	// 设置并行度，默认值 = 当前计算机的CPU逻辑核数（设置成1即单线程处理）
-        // env.setMaxParallelism(32);
-      
-        // 从文件中读取数据
-        String inputPath = "/tmp/Flink_Tutorial/src/main/resources/hello.txt";
-        DataStream<String> inputDataStream = env.readTextFile(inputPath);
+        // 用parameter tool工具从程序启动参数中提取配置项
+
+        ParameterTool parameterTool = ParameterTool.fromArgs(args);
+        String host = parameterTool.get("host");
+        int port = parameterTool.getInt("port");
+
+        // 从socket文本流读取数据
+        DataStream<String> inputDataStream = env.socketTextStream(host, port);
 
         // 基于数据流进行转换计算
-        DataStream<Tuple2<String,Integer>> resultStream = inputDataStream.flatMap(new WordCount.MyFlatMapper())
-                .keyBy(item->item.f0)
-                .sum(1);
+        DataStream<Tuple2<String, Integer>> resultStream = inputDataStream.flatMap(new WordCount.MyFlatMapper())
+                .keyBy(item->item.f0) // 按String字段分组
+                .sum(1);  // 将第二个位置上的数据求和, 以Integer字段做sum聚合
 
         resultStream.print();
 
@@ -254,87 +266,39 @@ public class StreamWordCount {
 }
 ```
 
+运行代码的时候加上参数: `-host 192.168.0.111 -port 7777`
+
+然后打开linux服务器（192.168.0.111） 运行 `nc -lk 7777`
+
+输入：
+
+```
+hello world
+java hello
+python hello
+world war
+```
+
 输出：
 
 *这里因为是流处理，所以所有中间过程都会被输出，前面的序号就是并行执行任务的线程编号。*
 
 ```shell
-9> (world,1)
-5> (hello,1)
-8> (are,1)
-10> (you,1)
-11> (how,1)
-6> (thank,1)
-9> (fine,1)
-10> (you,2)
-10> (you,3)
-15> (and,1)
-5> (hello,2)
-13> (flink,1)
-1> (spark,1)
-5> (hello,3)
-1> (scala,1)
-5> (hello,4)
+4> (world,1)
+2> (hello,1)
+1> (java,1)
+2> (hello,2)
+2> (python,1)
+2> (hello,3)
+4> (world,2)
+5> (war,1)
 ```
 
 ​	这里`env.execute();`之前的代码，可以理解为是在定义任务，只有执行`env.execute()`后，Flink才把前面的代码片段当作一个任务整体（每个线程根据这个任务操作，并行处理流数据）。
 
-## 2.3 流式数据源测试
+​	测试后发现，同一个字符串，前面输出的编号是一样的，因为key => hashcode,同一个key的hash值固定，分配给相对应的线程处理。
 
-1. 通过`nc -lk <port>`打开一个socket服务，用于模拟实时的流数据
 
-   ```shell
-   nc -lk 7777
-   ```
-
-2. 代码修改inputStream的部分
-
-   ```java
-   package wc;
-   
-   import org.apache.flink.api.java.tuple.Tuple2;
-   import org.apache.flink.client.program.StreamContextEnvironment;
-   import org.apache.flink.streaming.api.datastream.DataStream;
-   import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-   
-   /**
-    * @author : Ashiamd email: ashiamd@foxmail.com
-    * @date : 2021/1/29 11:13 PM
-    */
-   public class StreamWordCount {
-   
-       public static void main(String[] args) throws Exception {
-   
-           // 创建流处理执行环境
-           StreamExecutionEnvironment env = StreamContextEnvironment.getExecutionEnvironment();
-   
-           // 设置并行度，默认值 = 当前计算机的CPU逻辑核数（设置成1即单线程处理）
-           // env.setMaxParallelism(32);
-   
-           // 从文件中读取数据
-   //        String inputPath = "/tmp/Flink_Tutorial/src/main/resources/hello.txt";
-   //        DataStream<String> inputDataStream = env.readTextFile(inputPath);
-   
-           // 从socket文本流读取数据
-           DataStream<String> inputDataStream = env.socketTextStream("localhost", 7777);
-   
-           // 基于数据流进行转换计算
-           DataStream<Tuple2<String,Integer>> resultStream = inputDataStream.flatMap(new WordCount.MyFlatMapper())
-                   .keyBy(item->item.f0)
-                   .sum(1);
-   
-           resultStream.print();
-   
-           // 执行任务
-           env.execute();
-       }
-   }
-   
-   ```
-
-3. 在本地开启的socket中输入数据，观察IDEA的console输出。
-
-   ​	本人测试后发现，同一个字符串，前面输出的编号是一样的，因为key => hashcode,同一个key的hash值固定，分配给相对应的线程处理。
 
 # 3. Flink部署
 
@@ -741,7 +705,7 @@ eg：这里我配置文件设置`taskmanager.numberOfTaskSlots: 4`，实际Job�
 
 ​	由Flink程序直接映射成的数据流图是StreamGraph，也被称为**逻辑流图**，因为它们表示的是计算逻辑的高级视图。为了执行一个流处理程序，Flink需要将**逻辑流图**转换为**物理数据流图**（也叫**执行图**），详细说明程序的执行方式。
 
-+ Flink 中的执行图可以分成四层：StreamGraph -> JobGraph -> ExecutionGraph -> 物理执行图。
++ Flink 中的执行图可以分成四层：**<u>StreamGraph -> JobGraph -> ExecutionGraph -> 物理执行图。</u>**
 
   + **StreamGraph**：是根据用户通过Stream API 编写的代码生成的最初的图。用来表示程序的拓扑结构。
 
@@ -801,9 +765,9 @@ eg：这里我配置文件设置`taskmanager.numberOfTaskSlots: 4`，实际Job�
 
 ​	创建一个执行环境，表示当前执行程序的上下文。如果程序是独立调用的，则此方法返回本地执行环境；如果从命令行客户端调用程序以提交到集群，则此方法返回此集群的执行环境，也就是说，getExecutionEnvironment会根据查询运行的方式决定返回什么样的运行环境，是最常用的一种创建执行环境的方式。
 
-`ExecutionEnvironment env = ExecutionEnvironment.*getExecutionEnvironment*(); `
+批执行环境  `ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment(); `
 
-`StreamExecutionEnvironment env = StreamExecutionEnvironment.*getExecutionEnvironment*(); `
+流执行环境 `StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment(); `
 
 如果没有设置并行度，会以flink-conf.yaml中的配置为准，默认是1。
 
@@ -813,13 +777,13 @@ eg：这里我配置文件设置`taskmanager.numberOfTaskSlots: 4`，实际Job�
 
 ​	返回本地执行环境，需要在调用时指定默认的并行度。
 
-`LocalStreamEnvironment env = StreamExecutionEnvironment.*createLocalEnvironment*(1); `
+`LocalStreamEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(1); `
 
 ### 5.1.3 createRemoteEnvironment
 
 ​	返回集群执行环境，将Jar提交到远程服务器。需要在调用时指定JobManager的IP和端口号，并指定要在集群中运行的Jar包。
 
-`StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(1);`
+`StreamExecutionEnvironment env = StreamExecutionEnvironment.createRemoteEnvironment("jobmanage-hostname", 6123,"YOURPATH//wordcount.jar");`
 
 ## 5.2 Source
 
@@ -838,11 +802,6 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 
 import java.util.Arrays;
 
-/**
- * @author : Ashiamd email: ashiamd@foxmail.com
- * @date : 2021/1/31 5:13 PM
- * 测试Flink从集合中获取数据
- */
 public class SourceTest1_Collection {
     public static void main(String[] args) throws Exception {
         // 创建执行环境
@@ -903,11 +862,7 @@ package apitest.source;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 
-/**
- * @author : Ashiamd email: ashiamd@foxmail.com
- * @date : 2021/1/31 5:26 PM
- * Flink从文件中获取数据
- */
+
 public class SourceTest2_File {
     public static void main(String[] args) throws Exception {
         // 创建执行环境
@@ -916,7 +871,7 @@ public class SourceTest2_File {
         // 使得任务抢占同一个线程
         env.setParallelism(1);
 
-        // 从文件中获取数据输出
+        // 从文件中获取数据输出 （按行读！）
         DataStream<String> dataStream = env.readTextFile("/tmp/Flink_Tutorial/src/main/resources/sensor.txt");
 
         dataStream.print();
@@ -1030,10 +985,6 @@ sensor_1,1547718212,37.1
    
    import java.util.Properties;
    
-   /**
-    * @author : Ashiamd email: ashiamd@foxmail.com
-    * @date : 2021/1/31 5:44 PM
-    */
    public class SourceTest3_Kafka {
    
        public static void main(String[] args) throws Exception {
@@ -1061,7 +1012,7 @@ sensor_1,1547718212,37.1
        }
    }
    ```
-
+   
 6. 运行java代码，在Kafka生产者console中输入
 
    ```shell
@@ -1327,11 +1278,6 @@ import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.KeyedStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 
-/**
- * @author : Ashiamd email: ashiamd@foxmail.com
- * @date : 2021/1/31 9:51 PM
- * 滚动聚合，测试
- */
 public class TransformTest2_RollingAggregation {
     public static void main(String[] args) throws Exception {
         // 创建 执行环境
@@ -1340,15 +1286,8 @@ public class TransformTest2_RollingAggregation {
         // 执行环境并行度设置1
         env.setParallelism(1);
 
-        DataStream<String> dataStream = env.readTextFile("/tmp/Flink_Tutorial/src/main/resources/sensor.txt");
-
-//        DataStream<SensorReading> sensorStream = dataStream.map(new MapFunction<String, SensorReading>() {
-//            @Override
-//            public SensorReading map(String value) throws Exception {
-//                String[] fields = value.split(",");
-//                return new SensorReading(fields[0],new Long(fields[1]),new Double(fields[2]));
-//            }
-//        });
+        String path = TransformTest2_RollingAggregation.class.getResource("/sensor.txt").toURI().getPath();
+        DataStream<String> inputStream = env.readTextFile(path);
 
         DataStream<SensorReading> sensorStream = dataStream.map(line -> {
             String[] fields = line.split(",");
@@ -1414,8 +1353,6 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.kafka.common.metrics.stats.Max;
 
 /**
- * @author : Ashiamd email: ashiamd@foxmail.com
- * @date : 2021/1/31 10:14 PM
  * 复杂场景，除了获取最大温度的整个传感器信息以外，还要求时间戳更新成最新的
  */
 public class TransformTest3_Reduce {
@@ -1426,7 +1363,8 @@ public class TransformTest3_Reduce {
         // 执行环境并行度设置1
         env.setParallelism(1);
 
-        DataStream<String> dataStream = env.readTextFile("/tmp/Flink_Tutorial/src/main/resources/sensor.txt");
+        String path = TransformTest2_RollingAggregation.class.getResource("/sensor.txt").toURI().getPath();
+        DataStream<String> inputStream = env.readTextFile(path);
 
         DataStream<SensorReading> sensorStream = dataStream.map(line -> {
             String[] fields = line.split(",");
@@ -1855,7 +1793,7 @@ DataStream<String> flinkTweets = tweets.filter( tweet -> tweet.contains("flink")
 
 ​	“富函数”是DataStream API提供的一个函数类的接口，所有Flink函数类都有其Rich版本。
 
-​	**它与常规函数的不同在于，可以获取运行环境的上下文，并拥有一些生命周期方法，所以可以实现更复杂的功能**。
+​	**它与常规函数的不同在于，可以获取<u>运行环境的上下文</u>，并拥有一些<u>生命周期方法</u>，所以可以实现更复杂的功能**。
 
 + RichMapFunction
 
@@ -1876,17 +1814,20 @@ DataStream<String> flinkTweets = tweets.filter( tweet -> tweet.contains("flink")
 ```java
 public static class MyMapFunction extends RichMapFunction<SensorReading, Tuple2<Integer, String>> { 
 
-  @Override public Tuple2<Integer, String> map(SensorReading value) throws Exception {
-    return new Tuple2<>(getRuntimeContext().getIndexOfThisSubtask(), value.getId()); 
-  } 
+    @Override 
+    public Tuple2<Integer, String> map(SensorReading value) throws Exception {
+        return new Tuple2<>(getRuntimeContext().getIndexOfThisSubtask(), value.getId()); 
+    } 
 
-  @Override public void open(Configuration parameters) throws Exception { 
-    System.out.println("my map open"); // 以下可以做一些初始化工作，例如建立一个和HDFS的连接 
-  } 
-
-  @Override public void close() throws Exception { 
-    System.out.println("my map close"); // 以下做一些清理工作，例如断开和HDFS的连接 
-  } 
+    @Override 
+    public void open(Configuration parameters) throws Exception { 
+        System.out.println("my map open"); // 以下可以做一些初始化工作，例如建立一个和HDFS的连接 
+    } 
+    
+    @Override 
+    public void close() throws Exception { 
+        System.out.println("my map close"); // 以下做一些清理工作，例如断开和HDFS的连接 
+    } 
 }
 ```
 
@@ -1999,10 +1940,7 @@ import apitest.beans.SensorReading;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 
-/**
- * @author : Ashiamd email: ashiamd@foxmail.com
- * @date : 2021/2/1 12:38 AM
- */
+
 public class TransformTest6_Partition {
   public static void main(String[] args) throws Exception{
 
@@ -2933,11 +2871,15 @@ DataStream<Tuple2<String,Double>> minTempPerWindowStream =
 
 + 滚动时间窗口（tumbling time window）
 
-  `.timeWindow(Time.seconds(15))`
+  `.timeWindow(Time.seconds(15))`**（flink1.12废弃， 因为时间语义默认改为了EventTime）**
+
+  `.window(TumblingProcessingTimeWindows.of(Time.seconds(15)))`
 
 + 滑动时间窗口（sliding time window）
 
-  `.timeWindow(Time.seconds(15),Time.seconds(5))`
+  `.timeWindow(Time.seconds(15),Time.seconds(5))` **（flink1.12废弃， 因为时间语义默认改为了EventTime）**
+
+  `.window(SlidingProcessingTimeWindows.of(Time.seconds(15),Time.seconds(5)))`
 
 + 会话窗口（session window）
 
@@ -3025,18 +2967,22 @@ DataStream<SensorReading> minTempPerWindowStream = dataStream
 
 window function 定义了要对窗口中收集的数据做的计算操作，主要可以分为两类：
 
-+ 增量聚合函数（incremental aggregation functions）
-+ 全窗口函数（full window functions）
++ 增量聚合函数（incremental aggregation functions）， 执行reduce或者aggregate操作时传入的函数类
++ 全窗口函数（full window functions）, 执行apply, process操作时传入的函数类
 
 #### 增量聚合函数
 
 + **每条数据到来就进行计算**，保持一个简单的状态。（来一条处理一条，但是不输出，到窗口临界位置才输出）
 + 典型的增量聚合函数有ReduceFunction, AggregateFunction。
+    + ReduceFunction的输入输出需要是一致的
+    + AggregateFunction的输入输出不需要一致的
 
 #### 全窗口函数
 
 + **先把窗口所有数据收集起来，等到计算的时候会遍历所有数据**。（来一个放一个，窗口临界位置才遍历且计算、输出）
 + ProcessWindowFunction，WindowFunction。
+
+全窗口更加灵活，可以获取窗口信息
 
 ### 6.2.5 其它可选API
 
@@ -3078,10 +3024,7 @@ window function 定义了要对窗口中收集的数据做的计算操作，主�
      import org.apache.flink.streaming.api.windowing.assigners.TumblingProcessingTimeWindows;
      import org.apache.flink.streaming.api.windowing.time.Time;
      
-     /**
-      * @author : Ashiamd email: ashiamd@foxmail.com
-      * @date : 2021/2/1 7:14 PM
-      */
+     
      public class WindowTest1_TimeWindow {
        public static void main(String[] args) throws Exception {
      
@@ -3145,20 +3088,20 @@ window function 定义了要对窗口中收集的数据做的计算操作，主�
        }
      }
      ```
-
+     
    + 本地开启socket服务
-
-     ```shell
+   
+  ```shell
      nc -lk 7777
-     ```
-
+  ```
+   
    + 启动Flink程序，在socket窗口输入数据
-
-     + 输入(下面用“换行”区分每个15s内的输入，实际输入时无换行)
-
-       ```none
+   
+  + 输入(下面用“换行”区分每个15s内的输入，实际输入时无换行)
+   
+    ```none
        sensor_1,1547718199,35.8
-       sensor_6,1547718201,15.4
+    sensor_6,1547718201,15.4
        
        sensor_7,1547718202,6.7
        sensor_10,1547718205,38.1
@@ -3167,14 +3110,14 @@ window function 定义了要对窗口中收集的数据做的计算操作，主�
        
        sensor_1,1547718212,37.1
        ```
-
+   
      + 输出（下面用“换行”区分每个15s内的输出，实际输出无换行）
-
-       *因为代码实现每15s一个window，所以"sensor_1"中间一组才累计2，最初一次不累计，最后一次也是另外的window，重新从1计数。*
-
-       ```none
+   
+    *因为代码实现每15s一个window，所以"sensor_1"中间一组才累计2，最初一次不累计，最后一次也是另外的window，重新从1计数。*
+   
+    ```none
        result> 1
-       result> 1
+    result> 1
        
        result> 1
        result> 1
@@ -3182,7 +3125,7 @@ window function 定义了要对窗口中收集的数据做的计算操作，主�
        
        result> 1
        ```
-
+   
 2. 测试滚动时间窗口的**全窗口函数**
 
    全窗口函数，特点即数据过来先不处理，等到窗口临界再遍历、计算、输出结果。
@@ -3206,10 +3149,7 @@ window function 定义了要对窗口中收集的数据做的计算操作，主�
      import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
      import org.apache.flink.util.Collector;
      
-     /**
-      * @author : Ashiamd email: ashiamd@foxmail.com
-      * @date : 2021/2/1 7:14 PM
-      */
+     
      public class WindowTest1_TimeWindow {
          public static void main(String[] args) throws Exception {
      
@@ -3252,40 +3192,40 @@ window function 定义了要对窗口中收集的数据做的计算操作，主�
          }
      }
      ```
-
+     
    + 启动本地socket
-
-     ```shell
+   
+  ```shell
      nc -lk 7777
-     ```
-
+  ```
+   
    + 在本地socket输入，查看Flink输出结果
-
-     + 输入（以“空行”表示每个15s时间窗口内的输入，实际没有“空行”）
-
-       ```none
+   
+  + 输入（以“空行”表示每个15s时间窗口内的输入，实际没有“空行”）
+   
+    ```none
        sensor_1,1547718199,35.8
-       sensor_6,1547718201,15.4
+    sensor_6,1547718201,15.4
        
        sensor_7,1547718202,6.7
        sensor_10,1547718205,38.1
        sensor_1,1547718207,36.3
        sensor_1,1547718209,32.8
        ```
-
+   
      + 输出（以“空行”表示每个15s时间窗口内的输入，实际没有“空行”）
-
-       *这里每个window都是分开计算的，所以第一个window里的sensor_1和第二个window里的sensor_1并没有累计。*
-
-       ```none
+   
+    *这里每个window都是分开计算的，所以第一个window里的sensor_1和第二个window里的sensor_1并没有累计。*
+   
+    ```none
        result2> (sensor_1,1612190820000,1)
-       result2> (sensor_6,1612190820000,1)
+    result2> (sensor_6,1612190820000,1)
        
        result2> (sensor_7,1612190835000,1)
        result2> (sensor_1,1612190835000,2)
        result2> (sensor_10,1612190835000,1)
        ```
-
+   
 3. 测试滑动计数窗口的**增量聚合函数**
 
    滑动窗口，当窗口不足设置的大小时，会先按照步长输出。
@@ -3610,11 +3550,17 @@ DataStream<SensorReading> dataStream = env.addSource(new SensorSource()) .assign
 
 MyAssigner有两种类型
 
+![image-20220313165210958](尚硅谷Flink入门到实战-学习笔记.assets/image-20220313165210958.png)
+
 + AssignerWithPeriodicWatermarks
 
 + AssignerWithPunctuatedWatermarks
 
 以上两个接口都继承自TimestampAssigner。
+
+![image-20220313170304433](尚硅谷Flink入门到实战-学习笔记.assets/image-20220313170304433.png)
+
+
 
 #### TimestampAssigner
 
@@ -4041,7 +3987,7 @@ sensor_1,1547718199,35.8
 
 ### 测试代码
 
-![在这里插入图片描述](https://img-blog.csdnimg.cn/20200906183806458.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2RvbmdrYW5nMTIzNDU2,size_16,color_FFFFFF,t_70#pic_center)
+<img src="https://img-blog.csdnimg.cn/20200906183806458.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2RvbmdrYW5nMTIzNDU2,size_16,color_FFFFFF,t_70#pic_center" alt="在这里插入图片描述" style="zoom: 67%;" />
 
 *注：声明一个键控状态，一般在算子的open()中声明，因为运行时才能获取上下文信息*
 

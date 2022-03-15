@@ -52,6 +52,8 @@ import org.apache.commons.io.FileUtils;
 String wordsPath = /acdgadetect/wordsCh.json  
     
 String path = 指定类.class.getResource(wordsPath).getPath();
+// 如果windows下且路径中含有中文，空格等特殊字符,则加个.toURI
+String path = 指定类.class.getResource(wordsPath).toURI.getPath();
 String jsonStr = FileUtils.readFileToString(new File(path), StandardCharsets.UTF_8);
 ```
 
@@ -76,6 +78,8 @@ public static void main(String[] args) {
 
 
 
+
+
 ## 集合
 
 ![图片](https://mmbiz.qpic.cn/mmbiz_jpg/2BGWl1qPxib2CZJ5rW93t1ZycoBZQ0PXqF18MXEMS3zItFohm5WVYnQrWhjQ7Fk2z1xXHFBDlAPv3MzXPTjianUg/640?wx_fmt=jpeg&wxfrom=5&wx_lazy=1&wx_co=1)
@@ -89,6 +93,22 @@ public static void main(String[] args) {
 本地版
 
 ![img](/Users/hwj/project/Master-He.github.io/docs/study/Java/Java基础.assets/20160124221843905.png)
+
+
+
+
+
+## 迭代器操作
+
+获取大小
+
+```java
+IteratorUtils.toList(input.iterator()).size();  // input是Iterable<Object>对象
+```
+
+
+
+
 
 
 
@@ -1091,11 +1111,54 @@ export JAVA_HOME=$(/usr/libexec/java_home -v11)
 
 
 
-## IDEA diagrams使用
+## IDEA
+
+### IDEA diagrams使用
 
 https://blog.csdn.net/ttzommed/article/details/114905865
 
 类图维基百科  https://zh.wikipedia.org/wiki/%E9%A1%9E%E5%88%A5%E5%9C%96 
+
+
+
+### IDEA 指定Java8
+
+1.指定java compiler
+
+![image-20220312224011123](Java基础.assets/image-20220312224011123.png)
+
+2. 指定sdk 
+
+![image-20220312224038080](Java基础.assets/image-20220312224038080.png)
+
+3.指定模块语言等级
+
+![image-20220312224057825](Java基础.assets/image-20220312224057825.png)
+
+
+
+### IDEA 翻译插件
+
+插件市场搜Translation， 然后对应的作者是 Yii.Guxing
+
+https://plugins.jetbrains.com/plugin/8579-translation/versions
+
+
+
+### IDEA 快捷键(win)
+
+```
+# 看类结构
+alt+7 或者 ctrl+F12
+```
+
+### IDEA 快捷键(mac)
+
+```
+
+```
+
+
 
 
 
