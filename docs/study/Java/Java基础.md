@@ -1,3 +1,51 @@
+
+
+
+
+# 基本语法
+
+
+
+>  python enumerate java equivalent
+
+https://stackoverflow.com/questions/7167253/is-there-a-java-equivalent-of-pythons-enumerate-function
+
+https://houbb.github.io/2019/04/16/ai-04-java-numpy
+
+
+
+## 泛型
+
+
+
+
+
+# 类
+
+
+
+## lambda
+
+在lambda表达式执行时，jvm会先为该lambda生成一个java类，然后再创建一个该类对应的对象。
+
+参考：https://cloud.tencent.com/developer/article/1572212
+
+
+
+参考：https://www.bilibili.com/read/cv8023087
+
+lambda表达式示例
+
+```java
+Arrays.sort(array, (s1, s2) -> s1.compareTo(s2));
+```
+
+```java
+list.forEach(System.out::println) //也是Java 8中的Lambda写法之一
+```
+
+
+
 ## 构造方法
 
 ```
@@ -26,6 +74,71 @@ default 就是上面也不写
 - **private** : 在同一类内可见。使用对象：变量、方法。 **注意：不能修饰类（外部类）**
 - **public** : 对所有类可见。使用对象：类、接口、变量、方法
 - **protected** : 对同一包内的类和所有子类可见。使用对象：变量、方法。 **注意：不能修饰类（外部类）**。protect 详解https://www.runoob.com/w3cnote/java-protected-keyword-detailed-explanation.html (**说实话没完全明白**)
+
+
+
+## java 对象销毁时操作
+
+// 重写finalize方法， jvm会调用
+
+```java
+// Java code to show the
+// overriding of finalize() method
+
+import java.lang.*;
+
+// Defining a class demo since every java class
+// is a subclass of predefined Object class
+// Therefore demo is a subclass of Object class
+public class demo {
+	protected void finalize() throws Throwable
+	{
+		try {
+			System.out.println("inside demo's finalize()");
+		}
+		catch (Throwable e) {
+			throw e;
+		}
+		finally {
+			System.out.println("Calling finalize method" + " of the Object class");
+			// Calling finalize() of Object class
+			super.finalize();
+		}
+	}
+
+	// Driver code
+	public static void main(String[] args) throws Throwable
+	{
+		// Creating demo's object
+		demo d = new demo();
+		// Calling finalize of demo
+		d.finalize();
+	}
+}
+
+```
+
+
+
+为什么尽量不要Override finalize方法
+
+https://yfsyfs.github.io/2019/06/28/%E4%B8%BA%E4%BB%80%E4%B9%88%E5%B0%BD%E9%87%8F%E4%B8%8D%E8%A6%81Override-finalize%E6%96%B9%E6%B3%95/
+
+
+
+可以使用try(){}语句 : try()括号中的资源会自动调用close()方法
+
+
+
+# IO
+
+## 写操作
+
+https://crunchify.com/how-to-write-json-object-to-file-in-java/
+
+
+
+
 
 ## IO流
 
@@ -78,9 +191,27 @@ public static void main(String[] args) {
 
 
 
+## 文件监控
+
+使用java.nio.file.FileSystems的WatchService监听文件变化
+
+https://www.xncoding.com/2017/09/21/java/watchservice.html
 
 
-## 集合
+
+
+
+什么是写时复制？
+
+大多数操作系统都采用**写时复制（copy-on-write）来优化子进程的使用效率**
+
+https://juejin.cn/post/6844903702373859335
+
+
+
+
+
+# 集合
 
 ![图片](https://mmbiz.qpic.cn/mmbiz_jpg/2BGWl1qPxib2CZJ5rW93t1ZycoBZQ0PXqF18MXEMS3zItFohm5WVYnQrWhjQ7Fk2z1xXHFBDlAPv3MzXPTjianUg/640?wx_fmt=jpeg&wxfrom=5&wx_lazy=1&wx_co=1)
 
@@ -326,7 +457,7 @@ System.out.println(Arrays.toString(floats1));
 
 
 
-字符串去重
+> 字符串去重
 
 ```java
 Set<Character> collect = "abcdefabcdef".chars().mapToObj(i -> (char) i).collect(Collectors.toSet());
@@ -336,7 +467,7 @@ Set<Character> collect = "abcdefabcdef".chars().mapToObj(i -> (char) i).collect(
 
 
 
-提取出list中bean的某一属性
+> 提取出list中bean的某一属性
 
 ```java
 // DetectData是一个bean
@@ -345,7 +476,7 @@ List<String> domainList = detectDataList.stream().map(DetectData::getDomain).col
 
 
 
-**java8Stream map和flatmap的区别**
+> **java8Stream map和flatmap的区别**
 
 flatmap可以将map生成的单个流合并成一个流，即扁平化成一个流。
 
@@ -382,7 +513,7 @@ public class demo {
 
 
 
-flatMap等价写法
+> flatMap等价写法
 
 ```java
 // 第一种
@@ -413,6 +544,30 @@ List<String> collect = Stream.of(words).flatMap(word -> Stream.of(word.split("")
 ```java
 Optional<Integer> proofCountOptional = Stream.of(subDomains.size(), answers.size(), tsList.size(), 20).min(Integer::compareTo);
         int proofCount = proofCountOptional.orElse(0);
+```
+
+
+
+> 统计每个元素的个数
+
+```java
+int[] arr=new int[]{5,1,3,4,1};
+//若统计的是int数组，先转化为List
+List<Integer> list= Arrays.stream(arr).boxed().collect(Collectors.toList());
+//groupingBy分组
+Map<Integer, Long> map = list.stream().collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+//控制台输出map
+map.forEach((k,v)->{
+      System.out.println("k="+k+",v="+v);
+});
+```
+
+
+
+> 判断是否所有元素都为1
+
+```java
+list.stream().allMatch(x -> x == 1)
 ```
 
 
@@ -467,86 +622,6 @@ Java 集合中的 Queue 继承自 Collection 接口 ， Deque(双端队列), Lin
 | Examine | element() | peek()     |
 
 
-
-
-
-
-
-## 字符串操作
-
-**字符串自带的常用方法** (参考菜鸟教程https://www.runoob.com/java/java-string.html)
-
-```java
-char charAt(int index);  //返回指定索引处的 char 值。
-int compareTo(String anotherString) // 按ASCII字典顺序比较两个字符串。返回ASCII差值， 如果两个字符前面相同则返回长度差值
-int compareToIgnoreCase(String str) // 按字典顺序比较两个字符串，不考虑大小写。
-String concat(String str)  // 将指定字符串连接到此字符串的结尾。
-boolean startsWith(String prefix)  // 测试此字符串是否以指定的前缀开始。
-boolean endsWith(String suffix) // 测试此字符串是否以指定的后缀结束。
-boolean equals(Object anObject)  // 将此字符串与指定的对象比较。
-boolean equalsIgnoreCase(String anotherString) // 将此 String 与另一个 String 比较，不考虑大小写。
-byte[] getBytes(String charsetName) // 使用指定的字符集将此 String 编码为 byte 序列，并将结果存储到一个新的 byte 数组中。
-int indexOf(String str) // 返回指定字符在字符串中第一次出现处的索引，如果此字符串中没有这样的字符，则返回 -1
-int lastIndexOf(String str) // 返回指定子字符串在此字符串中最右边出现处的索引，如果此字符串中没有这样的字符，则返回 -1。
-int length() // 方法用于返回字符串的长度。
-boolean matches(String regex)  // 效果等同于Pattern.matches(regex, str) 用于检测字符串是否匹配给定的正则表达式。
-String replace(char searchChar, char newChar) // 方法通过用 newChar 字符替换字符串中出现的所有 searchChar 字符，并返回替换后的新字符串。
-String replaceAll(String regex, String replacement) // 使用给定的参数 replacement 替换字符串所有匹配给定的正则表达式的子字符串。
-String replaceAll(String regex, String replacement) // 使用给定的参数 replacement 替换字符串第一个匹配给定的正则表达式的子字符串。
-String[] split(String regex, int limit) // split() 方法根据匹配给定的正则表达式来拆分字符串。
-//注意： . 、 $、 | 和 * 等转义字符，必须得加 \\。
-//注意：多个分隔符，可以用 | 作为连字符。
-String trim() // 返回字符串的副本，忽略前导空白和尾部空白。
-String valueOf(primitive data type x) //返回给定data type类型x参数的字符串表示形式。
-```
-
-
-
-**判断是否是全字母**  https://www.itranslater.com/qa/details/2136843502934819840
-
-```xml
-<dependency>
-    <groupId>org.apache.commons</groupId>
-    <artifactId>commons-lang3</artifactId>
-    <version>3.12.0</version>
-</dependency>
-```
-
-```java
-// StringUtils 是org.apache.commons的commons-lang3包
-public static void stringAllIsAlpha() {
-    String str = "test1";
-    System.out.println("test1 is all alpha? ==>" + StringUtils.isAlpha(str));  // false
-
-    str = "test";
-    System.out.println("test is all alpha? ==>" + StringUtils.isAlpha(str));  // true
-}
-```
-
-```java
-boolean allLetters = someString.chars().allMatch(Character::isLetter);  // chars()是stream流
-```
-
-```
-public boolean isAlpha(String name) {
-    return name.matches("[a-zA-Z]+");
-}
-```
-
-
-
-**StringBuilder** 
-
-StringBuffer 之间的最大不同在于 StringBuilder 的方法不是线程安全的（不能同步访问）。
-
-StringBuffer常用方法
-
-```java
-public StringBuffer append(String s) // 将指定的字符串追加到此字符序列。
-public StringBuffer reverse() // 将此字符序列用其反转形式取代。
-replace(int start, int end, String str) // 使用给定 String 中的字符替换此序列的子字符串中的字符。
-char charAt(int index) // 返回此序列中指定索引处的 char 值。
-```
 
 
 
@@ -685,6 +760,86 @@ List<Long> tsList = Arrays.stream(tsArray).collect(Collectors.toList());
 
 
 
+# 字符串
+
+## 字符串方法
+
+**字符串自带的常用方法** (参考菜鸟教程https://www.runoob.com/java/java-string.html)
+
+```java
+char charAt(int index);  //返回指定索引处的 char 值。
+int compareTo(String anotherString) // 按ASCII字典顺序比较两个字符串。返回ASCII差值， 如果两个字符前面相同则返回长度差值
+int compareToIgnoreCase(String str) // 按字典顺序比较两个字符串，不考虑大小写。
+String concat(String str)  // 将指定字符串连接到此字符串的结尾。
+boolean startsWith(String prefix)  // 测试此字符串是否以指定的前缀开始。
+boolean endsWith(String suffix) // 测试此字符串是否以指定的后缀结束。
+boolean equals(Object anObject)  // 将此字符串与指定的对象比较。
+boolean equalsIgnoreCase(String anotherString) // 将此 String 与另一个 String 比较，不考虑大小写。
+byte[] getBytes(String charsetName) // 使用指定的字符集将此 String 编码为 byte 序列，并将结果存储到一个新的 byte 数组中。
+int indexOf(String str) // 返回指定字符在字符串中第一次出现处的索引，如果此字符串中没有这样的字符，则返回 -1
+int lastIndexOf(String str) // 返回指定子字符串在此字符串中最右边出现处的索引，如果此字符串中没有这样的字符，则返回 -1。
+int length() // 方法用于返回字符串的长度。
+boolean matches(String regex)  // 效果等同于Pattern.matches(regex, str) 用于检测字符串是否匹配给定的正则表达式。
+String replace(char searchChar, char newChar) // 方法通过用 newChar 字符替换字符串中出现的所有 searchChar 字符，并返回替换后的新字符串。
+String replaceAll(String regex, String replacement) // 使用给定的参数 replacement 替换字符串所有匹配给定的正则表达式的子字符串。
+String replaceAll(String regex, String replacement) // 使用给定的参数 replacement 替换字符串第一个匹配给定的正则表达式的子字符串。
+String[] split(String regex, int limit) // split() 方法根据匹配给定的正则表达式来拆分字符串。
+//注意： . 、 $、 | 和 * 等转义字符，必须得加 \\。
+//注意：多个分隔符，可以用 | 作为连字符。
+String trim() // 返回字符串的副本，忽略前导空白和尾部空白。
+String valueOf(primitive data type x) //返回给定data type类型x参数的字符串表示形式。
+```
+
+
+
+**判断是否是全字母**  https://www.itranslater.com/qa/details/2136843502934819840
+
+```xml
+<dependency>
+    <groupId>org.apache.commons</groupId>
+    <artifactId>commons-lang3</artifactId>
+    <version>3.12.0</version>
+</dependency>
+```
+
+```java
+// StringUtils 是org.apache.commons的commons-lang3包
+public static void stringAllIsAlpha() {
+    String str = "test1";
+    System.out.println("test1 is all alpha? ==>" + StringUtils.isAlpha(str));  // false
+
+    str = "test";
+    System.out.println("test is all alpha? ==>" + StringUtils.isAlpha(str));  // true
+}
+```
+
+```java
+boolean allLetters = someString.chars().allMatch(Character::isLetter);  // chars()是stream流
+```
+
+```
+public boolean isAlpha(String name) {
+    return name.matches("[a-zA-Z]+");
+}
+```
+
+
+
+**StringBuilder** 
+
+StringBuffer 之间的最大不同在于 StringBuilder 的方法不是线程安全的（不能同步访问）。
+
+StringBuffer常用方法
+
+```java
+public StringBuffer append(String s) // 将指定的字符串追加到此字符序列。
+public StringBuffer reverse() // 将此字符序列用其反转形式取代。
+replace(int start, int end, String str) // 使用给定 String 中的字符替换此序列的子字符串中的字符。
+char charAt(int index) // 返回此序列中指定索引处的 char 值。
+```
+
+
+
 
 
 ## 正则操作
@@ -752,6 +907,18 @@ public String replaceFirst(String replacement)
 
 
 
+## 字符串格式化
+
+https://blog.csdn.net/lonely_fireworks/article/details/7962171
+
+
+
+
+
+
+
+# 项目相关
+
 
 
 
@@ -799,64 +966,9 @@ logger.error(org.apache.commons.lang3.exception.ExceptionUtils.getStackTrace(e))
 
 
 
-## 时间
 
 
 
-
-
-
-
-## java 对象销毁时操作
-
-// 重写finalize方法， jvm会调用
-
-```java
-// Java code to show the
-// overriding of finalize() method
-
-import java.lang.*;
-
-// Defining a class demo since every java class
-// is a subclass of predefined Object class
-// Therefore demo is a subclass of Object class
-public class demo {
-	protected void finalize() throws Throwable
-	{
-		try {
-			System.out.println("inside demo's finalize()");
-		}
-		catch (Throwable e) {
-			throw e;
-		}
-		finally {
-			System.out.println("Calling finalize method" + " of the Object class");
-			// Calling finalize() of Object class
-			super.finalize();
-		}
-	}
-
-	// Driver code
-	public static void main(String[] args) throws Throwable
-	{
-		// Creating demo's object
-		demo d = new demo();
-		// Calling finalize of demo
-		d.finalize();
-	}
-}
-
-```
-
-
-
-为什么尽量不要Override finalize方法
-
-https://yfsyfs.github.io/2019/06/28/%E4%B8%BA%E4%BB%80%E4%B9%88%E5%B0%BD%E9%87%8F%E4%B8%8D%E8%A6%81Override-finalize%E6%96%B9%E6%B3%95/
-
-
-
-可以使用try(){}语句 : try()括号中的资源会自动调用close()方法
 
 
 
@@ -1093,6 +1205,10 @@ private void swap(int[] arr, int i, int j) {
 
 
 
+# 工具
+
+
+
 ## jd-gui
 
 java 反编译软件http://java-decompiler.github.io/
@@ -1157,32 +1273,6 @@ alt+7 或者 ctrl+F12
 ```
 
 ```
-
-
-
-
-
-## lambda
-
-在lambda表达式执行时，jvm会先为该lambda生成一个java类，然后再创建一个该类对应的对象。
-
-参考：https://cloud.tencent.com/developer/article/1572212
-
-
-
-参考：https://www.bilibili.com/read/cv8023087
-
-lambda表达式示例
-
-```java
-Arrays.sort(array, (s1, s2) -> s1.compareTo(s2));
-```
-
-```java
-list.forEach(System.out::println) //也是Java 8中的Lambda写法之一
-```
-
-
 
 
 
@@ -1318,7 +1408,7 @@ https://blog.csdn.net/todorovchen/article/details/21319033
 
 
 
-## 安装java
+## 安装java（环境）
 
 mac系统， 我的mac统自带Java ， 目录在/Library/Java/JavaVirtualMachines/adoptopenjdk-8-openj9.jdk/Contents/Home
 
@@ -1347,21 +1437,11 @@ echo $JAVA_HOME
 
 
 
-## 文件监控
+获取本地语言
 
-使用java.nio.file.FileSystems的WatchService监听文件变化
-
-https://www.xncoding.com/2017/09/21/java/watchservice.html
+https://blog.csdn.net/weixin_39625782/article/details/114051500
 
 
-
-
-
-什么是写时复制？
-
-大多数操作系统都采用**写时复制（copy-on-write）来优化子进程的使用效率**
-
-https://juejin.cn/post/6844903702373859335
 
 
 
@@ -1377,3 +1457,10 @@ https://juejin.cn/post/6844903702373859335
 - Swing 编写的俄罗斯方块：https://github.com/HelloClyde/Tetris-Swing
 - 小小记账本：https://github.com/xenv/SmallAccount （适合了解数据库的同学）
 
+
+
+
+
+# 加密解密
+
+待总结

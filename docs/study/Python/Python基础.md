@@ -264,3 +264,16 @@ def __init__(self, lock1, lock2):
 
 
 
+### 调试问题
+
+traceback
+
+```python
+import traceback
+traceback.format_exc()
+```
+
+
+
+
+
