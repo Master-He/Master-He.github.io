@@ -1472,7 +1472,9 @@ https://blog.csdn.net/todorovchen/article/details/21319033
 
 ## 安装java（环境）
 
-mac系统， 我的mac统自带Java ， 目录在/Library/Java/JavaVirtualMachines/adoptopenjdk-8-openj9.jdk/Contents/Home
+> mac系统
+
+我的mac统自带Java ， 目录在/Library/Java/JavaVirtualMachines/adoptopenjdk-8-openj9.jdk/Contents/Home
 
 可以直接用java -version和javac -version命令，但是有些软件还是会需要JAVA_HOME环境变量，这里记录一下配置
 
@@ -1497,9 +1499,54 @@ echo $JAVA_HOME
 
 
 
+> Linux系统
+
+Centos自带java不太好用，比如 jps终端命令不能用
+
+所以卸载重装
+
+参考连接： https://blog.csdn.net/libaineu2004/article/details/80060812
+
+```shell
+# 1. 先看看有没有安装java -version
+java -version
+# 2、查找他们的安装位置（注意不同系统的java版本号会有差异）
+[root@java-test-01 ~]# rpm -qa | grep java
+java-1.8.0-openjdk-1.8.0.141-1.b16.el7_3.x86_64
+java-1.7.0-openjdk-1.7.0.141-2.6.10.1.el7_3.x86_64
+java-1.8.0-openjdk-headless-1.8.0.141-1.b16.el7_3.x86_64
+java-1.7.0-openjdk-headless-1.7.0.141-2.6.10.1.el7_3.x86_64
+python-javapackages-3.4.1-11.el7.noarch
+javapackages-tools-3.4.1-11.el7.noarch
+tzdata-java-2017b-1.el7.noarch
+# 3、删除全部，noarch文件可以不用删除
+[root@java-test-01 ~]# rpm -e --nodeps java-1.8.0-openjdk-1.8.0.141-1.b16.el7_3.x86_64
+[root@java-test-01 ~]# rpm -e --nodeps java-1.7.0-openjdk-1.7.0.141-2.6.10.1.el7_3.x86_64
+[root@java-test-01 ~]# rpm -e --nodeps java-1.8.0-openjdk-headless-1.8.0.141-1.b16.el7_3.x86_64
+[root@java-test-01 ~]# rpm -e --nodeps java-1.7.0-openjdk-headless-1.7.0.141-2.6.10.1.el7_3.x86_64
+# 4、检查有没有删除
+[root@java-test-01 ~]# java -version
+# 5、下载安装完整版的JDK。 下载地址： http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html
+tar -xzvf jdk-8u321-linux-x64.tar.gz -C /usr/lib/
+# 6、修改环境变量/etc/profile，在末尾添加这四行命令。保存
+export JAVA_HOME=/usr/lib/jdk1.8.0_321
+export JRE_HOME=$JAVA_HOME/jre
+export CLASSPATH=.:$JAVA_HOME/lib:$JRE_HOME/lib:$CLASSPATH
+export PATH=.:$JAVA_HOME/bin:$JRE_HOME/bin:$PATH
+# 7、重新开启新的shell窗口，然后测试是否成功
+java -version
+javac -version 
+```
 
 
-获取本地语言
+
+
+
+
+
+## 获取本地语言
+
+
 
 https://blog.csdn.net/weixin_39625782/article/details/114051500
 
