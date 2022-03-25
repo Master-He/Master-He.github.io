@@ -134,7 +134,28 @@ https://yfsyfs.github.io/2019/06/28/%E4%B8%BA%E4%BB%80%E4%B9%88%E5%B0%BD%E9%87%8
 
 ## 写操作
 
-https://crunchify.com/how-to-write-json-object-to-file-in-java/
+
+
+使用org.apache.commons.io.FileUtils
+
+```
+import org.apache.commons.io.FileUtils;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+
+public class MyWriteFile {
+    public static void main(String[] args) {
+        File file = new File("/home/hwj/test.json");
+        try {
+            FileUtils.write(file, "test", StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
 
 
 
@@ -1080,6 +1101,47 @@ https://codeantenna.com/a/B0elYtcAXh
 ```
 
 
+
+> 给指定的系统build jar包， 比如nd4j的包依赖于特定系统， 不同系统有不同的jar包
+
+```xml
+
+```
+
+https://stackoverflow.com/questions/40535909/how-to-build-a-jar-with-maven-for-a-specific-os
+
+https://gist.github.com/agibsonccc/b4e22b861070adcede859f523c172936
+
+https://github.com/neo4j-graph-analytics/ml-models/issues/10
+
+
+
+> linux命令行下使用mvn
+
+创建项目
+
+```
+mvn archetype:generate "-DgroupId=com.sangfor.sip" "-DartifactId=sip" "-DarchetypeArtifactId=maven-archetype-quickstart" "-DinteractiveMode=false"
+mvn archetype:create -DgroupId=com.sangfor.sip -DartifactId=my-app
+```
+
+编译 (注意需要在pom所在目录运行)
+
+```
+mvn compile
+```
+
+运行
+
+```
+mvn exec:java -Dexec.mainClass="com.sangfor.sip.App"
+```
+
+
+
+MVN常用命令
+
+https://blog.csdn.net/xiaxiaorui2003/article/details/52062216
 
 
 
