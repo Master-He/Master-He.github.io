@@ -813,9 +813,118 @@ The introduction of annotation-based configuration raised the question of whethe
 
 ## 8、使用注解开发
 
+
+
+spring 注解总结 https://juejin.cn/post/6844904136492711950#heading-26 这个需要学过spring boot
+
+```
+1.@SpringBootApplication  # 主要有下面三个注解组成
+		@EnableAutoConfiguration  # 启用 SpringBoot 的自动配置机制
+		@Configuration  # 允许在 Spring 上下文中注册额外的 bean 或导入其他配置类
+		@ComponentScan  #  扫描被@Component (@Service,@Controller,@Repository)注解的 bean，注解默认会扫描该类所在的包下所有的类。
+
+2.@Autowired  # 自动导入对象到类中，被注入进的类同样要被 Spring 容器管理比如：A类要@AutowiredB对象，那么B对象的要被Spring管理
+    @Autowired(required = false)  # 如果显示的定义了Autowired的required属性为false，说明这个对象可以为null，否则不允许为空
+    配合@Qualifier(value = "xxx")  # 指定一个唯一的bean对象注入
+    
+3.@Component # 把类标识成可用于 @Autowired 注解自动装配的 bean， 简单的说就是被Spring管理
+		@Repository # 可以理解为Component的子类 对应持久层即 Dao 层，主要用于数据库相关操作。
+		@Service # 可以理解为Component的子类 对应服务层，主要涉及一些复杂的逻辑，需要用到 Dao 层。
+		@Controller # 可以理解为Component的子类 对应 Spring MVC 控制层，接受用户请求并调用 Service 层返回数据给前端页面。
+		
+4.@RestController # 是@Controller和@ResponseBody的合集， 将函数的返回值直接填入 HTTP 响应体中,是 REST 风格的控制器。	
+		@Controller # 现在项目都是前后端分离，基本不单独使用这个注解了，只有在前后端不分离的情况下用
+		@ResponseBody # 返回 JSON 或 XML 形式数据
+		
+5.@Scope # 声明 Spring Bean 的作用域， 常见的作用域有
+		singleton : 唯一 bean 实例，Spring 中的 bean 默认都是单例的。
+		prototype : 每次请求都会创建一个新的 bean 实例。
+		request : 每一次 HTTP 请求都会产生一个新的 bean，该 bean 仅在当前 HTTP request 内有效。
+		session : 每一次 HTTP 请求都会产生一个新的 bean，该 bean 仅在当前 HTTP session 内有效。
+
+6.@Configuration # 声明配置类
+
+7.请求注解
+	@GetMapping("users") 相当于 @RequestMapping(value="/users",method=RequestMethod.GET)
+	@PostMapping("users") 相当于 @RequestMapping(value="/users",method=RequestMethod.POST)
+	@PutMapping("/users/{userId}") 。。。同上
+	@DeleteMapping("/users/{userId}") 。。。同上
+		
+8.前后端传值
+	@PathVariable用于获取路径参数，@RequestParam用于获取查询参数。
+	// 举例
+	@GetMapping("/klasses/{klassId}/teachers")
+	public List<Teacher> getKlassRelatedTeachers(     
+		@PathVariable("klassId") Long klassId,         
+		@RequestParam(value = "type", required = false) String type ) {...}
+
+9.@RequestBody
+	用于读取 Request 请求（可能是 POST,PUT,DELETE,GET 请求）的 body 部分并且Content-Type 为 application/json 格式的数据，接收到数据之后会自动将数据绑定到 Java 对象上去。系统会使用HttpMessageConverter或者自定义的HttpMessageConverter将请求的 body 中的 json 字符串转换为 java 对象。
+  注意： 一个请求方法只可以有一个@RequestBody，但是可以有多个@RequestParam和@PathVariable。
+  
+10. 读取配置信息
+	@ConfigurationProperties(常用)  # 通过@ConfigurationProperties读取配置信息并与 bean 绑定。
+	@Value(常用) # 使用 @Value("${property}")(配合PropertySource使用) 读取比较简单的配置信息， @Value("hwj") 赋值常量 
+	@PropertySource（不常用）（配合Value使用）
+	
+  11.参数校验
+	@Valid， 表示要求校验请求体json参数
+	加在实体类上的
+    @NotEmpty 被注释的字符串的不能为 null 也不能为空
+    @NotBlank 被注释的字符串非 null，并且必须包含一个非空白字符
+    @Null 被注释的元素必须为 null
+    @NotNull 被注释的元素必须不为 null
+    @AssertTrue 被注释的元素必须为 true
+    @AssertFalse 被注释的元素必须为 false
+    @Pattern(regex=,flag=)被注释的元素必须符合指定的正则表达式  #===比较重要===#
+    @Email 被注释的元素必须是 Email 格式。
+    @Min(value)被注释的元素必须是一个数字，其值必须大于等于指定的最小值
+    @Max(value)被注释的元素必须是一个数字，其值必须小于等于指定的最大值
+    @DecimalMin(value)被注释的元素必须是一个数字，其值必须大于等于指定的最小值
+    @DecimalMax(value) 被注释的元素必须是一个数字，其值必须小于等于指定的最大值
+    @Size(max=, min=)被注释的元素的大小必须在指定的范围内
+    @Digits (integer, fraction)被注释的元素必须是一个数字，其值必须在可接受的范围内
+    @Past被注释的元素必须是一个过去的日期
+    @Future 被注释的元素必须是一个将来的日期
+    
+12.全局处理 Controller 层异常
+	@ControllerAdvice :注解定义全局异常处理类
+	@ExceptionHandler :注解声明异常处理方法
+	
+13.JPA（java persistence api）相关
+	@Entity声明一个类对应一个数据库实体。
+	@Table 设置表明
+	@Id ：声明一个字段为主键。之后，我们还需要定义主键的生成策略。@GeneratedValue(strategy = GenerationType.IDENTITY)
+	
+```
+
+
+
+详细讲解Spring中的@Bean注解
+
+​	https://blog.51cto.com/u_13929722/3411074 
+
+​	https://www.cnblogs.com/javazhiyin/p/11175068.html
+
+```
+@Bean  
+	# 作用的对象是方法（方法只会被spring调用一次），方法产生的bean对象交给spring管理，主要用在@Component注解的类
+@profile
+@scope
+@lazy
+@depends-on
+@primary
+```
+
+
+
+
+
+
+
 在Spring4之后，要使用注解开发，必须要保证aop的包导入了
 
-![1078856-20170205160357354-490660449](spring课堂笔记.assets/6.png)
+![1078856-20170205160357354-490660449](spring课堂笔记.assets/6.pngqian )
 
 使用注解需要导入context约束，增加注解的支持！
 

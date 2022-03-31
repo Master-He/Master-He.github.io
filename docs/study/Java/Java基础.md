@@ -31,8 +31,38 @@ for (int i = 0; i < numbers.length; i++) // Note that length is a property of an
 ```
 
 
+## 反射
+
 
 ## 泛型
+
+## 注解
+
+预定义注解:
+
+```
+@Deprecated
+@Override
+@SuppressWarnings
+@SafeVarargs
+@FunctionalInterface
+```
+
+
+
+元注解： https://juejin.cn/post/6844903943269548045  这个文章讲的不错
+
+```
+@Retention
+@Documented
+@Target
+@Inherited
+@Repeatable
+```
+
+
+
+
 
 
 

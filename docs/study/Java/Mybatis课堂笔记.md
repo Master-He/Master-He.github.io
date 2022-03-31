@@ -55,6 +55,19 @@ SSM框架：配置文件的。  最好的方式：看官网文档；
 
 
 
+
+
+补充：
+
+```
+JPA是orm框架标准，主流的orm框架都实现了这个标准。
+MyBatis没有实现JPA，他和orm框架的设计思路完全不一样。
+MyBatis是拥抱sql，而orm则更靠近面向对象，不建议写sql，实在要写推荐你写hql代替。
+Mybatis是sql mapping框架而不是orm框架，当然orm和Mybatis都是持久层框架。
+```
+
+
+
 ### 1.2、持久化
 
 数据持久化
