@@ -6,17 +6,33 @@
 
 
 
->  python enumerate java equivalent
+>  Is there a Java equivalent of Python's 'enumerate' function?
 
 https://stackoverflow.com/questions/7167253/is-there-a-java-equivalent-of-pythons-enumerate-function
 
-https://houbb.github.io/2019/04/16/ai-04-java-numpy
+```java
+// 方法一
+import java.util.ListIterator;  
+import java.util.List;
+
+List<String> numbers = Arrays.asList("zero", "one", "two");
+ListIterator<String> it = numbers.listIterator();
+while (it.hasNext()) {
+    System.out.println(it.nextIndex() + " " + it.next());
+}
+```
+
+```java
+// 方法二
+String[] numbers = {"zero", "one", "two"}
+for (int i = 0; i < numbers.length; i++) // Note that length is a property of an array, not a function (hence the lack of () )
+    System.out.println(i + " " + numbers[i]);
+}
+```
 
 
 
 ## 泛型
-
-
 
 
 
@@ -28,7 +44,15 @@ https://houbb.github.io/2019/04/16/ai-04-java-numpy
 
 在lambda表达式执行时，jvm会先为该lambda生成一个java类，然后再创建一个该类对应的对象。
 
+那lambda每次执行都会创建一个新对象吗?  答案是看情况。 
+
+​	如果lambda引用了上下文变量，且变量更新了，lambda就会重新创建一个该类对应的对象
+
+​    如果lambda没有引用上下文变量，获取引用的上下文变量没有更新，那么lambda表达式对象还是用上次创建的
+
 参考：https://cloud.tencent.com/developer/article/1572212
+
+
 
 
 
@@ -44,16 +68,20 @@ Arrays.sort(array, (s1, s2) -> s1.compareTo(s2));
 list.forEach(System.out::println) //也是Java 8中的Lambda写法之一
 ```
 
+![image-20220331145054719](Java基础.assets/image-20220331145029466.png)
+
+
+
 
 
 ## 构造方法
 
 ```
 识别合法的构造方法；
-  1：构造方法可以被重载，一个构造方法可以通过this关键字调用另一个构造方法，this语句必须位于构造方法的第一行；
+  1 构造方法可以被重载，一个构造方法可以通过this关键字调用另一个构造方法，this语句必须位于构造方法的第一行；！！！
     重载：方法的重载(overload)：重载构成的条件：方法的名称相同，但参数类型或参数个数不同，才能构成方法的重载。 
   2 当一个类中没有定义任何构造方法，Java将自动提供一个缺省构造方法；
-  3 子类通过super关键字调用父类的一个构造方法；（super和this必须在构造方法第一行）
+  3 子类通过super关键字调用父类的一个构造方法；（super和this必须在构造方法第一行！！！）
   4 当子类的某个构造方法没有通过super关键字调用父类的构造方法，通过这个构造方法创建子类对象时，会自动先调用父类的缺省构造方法
   5 构造方法不能被static、final、synchronized、abstract、native修饰，但可以被public、private、protected修饰；
   6 构造方法不是类的成员方法；
@@ -68,12 +96,12 @@ list.forEach(System.out::println) //也是Java 8中的Lambda写法之一
 
 ![img](/Users/hwj/project/Master-He.github.io/docs/study/Java/Java基础.assets/6589111_1495116648005_163162-20160121105831078-570590712.png)
 
-default 就是上面也不写
+default 就是什么也不写
 
 - **default** (即默认，什么也不写）: 在同一包内可见，不使用任何修饰符。使用对象：类、接口、变量、方法。
 - **private** : 在同一类内可见。使用对象：变量、方法。 **注意：不能修饰类（外部类）**
 - **public** : 对所有类可见。使用对象：类、接口、变量、方法
-- **protected** : 对同一包内的类和所有子类可见。使用对象：变量、方法。 **注意：不能修饰类（外部类）**。protect 详解https://www.runoob.com/w3cnote/java-protected-keyword-detailed-explanation.html (**说实话没完全明白**)
+- **protected** : 对同一包内的类和所有子类可见。使用对象：变量、方法。 **注意：不能修饰类（外部类）**。protect 详解https://www.runoob.com/w3cnote/java-protected-keyword-detailed-explanation.html (**说实话没搞明白**)
 
 
 
@@ -120,7 +148,7 @@ public class demo {
 
 
 
-为什么尽量不要Override finalize方法
+为什么尽量不要Override finalize方法？
 
 https://yfsyfs.github.io/2019/06/28/%E4%B8%BA%E4%BB%80%E4%B9%88%E5%B0%BD%E9%87%8F%E4%B8%8D%E8%A6%81Override-finalize%E6%96%B9%E6%B3%95/
 
@@ -138,7 +166,7 @@ https://yfsyfs.github.io/2019/06/28/%E4%B8%BA%E4%BB%80%E4%B9%88%E5%B0%BD%E9%87%8
 
 使用org.apache.commons.io.FileUtils
 
-```
+```java
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
@@ -149,7 +177,8 @@ public class MyWriteFile {
     public static void main(String[] args) {
         File file = new File("/home/hwj/test.json");
         try {
-            FileUtils.write(file, "test", StandardCharsets.UTF_8);
+            // 往test.json文件中写入"test"字符串
+            FileUtils.write(file, "test", StandardCharsets.UTF_8); 
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -173,7 +202,12 @@ public class MyWriteFile {
 
 字节流和字符流的区别 https://blog.csdn.net/u011578734/article/details/108346469
 
-字节流操作的基本单元为字节；字符流操作的基本单元为Unicode码元。
+- 字节流操作的基本单元为字节；字符流操作的基本单元为Unicode码元(2个字节)。
+
+- 字节流默认不使用缓冲区；字符流使用缓冲区
+- 字节流可用于任何类型的对象，包括二进制对象，而字符流只能处理字符或者字符串
+
+在从字节流转化为字符流时，实际上就是byte[]转化为String时，而在字符流转化为字节流时，实际上是String转化为byte[]时。
 
 
 
@@ -182,8 +216,8 @@ public class MyWriteFile {
 ```java
 import org.apache.commons.io.FileUtils;
 
-// 实际路径是resources/acdgadetect/wordsCh.json 
-String wordsPath = /acdgadetect/wordsCh.json  
+// 实际路径是resources/home/wordsCh.json 
+String wordsPath = /home/wordsCh.json  
     
 String path = 指定类.class.getResource(wordsPath).getPath();
 // 如果windows下且路径中含有中文，空格等特殊字符,则加个.toURI
@@ -192,12 +226,16 @@ String jsonStr = FileUtils.readFileToString(new File(path), StandardCharsets.UTF
 ```
 
 ```java
+import org.apache.commons.io.IOUtils;
+
 //导入图
 byte[] graphBytes = IOUtils.toByteArray(new FileInputStream(TestModel.class.getResource(PB_FILE_PATH).getPath()));
 graph.importGraphDef(graphBytes);
 ```
 
 ```java
+import org.apache.commons.io.FileUtils;
+
 // 按行读文件，读成set
 public static void main(String[] args) {
     String path = FileDemo.class.getResource("/a.txt").getPath();
@@ -1312,6 +1350,49 @@ https://blog.csdn.net/ttzommed/article/details/114905865
 3.指定模块语言等级
 
 ![image-20220312224057825](Java基础.assets/image-20220312224057825.png)
+
+
+
+### IEDA插件
+
+https://blog.csdn.net/qq_35246620/article/details/78289074
+
+常用插件推荐
+
+|      |      |      |
+| ---- | ---- | ---- |
+|      |      |      |
+|      |      |      |
+|      |      |      |
+|      |      |      |
+|      |      |      |
+|      |      |      |
+|      |      |      |
+|      |      |      |
+|      |      |      |
+|      |      |      |
+|      |      |      |
+|      |      |      |
+|      |      |      |
+|      |      |      |
+|      |      |      |
+
+插件名称	插件介绍	官网地址
+Alibaba Java Coding Guidelines	阿里巴巴代码规范检查插件	https://plugins.jetbrains.com/plugin/10046-alibaba-java-coding-guidelines
+Key promoter	快捷键提示插件	https://plugins.jetbrains.com/plugin/4455?pr=idea
+Grep Console	自定义控制台输出格式插件	https://plugins.jetbrains.com/idea/plugin/7125-grep-console
+CheckStyle-IDEA	代码规范检查插件	https://plugins.jetbrains.com/plugin/1065?pr=idea
+FindBugs-IDEA	潜在 Bug 检查	https://plugins.jetbrains.com/plugin/3847?pr=idea
+MetricsReloaded	代码复杂度检查	https://plugins.jetbrains.com/plugin/93?pr=idea
+Statistic	代码统计插件	https://plugins.jetbrains.com/plugin/4509?pr=idea
+JRebel Plugin	热部署插件	https://plugins.jetbrains.com/plugin/?id=4441
+CodeGlance	显示代码地图插件	https://plugins.jetbrains.com/plugin/7275?pr=idea
+Markdown Navigator	Markdown 编辑器插件	https://plugins.jetbrains.com/plugin/7896?pr=idea
+Eclipse Code Formatter	Eclipse 代码风格格式化插件	https://plugins.jetbrains.com/plugin/6546?pr=idea
+Jindent-Source Code Formatter	自定义模板插件	http://plugins.jetbrains.com/plugin/2170?pr=idea
+Maven Helper	Maven 辅助插件	https://plugins.jetbrains.com/plugin/7179-maven-helper
+Properties to YAML Converter	Properties 转 YAML 格式插件	https://plugins.jetbrains.com/plugin/8000-properties-to-yaml-converter
+Git Flow Integration	Git Flow 集成插件	https://plugins.jetbrains.com/plugin/7315-git-flow-integration
 
 
 
