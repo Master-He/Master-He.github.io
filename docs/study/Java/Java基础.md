@@ -30,11 +30,148 @@ for (int i = 0; i < numbers.length; i++) // Note that length is a property of an
 }
 ```
 
-
 ## 反射
+
+Java中有一个名为Class的类，该类在运行时保留有关对象和类的所有信息。
+
+Class对象描述了特定类的属性。该对象用于执行反射。
+
+```java
+//创建一个Dog类的对象
+Dog d1 = new Dog();
+
+//使用getClass()创建Class对象
+Class obj = d1.getClass();
+
+//查找由Dog实现的接口
+Class[] objInterface = obj.getInterfaces();
+
+//以整数形式获取Dog的访问修饰符
+int modifier = obj.getModifiers();
+System.out.println("修饰符： " + Modifier.toString(modifier));
+
+//找到Dog的超类
+Class superClass = obj.getSuperclass();
+System.out.println("Superclass: " + superClass.getName());
+
+// 获取新实例， public T newInstance();
+```
+
+
+
+```java
+// 我们可以使用Field类提供的各种方法检查和修改类的不同字段。
+getFields() - 返回该类及其超类的所有公共字段
+getDeclaredFields()  - 返回类的所有字段
+getModifiers() - 以整数形式返回字段的修饰符
+set(classObject,value) - 使用指定的值设置字段的值
+get(classObject) - 获取字段的值
+setAccessible(boolean) - 使私有字段可访问
+// 注意：如果我们知道字段名称，则可以使用
+getField("fieldName"） - 从类返回名称为fieldName的公共字段。
+getDeclaredField("fieldName"） - 从类返回名称为fieldName的字段。
+
+// 我们可以使用Method类提供的各种方法来检查类的不同方法。
+getMethods() - 返回该类及其超类的所有公共方法
+getDeclaredMethod() - 返回该类的所有方法
+getName() - 返回方法的名称
+getModifiers() - 以整数形式返回方法的访问修饰符
+getReturnType() - 返回方法的返回类型
+                 
+// 我们还可以使用Constructor类提供的各种方法检查类的不同构造函数。
+getConstructors() - 返回该类的所有公共构造函数以及该类的超类
+getDeclaredConstructor() -返回所有构造函数
+getName() - 返回构造函数的名称
+getModifiers() - 以整数形式返回构造函数的访问修饰符
+getParameterCount() - 返回构造函数的参数数量
+```
+
+
+
 
 
 ## 泛型
+
+参考：https://itimetraveler.github.io/2016/12/27/%E3%80%90Java%E3%80%91%E6%B3%9B%E5%9E%8B%E4%B8%AD%20extends%20%E5%92%8C%20super%20%E7%9A%84%E5%8C%BA%E5%88%AB%EF%BC%9F/
+
+![image-20220401123944962](Java基础.assets/image-20220401123944962.png)
+
+
+
+### 创建泛型类
+
+
+```java
+public class demo {
+    public static void main(String[] args) throws ClassNotFoundException {
+        GenericsClass<Integer> intObj = new GenericsClass<>(5);
+        System.out.println(intObj.getClass());  // class tmp.GenericsClass
+        System.out.println(intObj.getData().getClass());  // class java.lang.Integer
+        System.out.println(intObj.getData());  // 5
+
+        GenericsClass<String> stringGenericsClass = new GenericsClass<>("1");
+        System.out.println(stringGenericsClass.getData().getClass());  // class java.lang.String
+        System.out.println(stringGenericsClass.getData());  // 1
+        stringGenericsClass.setNull();
+        System.out.println(stringGenericsClass.getData());  // null
+    }
+}
+
+class GenericsClass<T> {
+    private T data;
+
+    public GenericsClass(T data) {
+        this.data = data;
+    }
+
+    public T getData() {
+        return this.data;
+    }
+
+    public void setNull() {
+        this.data = null;
+    }
+}
+```
+
+
+
+### 创建泛型方法
+
+```java
+class Main {
+  public static void main(String[] args) {
+    //使用Integer数据初始化类
+    DemoClass demo = new DemoClass();
+    demo.<String>genericsMethod("Java Programming");  // <String>可省略
+    demo.genericsMethod(100);
+  }
+}
+
+class DemoClass {
+  //泛型方法
+  public <T> void genericsMethod(T data) {
+    System.out.println("这是一个泛型方法。具体类型为" + data.getClass());
+    System.out.println("传递给方法的数据是 " + data);
+  }
+}
+```
+
+
+
+### 有界类型
+
+```java
+<T extends A>  // T只能接受A的子类型的数据。
+```
+
+```java
+<T super B>  // T只能接受B的父类型的数据。
+```
+
+
+
+
 
 ## 注解
 
@@ -53,14 +190,24 @@ for (int i = 0; i < numbers.length; i++) // Note that length is a property of an
 元注解： https://juejin.cn/post/6844903943269548045  这个文章讲的不错
 
 ```
-@Retention
-@Documented
-@Target
-@Inherited
-@Repeatable
+@Retention  // 被描述的注解在它所修饰的类中可以被保留到何时
+@Documented  // 描述在使用 javadoc 工具为类生成帮助文档时是否要保留其注解信息。
+@Target // 被修饰的注解可以用在什么地方
+@Inherited  // 如果某个类使用了被@Inherited修饰的注解，则其子类将自动具有该注解
+@Repeatable // 即允许在同一申明类型（类，属性，或方法）前多次使用同一个类型注解。
 ```
 
 
+
+自定义注解：
+
+```
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.FIELD)
+public @interface Name {
+    public String value() default "";
+}
+```
 
 
 
@@ -118,7 +265,16 @@ list.forEach(System.out::println) //也是Java 8中的Lambda写法之一
   7 构造方法不能被继承。
 ```
 
+**当涉及到继承时，按照如下顺序执行：**
 
+1. 执行父类的静态代码块，并初始化父类静态成员变量
+2. 执行子类的静态代码块，并初始化子类静态成员变量
+3. 执行父类的构造代码块，执行父类的构造函数，并初始化父类普通成员变量
+4. 执行子类的构造代码块， 执行子类的构造函数，并初始化子类普通成员变量
+
+![img](Java基础.assets/java初始化顺序.png)
+
+参考：https://www.cnblogs.com/Qian123/p/5713440.html#_label1
 
 
 
@@ -229,6 +385,10 @@ public class MyWriteFile {
 参考：https://www.cnblogs.com/hopeyes/p/9736642.html
 
 ![img](/Users/hwj/project/Master-He.github.io/docs/study/Java/Java基础.assets/1490873-20181009205826281-2118584242.png)
+
+
+
+
 
 字节流和字符流的区别 https://blog.csdn.net/u011578734/article/details/108346469
 
@@ -1004,6 +1164,8 @@ https://blog.csdn.net/lonely_fireworks/article/details/7962171
 
 
 
+- 
+
 
 
 # 项目相关
@@ -1213,6 +1375,14 @@ https://blog.csdn.net/xiaxiaorui2003/article/details/52062216
 
 
 
+> maven打包一直不成功，显示依赖缺少，但实际上依赖的jar包在本地确实有！ 
+
+尝试过清空IDEA缓存，重启IDEA，手动将依赖jar包复制到本地，结果还不行（镜像库用的是公司的，公司和外网不连通）
+
+最后在大佬的操作下完成了任务， 删除maven仓库下所有的_remote.repositories文件， 让maven只能去公司的镜像去下载jar包
+
+参考： https://blog.csdn.net/jiajane/article/details/104396079
+
 
 
 ## 为啥要实现Serializable接口？
@@ -1335,6 +1505,14 @@ private void swap(int[] arr, int i, int j) {
 
 
 
+
+
+# 加密解密
+
+待总结
+
+
+
 # 工具
 
 
@@ -1448,6 +1626,29 @@ alt+7 或者 ctrl+F12
 ```
 
 
+
+
+
+# 其他
+
+## 获取本地语言
+
+https://blog.csdn.net/weixin_39625782/article/details/114051500
+
+
+
+## 练手项目
+
+- Java 实现简单计算器：https://www.lanqiao.cn/courses/185
+- Eclipse 实现 Java 编辑器：https://www.lanqiao.cn/courses/287
+- 一本糊涂账：https://how2j.cn/module/104.html
+- Java 五子棋：https://blog.csdn.net/cnlht/article/details/8176130
+- Java 中国象棋：https://blog.csdn.net/cnlht/article/details/8205733
+- JAVA GUI 图书馆管理系统：https://github.com/uboger/LibraryManager
+- JAVA 坦克大战小游戏：https://github.com/wangzhengyi/TankWar
+- Swing 编写的俄罗斯方块：https://github.com/HelloClyde/Tetris-Swing
+- 小小记账本：https://github.com/xenv/SmallAccount （适合了解数据库的同学）
+- 
 
 ## 怎么看回调函数的调用栈
 
@@ -1654,33 +1855,3 @@ javac -version
 
 
 
-
-## 获取本地语言
-
-
-
-https://blog.csdn.net/weixin_39625782/article/details/114051500
-
-
-
-
-
-## 练手项目
-
-- Java 实现简单计算器：https://www.lanqiao.cn/courses/185
-- Eclipse 实现 Java 编辑器：https://www.lanqiao.cn/courses/287
-- 一本糊涂账：https://how2j.cn/module/104.html
-- Java 五子棋：https://blog.csdn.net/cnlht/article/details/8176130
-- Java 中国象棋：https://blog.csdn.net/cnlht/article/details/8205733
-- JAVA GUI 图书馆管理系统：https://github.com/uboger/LibraryManager
-- JAVA 坦克大战小游戏：https://github.com/wangzhengyi/TankWar
-- Swing 编写的俄罗斯方块：https://github.com/HelloClyde/Tetris-Swing
-- 小小记账本：https://github.com/xenv/SmallAccount （适合了解数据库的同学）
-
-
-
-
-
-# 加密解密
-
-待总结
