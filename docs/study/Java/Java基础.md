@@ -1148,8 +1148,6 @@ public int end()  // 返回最后匹配字符之后的偏移量。
 public String replaceAll(String replacement)  
 // 替换模式与给定替换字符串匹配的输入序列的第一个子序列。
 public String replaceFirst(String replacement)
-    
-
 ```
 
 
@@ -1158,13 +1156,13 @@ public String replaceFirst(String replacement)
 
 ## 字符串格式化
 
-https://blog.csdn.net/lonely_fireworks/article/details/7962171
+参考 https://blog.csdn.net/lonely_fireworks/article/details/7962171
+
+```java
+String.format("一本书的价格是：% 50.5f元%n", 49.8);
+```
 
 
-
-
-
-- 
 
 
 
@@ -1225,23 +1223,24 @@ logger.error(org.apache.commons.lang3.exception.ExceptionUtils.getStackTrace(e))
 
 ## Maven
 
-菜鸟教程 https://www.runoob.com/maven/maven-pom.html
+菜鸟教程 https://www.runoob.com/maven/maven-pom.html , https://www.cainiaojc.com/maven/maven-tutorial.html
 
 视频https://www.bilibili.com/video/BV1Fz4y167p5?p=10&spm_id_from=pageDriver
 
-常用命令
+### 常用命令
 
 ```shell
 mvn compile  #编译
 mvn exec:java -Dexec.mainClass="com.xxx.demo.Hello"  # 启动项目
 mvn package -Dmaven.test.skip=true  # 打包跳过测试
+mvn clean package # 清除旧包并打包
 mvn packge -Pdev  # 指定dev开发环境的profile进行打包（还有测试环境，生产环境）
 mvn -Dtest=TestSquare,TestCi*le test #maven运行特定的test case
 ```
 
 
 
- maven 导入本地jar
+> maven 导入本地jar
 
 https://blog.csdn.net/wangjian1204/article/details/54563988
 
@@ -1249,37 +1248,37 @@ https://blog.csdn.net/w605283073/article/details/90120722
 
 
 
-maven build jar包
+> maven build jar包
 
 ```xml
 <build>
-        <finalName>test-yara</finalName>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-                <version>2.4</version>
-                <configuration>
-                    <archive>
-                        <manifest>
-                            <mainClass>com.xxx.yyy.Main</mainClass>
-                        </manifest>
-                        <manifestEntries>
-                            <Class-Path>.</Class-Path>
-                        </manifestEntries>
-                    </archive>
-                    <!-- exclude resource files or directories -->
-                    <excludes>
-                    </excludes>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
+    <finalName>my-project</finalName>
+    <plugins>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-jar-plugin</artifactId>
+            <version>2.4</version>
+            <configuration>
+                <archive>
+                    <manifest>
+                        <mainClass>com.xxx.yyy.Main</mainClass>
+                    </manifest>
+                    <manifestEntries>
+                        <Class-Path>.</Class-Path>
+                    </manifestEntries>
+                </archive>
+                <!-- exclude resource files or directories -->
+                <excludes>
+                </excludes>
+            </configuration>
+        </plugin>
+    </plugins>
+</build>
 ```
 
 
 
-Maven打jar包把配置文件放在META-INF目录下
+>  Maven打jar包把配置文件放在META-INF目录下
 
 https://codeantenna.com/a/B0elYtcAXh
 
@@ -1296,7 +1295,7 @@ https://codeantenna.com/a/B0elYtcAXh
 
 
 
-将项目使用的包依赖和项目一同打进jar包， （忘了参考哪个博客了。）
+> 将项目使用的包依赖和项目一同打进jar包， （忘了参考哪个博客了。）
 
 ```xml
 <plugins>
@@ -1519,9 +1518,7 @@ private void swap(int[] arr, int i, int j) {
 
 ## jd-gui
 
-java 反编译软件http://java-decompiler.github.io/
-
-
+java 反编译软件 http://java-decompiler.github.io/
 
 mac 版本不兼容问题
 
@@ -1536,6 +1533,29 @@ export JAVA_HOME=$(/usr/libexec/java_home -v11)
 
 
 ## IDEA
+
+
+
+### IDEA 远程调试
+
+参考https://cloud.tencent.com/developer/article/1666221
+
+远程调试本质就是连接远程的JVM
+
+两步搞定，第一步：
+
+![image-20220402215511583](Java基础.assets/image-20220402215511583.png)
+
+第二步 
+
+```shell
+# 输入命令 java -Xdebug (复制上图的命令行参数) -jar xxx.jar ，具体如下命令
+java -Xdebug -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005 -jar my-project.jar
+```
+
+如果调试不通。需要telnet一下5005端口是否能够连上（ telnet 192.168.0.111 5005 ）。一般不能连上的情况： 防火墙端口没有开放， 或者端口被占用
+
+
 
 ### IDEA diagrams使用
 
@@ -1561,60 +1581,34 @@ https://blog.csdn.net/ttzommed/article/details/114905865
 
 
 
-### IEDA插件
+### IEDA 插件
 
 https://blog.csdn.net/qq_35246620/article/details/78289074
 
-常用插件推荐
-
-|      |      |      |
+|插件名称| 插件介绍| 官网地址|
 | ---- | ---- | ---- |
-|      |      |      |
-|      |      |      |
-|      |      |      |
-|      |      |      |
-|      |      |      |
-|      |      |      |
-|      |      |      |
-|      |      |      |
-|      |      |      |
-|      |      |      |
-|      |      |      |
-|      |      |      |
-|      |      |      |
-|      |      |      |
-|      |      |      |
-
-插件名称	插件介绍	官网地址
-Alibaba Java Coding Guidelines	阿里巴巴代码规范检查插件	https://plugins.jetbrains.com/plugin/10046-alibaba-java-coding-guidelines
-Key promoter	快捷键提示插件	https://plugins.jetbrains.com/plugin/4455?pr=idea
-Grep Console	自定义控制台输出格式插件	https://plugins.jetbrains.com/idea/plugin/7125-grep-console
-CheckStyle-IDEA	代码规范检查插件	https://plugins.jetbrains.com/plugin/1065?pr=idea
-FindBugs-IDEA	潜在 Bug 检查	https://plugins.jetbrains.com/plugin/3847?pr=idea
-MetricsReloaded	代码复杂度检查	https://plugins.jetbrains.com/plugin/93?pr=idea
-Statistic	代码统计插件	https://plugins.jetbrains.com/plugin/4509?pr=idea
-JRebel Plugin	热部署插件	https://plugins.jetbrains.com/plugin/?id=4441
-CodeGlance	显示代码地图插件	https://plugins.jetbrains.com/plugin/7275?pr=idea
-Markdown Navigator	Markdown 编辑器插件	https://plugins.jetbrains.com/plugin/7896?pr=idea
-Eclipse Code Formatter	Eclipse 代码风格格式化插件	https://plugins.jetbrains.com/plugin/6546?pr=idea
-Jindent-Source Code Formatter	自定义模板插件	http://plugins.jetbrains.com/plugin/2170?pr=idea
-Maven Helper	Maven 辅助插件	https://plugins.jetbrains.com/plugin/7179-maven-helper
-Properties to YAML Converter	Properties 转 YAML 格式插件	https://plugins.jetbrains.com/plugin/8000-properties-to-yaml-converter
-Git Flow Integration	Git Flow 集成插件	https://plugins.jetbrains.com/plugin/7315-git-flow-integration
-
-
-
-### IDEA 翻译插件
-
-插件市场搜Translation， 然后对应的作者是 Yii.Guxing
-
-https://plugins.jetbrains.com/plugin/8579-translation/versions
+|Statistic| 代码统计插件| https://plugins.jetbrains.com/plugin/4509?pr=idea|
+|Translation| 翻译插件 | https://plugins.jetbrains.com/plugin/8579-translation |
+|Alibaba Java Coding Guidelines| 阿里巴巴代码规范检查插件| https://plugins.jetbrains.com/plugin/10046-alibaba-java-coding-guidelines|
+|Key promoter| 快捷键提示插件| https://plugins.jetbrains.com/plugin/4455?pr=idea|
+|Grep Console| 自定义控制台输出格式插件| https://plugins.jetbrains.com/idea/plugin/7125-grep-console|
+|CheckStyle-IDEA| 代码规范检查插件| https://plugins.jetbrains.com/plugin/1065?pr=idea|
+|FindBugs-IDEA| 潜在 Bug 检查| https://plugins.jetbrains.com/plugin/3847?pr=idea|
+|MetricsReloaded| 代码复杂度检查| https://plugins.jetbrains.com/plugin/93?pr=idea|
+|JRebel Plugin| 热部署插件| https://plugins.jetbrains.com/plugin/?id=4441|
+|CodeGlance| 显示代码地图插件| https://plugins.jetbrains.com/plugin/7275?pr=idea|
+|Markdown Navigator| Markdown 编辑器插件| https://plugins.jetbrains.com/plugin/7896?pr=idea|
+|Eclipse Code Formatter| Eclipse 代码风格格式化插件| https://plugins.jetbrains.com/plugin/6546?pr=idea|
+|Jindent-Source Code Formatter| 自定义模板插件| http://plugins.jetbrains.com/plugin/2170?pr=idea|
+|Maven Helper| Maven 辅助插件| https://plugins.jetbrains.com/plugin/7179-maven-helper|
+|Properties to YAML Converter| Properties 转 YAML 格式插件| https://plugins.jetbrains.com/plugin/8000-properties-to-yaml-converter|
+|Git Flow Integration| Git Flow 集成插件| https://plugins.jetbrains.com/plugin/7315-git-flow-integration|
 
 
 
 ### IDEA 快捷键(win)
 
-```
+```shell
 # 看类结构
 alt+7 或者 ctrl+F12
 ```
@@ -1624,6 +1618,8 @@ alt+7 或者 ctrl+F12
 ```
 
 ```
+
+
 
 
 
