@@ -183,7 +183,7 @@ INSERT  INTO `books`(`bookID`,`bookName`,`bookCounts`,`detail`)VALUES
       ```
      
            2. IDEA关联数据库
-         
+             
            3. 编写MyBatis的核心配置文件
       
         ```xml

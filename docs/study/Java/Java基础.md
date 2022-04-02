@@ -231,6 +231,12 @@ public @interface Name {
 
 
 
+> 问: 	为什么lambda 表达式引用的本地变量必须是最终变量或实际上的最终变量 ?
+
+答： 加final，变量会存在堆中的方法区里，子线程共享进程的堆，所以能读到。否则是存在另一个线程的栈中，不同线程读不到
+
+<img src="Java基础.assets/image-20220305092838843.png" alt="image-20220305092838843" style="zoom:50%;" />
+
 
 
 参考：https://www.bilibili.com/read/cv8023087
@@ -280,7 +286,7 @@ list.forEach(System.out::println) //也是Java 8中的Lambda写法之一
 
 ## 权限控制修饰符
 
-![img](/Users/hwj/project/Master-He.github.io/docs/study/Java/Java基础.assets/6589111_1495116648005_163162-20160121105831078-570590712.png)
+![img](Java基础.assets/6589111_1495116648005_163162-20160121105831078-570590712-8916261.png)
 
 default 就是什么也不写
 
@@ -380,11 +386,11 @@ public class MyWriteFile {
 
 参考https://www.cnblogs.com/oubo/archive/2012/01/06/2394638.html
 
-<img src="/Users/hwj/project/Master-He.github.io/docs/study/Java/Java基础.assets/2012031413373126.jpg" alt="img" style="zoom: 67%;" />
+![image-20220403001606585](Java基础.assets/image-20220403001606585-8916169.png)
 
 参考：https://www.cnblogs.com/hopeyes/p/9736642.html
 
-![img](/Users/hwj/project/Master-He.github.io/docs/study/Java/Java基础.assets/1490873-20181009205826281-2118584242.png)
+![img](Java基础.assets/1490873-20181009205826281-2118584242-8916186.png)
 
 
 
@@ -472,7 +478,7 @@ https://juejin.cn/post/6844903702373859335
 
 本地版
 
-![img](/Users/hwj/project/Master-He.github.io/docs/study/Java/Java基础.assets/20160124221843905.png)
+![img](Java基础.assets/20160124221843905-8916236.png)
 
 
 
@@ -1661,6 +1667,18 @@ for (StackTraceElement stackElement : stackElements) {
 
 
 
+
+> 原本python使用tensorflow训练出来的模型， 在python代码里面加载没问题，结果改成java加载有问题！
+
+​		在大佬看源码后解决！！！java加载模型的代码里面要多传一个参数，我怎么就不知道呢？我怎么不仔细看源码呢？
+
+为什么大佬会仔细看源码？ 还有，我对机器学习的认知，知识也不够，没有胆量。。。细究原理。。。
+
+
+
+
+
+
 ## jar包相关
 
 linux 下单java文件编译和导入jar包， jar包放在/xxx/lib/下
@@ -1766,6 +1784,35 @@ echo $LD_LIBRARY_PATH 可以查看动态链接库路径
 
 
 
+> yara-java（github开源项目）打包问题
+
+​		编译yara的时候， 因为我用的linux环境Perl 语言版本太老了，导致Perl很多依赖包没有，导致编译yara失败了。导致进度卡了一天
+这个也是认知问题。 找大佬帮忙解决， 大佬会看源码，perl的源码。。。。 然后发现一些版本问题，换了一台linux机器（B机器），发现B机器的perl语言是正常的！然后我重新安装了perl语言，就能正常编译yara了。
+
+​		能正常编译yara(4.1.3版本)后，yara-java工程的打包出现了问题，这个涉及pom.xml文件里面指定的插件，这个插件我具体也忘了叫什么。因为是这个插件包的错，然后我就卡了半天，后来请了大佬看一波问题。大佬又看插件的源码。然后大概判断除了是yara版本的问题。最后选了yara-3.10版本的(因为yara-java是基于3.10版本的)，然后就能成功了。
+
+
+
+> JNI问题，C++代码的包路径和Java native代码的包路径不同，导致找不到C的接口。 
+
+​		这个是认知问题， 因为我不知道C++也有包路径的概念！一直在疑惑为什么找不到C接口。
+
+
+
+> JNI 代码 和 so 文件（动态链接库）封装成jar包后 so 文件不能加载的问题
+
+​		在网上搜索问题时没有用合适的关键词，同时搜索到答案后没有一眼看懂，或者全是英文，你就不往下面看了，结果导致错过了解决方案。  另外这个在yara-java的工程里面也是相似的案例，就算你不在网上查相关问题你应该也可以解决的！ 你研究的时候没有想到看源码和调试，当时你在想so文件是linux下的动态链接库文件， windows下调试没用，实际上。windows也可以调试，因为java本身是跨平台的。
+
+​		最后： 因为java不能直接load jar包里面的so文件， 不能直接load的原因是load函数必须传入绝对路径， jar里的so文件不是绝对路径。 需要将so文件临时复制出来load. 最后这个工作交给hawtjni.runtime包解决，具体请参考yara-java load so文件时候的代码
+
+
+
+
+
+
+
+
+
 ## JNA
 
 JNA是建立在JNI技术基础之上的一个Java类库，它使您可以方便地使用java直接访问动态链接库中的函数。原来使用JNI，你必须手工用C写一个动态链接库，在C语言中映射Java的数据类型。JNA中，它提供了一个动态的C语言编写的转发器，可以自动实现Java和C的数据类型映射。你不再需要编写C动态链接库。当然，这也意味着，使用JNA技术比使用JNI技术调用动态链接库会有些微的性能损失。可能速度会降低十几倍。就看你的需求来用了。https://blog.csdn.net/hqy1719239337/article/details/88966183
@@ -1845,7 +1892,6 @@ export PATH=.:$JAVA_HOME/bin:$JRE_HOME/bin:$PATH
 java -version
 javac -version 
 ```
-
 
 
 

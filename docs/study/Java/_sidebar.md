@@ -13,7 +13,6 @@
   * [JVM](/study/Java/JVM笔记)
   * [Guice](/study/Java/Guice)
   * [设计模式](/study/Java/设计模式)
-  * [Quartz](/study/Java/Quartz)
   
   
   
