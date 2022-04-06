@@ -34,6 +34,8 @@ for (int i = 0; i < numbers.length; i++) // Note that length is a property of an
 
 Java中有一个名为Class的类，该类在运行时保留有关对象和类的所有信息。
 
+个人理解Class类就是用来描述类的类，描述了类有哪些构造器，方法，字段。
+
 Class对象描述了特定类的属性。该对象用于执行反射。
 
 ```java
@@ -149,7 +151,7 @@ class Main {
 }
 
 class DemoClass {
-  //泛型方法
+  //泛型方法, 传入的数据类型可以任意
   public <T> void genericsMethod(T data) {
     System.out.println("这是一个泛型方法。具体类型为" + data.getClass());
     System.out.println("传递给方法的数据是 " + data);
@@ -214,6 +216,208 @@ public @interface Name {
 
 
 # 类
+
+
+
+## 类加载器
+
+参考链接
+
+https://www.bilibili.com/video/BV16T4y1P79h?p=2
+
+https://blog.nowcoder.net/n/0597892d34ae4023add7406cbbe388d0?from=nowcoder_improve
+
+
+
+>  类加载器相关代码
+
+```java
+package org.example;
+
+public class ClassLoaderDemo {
+    public static void main(String[] args) {
+        ClassLoader classLoader1 = ClassLoaderDemo.class.getClassLoader();
+        // app类加载器
+        // classLoader1 ->sun.misc.Launcher$AppClassLoader@18b4aac2
+        System.out.println("classLoader1 -> " + classLoader1);
+        // 扩展类加载器
+        // classLoader1's parent ->sun.misc.Launcher$ExtClassLoader@1b6d3586
+        System.out.println("classLoader1's parent -> " + classLoader1.getParent());
+
+        // 启动类加载器 BootStrap ClassLoader 由C++开发，是JVM虚拟机的一部分， 本身不是Java类，所以这里显示null
+        // classLoader1's grandparent ->null
+        System.out.println("classLoader1's grandparent -> " + classLoader1.getParent().getParent());
+        // int，String，List等基础类由启动类加载器加载
+        // int class loader ->null
+        System.out.println("int class loader -> " + int.class.getClassLoader());
+        // String class loader ->null
+        System.out.println("String class loader -> " + String.class.getClassLoader());
+        // List class loader -> null
+        System.out.println("List class loader -> " + java.util.List.class.getClassLoader());
+
+        // java指令可以通过增加 -verbose:class -verbose:gc 格式的参数在启动时打印出类加载情况
+        // BootStrap ClassLoader 加载java基础类， 这个属性不能在java指令中指定，推断不是由java语言处理。
+        // BootStrap ClassLoader加载目录：C:\Program Files\Java\jdk1.8.0_311\jre\lib\resources.jar;C:\Program Files\Java\jdk1.8.0_311\jre\lib\rt.jar;C:\Program Files\Java\jdk1.8.0_311\jre\lib\sunrsasign.jar;C:\Program Files\Java\jdk1.8.0_311\jre\lib\jsse.jar;C:\Program Files\Java\jdk1.8.0_311\jre\lib\jce.jar;C:\Program Files\Java\jdk1.8.0_311\jre\lib\charsets.jar;C:\Program Files\Java\jdk1.8.0_311\jre\lib\jfr.jar;C:\Program Files\Java\jdk1.8.0_311\jre\classes
+        System.out.println("BootStrap ClassLoader加载目录：" + System.getProperty("sun.boot.class.path"));
+        // Extension ClassLoader 加载JAVA_HOME/ext下的jar包。 可通过-D java.ext.dirs另行指定目录
+        // Extension ClassLoader加载目录：C:\Program Files\Java\jdk1.8.0_311\jre\lib\ext;C:\WINDOWS\Sun\Java\lib\ext
+        System.out.println("Extension ClassLoader加载目录：" + System.getProperty("java.ext.dirs"));
+        // Application ClassLoader 加载CLASSPATH应用下的jar包。 可通过-D java.class.path另行指定目录
+        // Application ClassLoader加载目录：C:\Program Files\Java\jdk1.8.0_311\jre\lib\charsets.jar;C:\Program Files\Java\jdk1.8.0_311\jre\lib\deploy.jar;C:\Program Files\Java\jdk1.8.0_311\jre\lib\ext\access-bridge-64.jar;C:\Program Files\Java\jdk1.8.0_311\jre\lib\ext\cldrdata.jar;C:\Program Files\Java\jdk1.8.0_311\jre\lib\ext\dnsns.jar;C:\Program Files\Java\jdk1.8.0_311\jre\lib\ext\jaccess.jar;C:\Program Files\Java\jdk1.8.0_311\jre\lib\ext\jfxrt.jar;C:\Program Files\Java\jdk1.8.0_311\jre\lib\ext\localedata.jar;C:\Program Files\Java\jdk1.8.0_311\jre\lib\ext\nashorn.jar;C:\Program Files\Java\jdk1.8.0_311\jre\lib\ext\sunec.jar;C:\Program Files\Java\jdk1.8.0_311\jre\lib\ext\sunjce_provider.jar;C:\Program Files\Java\jdk1.8.0_311\jre\lib\ext\sunmscapi.jar;C:\Program Files\Java\jdk1.8.0_311\jre\lib\ext\sunpkcs11.jar;C:\Program Files\Java\jdk1.8.0_311\jre\lib\ext\zipfs.jar;C:\Program Files\Java\jdk1.8.0_311\jre\lib\javaws.jar;C:\Program Files\Java\jdk1.8.0_311\jre\lib\jce.jar;C:\Program Files\Java\jdk1.8.0_311\jre\lib\jfr.jar;C:\Program Files\Java\jdk1.8.0_311\jre\lib\jfxswt.jar;C:\Program Files\Java\jdk1.8.0_311\jre\lib\jsse.jar;C:\Program Files\Java\jdk1.8.0_311\jre\lib\management-agent.jar;C:\Program Files\Java\jdk1.8.0_311\jre\lib\plugin.jar;C:\Program Files\Java\jdk1.8.0_311\jre\lib\resources.jar;C:\Program Files\Java\jdk1.8.0_311\jre\lib\rt.jar;D:\Project\remote\target\classes;C:\JetBrains\IntelliJ_IDEA_2020_2_4\lib\idea_rt.jar
+        System.out.println("Application ClassLoader加载目录：" + System.getProperty("java.class.path"));
+    }
+}
+
+```
+
+
+
+> Java的类加载体系
+
+```shell
+BootStrap ClassLoader -> ExtClassLoader ->  AppClassLoader  # 每种类加载器都有自己的加载目录
+```
+
+
+
+类加载器模型如下图（**注意： 每个类加载器都会缓存已经加载过的类**）
+
+<img src="Java基础.assets/2505886_1564538979490_D5D109BB8EA439F60D4960AF194310AF" alt="img" style="zoom:67%;" />
+
+> 双亲委派机制
+
+双亲委派机制就是 当JVM收到一个类加载请求的时候，不会直接让当前类的类加载器加载该类，而是将请求委派给它的上层类加载器，这个过程一直持续到启动类加载器。如果上层的类加载器加载过了类， 就直接返回类， 如果类没有加载过，就自定向下尝试加载类， 如果找到了类就直接加载后返回，否则就抛出ClassNotFoundException异常
+
+概括的说就是 双亲委派机制就是加载类的时候自底向上查看类是否已经加载，如果已经加载就直接返回。否则就自顶向下尝试加载类，如果能找到类就直接加载后返回，否则就抛出异常
+
+源码在 java.lang.ClassLoader.java
+
+```java
+protected Class<?> loadClass(String name, boolean resolve)
+        throws ClassNotFoundException
+    {
+        synchronized (getClassLoadingLock(name)) {
+            // First, check if the class has already been loaded
+            Class<?> c = findLoadedClass(name);
+            if (c == null) {
+                long t0 = System.nanoTime();
+                try {
+                    if (parent != null) {
+                        c = parent.loadClass(name, false);
+                    } else {
+                        c = findBootstrapClassOrNull(name);
+                    }
+                } catch (ClassNotFoundException e) {
+                    // ClassNotFoundException thrown if class not found
+                    // from the non-null parent class loader
+                }
+
+                if (c == null) {
+                    // If still not found, then invoke findClass in order
+                    // to find the class.
+                    long t1 = System.nanoTime();
+                    c = findClass(name);
+
+                    // this is the defining class loader; record the stats
+                    sun.misc.PerfCounter.getParentDelegationTime().addTime(t1 - t0);
+                    sun.misc.PerfCounter.getFindClassTime().addElapsedTimeFrom(t1);
+                    sun.misc.PerfCounter.getFindClasses().increment();
+                }
+            }
+            if (resolve) {
+                resolveClass(c);
+            }
+            return c;
+        }
+    }
+```
+
+**为什么要使用双亲委派机制去加载类呢？**
+
+避免自定义的类覆盖核心类库的行为。比如我们可以自定义一个java.lang.Object的类，如果没有双亲委派机制，那么java.lang.Object的类加载请求就可能被App ClassLoader处理，这样就会加载自定义的java.lang.Object从而屏蔽了核心类库中的Object，影响JVM的正常工作。
+
+
+
+**自定义类加载器的优势：**
+
+- 类加载器是 Java 语言的一项创新，也是 Java 语言流行的重要原因之一，它最初的设计是为了满足 java applet 的需求而开发出来的
+
+- 高度的灵活性
+
+- 通过自定义类加载器可以实现热部署 （热加载）
+    - 很少用的原因，
+    -  1是很容易出错，其中包括热加载的jar包在复制的过程中很容易出错。 编译阶段就可以检查出来的问题都延迟到了运行时
+        - 2是每次热加载都要new 新的加载器，会产生很多垃圾对象
+    - 相关实现
+        - JReble
+        - SpringBoot devtool 
+    
+- 代码加密
+
+**自定义类加载器步骤：**
+
+- 定义一个类，继承 ClassLoader
+
+- 重写 loadClass 方法
+
+- 实例化 Class 对象
+
+
+
+>  JDK中类加载器的继承关系
+
+![image-20220404095613451](Java基础.assets/image-20220404095613451.png)
+
+可以发现，应用类加载器和扩展类加载器不是继承关系，他们都继承了URLClassLoader
+
+
+
+> 类的加载过程
+
+<img src="Java基础.assets/v2-ecf6c3d0f5146029e9693d6223d23afb_b.jpg" alt="img" style="zoom:67%;" />
+
+一个类的的类加载过程通常分为**加载、连接、初始化**三个部分， 具体的行为在java虚拟机规范中有详细的定义， 这里大致说一下
+
+- 加载Loading：这个过程是Java将字节码数据从不通的数据源读取到JVM中，并映射成为JVM认可的数据结构。而如果输入的Class不符合JVM的规范，就会抛出异常，这个阶段是用户可以参与的阶段，我们自定义的类加载器，就是工作在这个过程。
+- 连接Linking：这个是核心的步骤。又可以大致分成三个小阶段： 
+    - 1、验证： 检查JVM加载的字节信息是否符合Java虚拟机规范，否则就会报错。这个阶段是JVM的安全大门，防止黑客大神的恶意信息或者不合规信息危害JVM的正常运行
+    - 2、 准备： 这一阶段创建类或接口的静态变量， 并给这些静态变量赋一个初始值（不是最终指定的值）， 这一个部分的作用更大的是预分配内存。
+    - 3、 解析： 这一步主要是将常量池中的符号引用替换为直接引用。 例如我们有个类A调用类B的方法， 这些在代码层次还只是一些对计算机没有意义符号引用，在这一阶段就会转换成计算机所能理解的堆栈，引用等这些直接引用。
+- 初始化Initialization: 这一步才是真正去执行类初始化的代码逻辑， 包括执行static静态代码块，给静态变量赋值等。
+
+
+
+## SPI  
+
+SPI : SPI全称Service Provider Interface 服务提供者接口，是Java提供的一套用来被第三方实现或者扩展的API，它可以用来启用框架扩展和替换组件。
+
+参考 https://www.jianshu.com/p/46b42f7f593c
+
+基本概念
+
+```
+Java SPI 实际上是“基于接口的编程＋策略模式＋配置文件”组合实现的动态加载机制。
+
+系统设计的各个抽象，往往有很多不同的实现方案，在面向的对象的设计里，一般推荐模块之间基于接口编程，模块之间不对实现类进行硬编码。一旦代码里涉及具体的实现类，就违反了可拔插的原则，如果需要替换一种实现，就需要修改代码。为了实现在模块装配的时候能不在程序里动态指明，这就需要一种服务发现机制。
+Java SPI就是提供这样的一个机制：为某个接口寻找服务实现的机制。有点类似IOC的思想，就是将装配的控制权移到程序之外，在模块化设计中这个机制尤其重要。所以SPI的核心思想就是解耦。
+```
+
+<img src="Java基础.assets/image-20220404171804059.png" alt="image-20220404171804059" style="zoom:67%;" />
+
+
+
+使用SPI的场景
+
+- JDBC的Driver接口
+- Dubbo
+- ShardingSphere
+- Spring
+
+
+
+
+
+
 
 
 
@@ -1115,7 +1319,7 @@ java.util.regex 包主要包括以下三个类：
 
 - Pattern 类：
 
-  pattern 对象是一个正则表达式的编译表示。Pattern 类没有公共构造方法。要创建一个 Pattern 对象，你必须首先调用其公共静态编译方法，它返回一个 Pattern 对象。该方法接受一个正则表达式作为它的第一个参数。
+  pattern 对象是一个正则表达式的编译表示。Pattern 类**没有公共构造方法**。要创建一个 Pattern 对象，你必须首先调用其公共静态编译compile()方法，它返回一个 Pattern 对象。该方法接受一个正则表达式作为它的第一个参数。
 
   Pattern.matches(pattern, content)方法 查找字符串content中是否包了pattern
 
@@ -1123,7 +1327,7 @@ java.util.regex 包主要包括以下三个类：
 
 - Matcher 类：
 
-  Matcher 对象是对输入字符串进行解释和匹配操作的引擎。与Pattern 类一样，Matcher 也没有公共构造方法。你需要调用 Pattern 对象的 matcher 方法来获得一个 Matcher 对象。
+  Matcher 对象是对输入字符串进行解释和匹配操作的引擎。与Pattern 类一样，Matcher 也没有公共构造方法。你需要调用 **Pattern 对象的 matcher 方法**来获得一个 Matcher 对象。
 
   Matcher m = Pattern.compile(pattern).matcher(content); 查找content字符串
 
@@ -1155,6 +1359,33 @@ public String replaceAll(String replacement)
 // 替换模式与给定替换字符串匹配的输入序列的第一个子序列。
 public String replaceFirst(String replacement)
 ```
+
+
+
+| 字符          | 说明                                                         |
+| ------------- | ------------------------------------------------------------ |
+| (*pattern*)   | 匹配 *pattern* 并捕获该匹配的子表达式。可以使用 **$0…$9** 属性从结果"匹配"集合中检索捕获的匹配。若要匹配括号字符 ( )，请使用"\("或者"\)"。 |
+| (?:*pattern*) | 匹配 *pattern* 但不捕获该匹配的子表达式，即它是一个**非捕获匹配**，不存储供以后使用的匹配。这对于用"or"字符 (\|) 组合模式部件的情况很有用。例如，'industr(?:y\|ies) 是比 'industry\|industries' 更经济的表达式。 |
+| (?=*pattern*) | 执行正向预测先行搜索的子表达式，该表达式匹配处于匹配 *pattern* 的字符串的起始点的字符串。它是一个**非捕获匹配**，即不能捕获供以后使用的匹配。例如，'Windows (?=95\|98\|NT\|2000)' 匹配"Windows 2000"中的"Windows"，但不匹配"Windows 3.1"中的"Windows"。预测先行不占用字符，即发生匹配后，下一匹配的搜索紧随上一匹配之后，而不是在组成预测先行的字符后。 |
+| \b   | 匹配一个字边界，即字与空格间的位置。例如，"er\b"匹配"never"中的"er"，但不匹配"verb"中的"er"。 |
+| \B   | 非字边界匹配。"er\B"匹配"verb"中的"er"，但不匹配"never"中的"er"。 |
+
+
+
+> 捕获组
+
+捕获组是把多个字符当一个单独单元进行处理的方法，它通过对括号内的字符分组来创建。
+例如，正则表达式 (dog) 创建了单一分组，组里包含"d"，"o"，和"g"。
+捕获组是通过从左至右计算其开括号来编号。例如，在表达式（（A）（B（C））），有四个这样的组：
+- ((A)(B(C)))
+- (A)
+- (B(C))
+- (C)
+
+可以通过调用 matcher 对象的 groupCount 方法来查看表达式有多少个分组。groupCount 方法返回一个 int 值，表示matcher对象当前有多个捕获组。
+还有一个特殊的组（group(0)），它总是代表整个表达式。该组不包括在 groupCount 的返回值中。
+
+
 
 
 
@@ -1678,8 +1909,13 @@ for (StackTraceElement stackElement : stackElements) {
 
 
 
-
 ## jar包相关
+
+参考： https://www.cnblogs.com/mq0036/p/8566427.html
+
+
+
+
 
 linux 下单java文件编译和导入jar包， jar包放在/xxx/lib/下
 
@@ -1702,31 +1938,31 @@ java -jar xxx.jar
 
 ```xml
 <build>
-        <finalName>test-yara</finalName>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-                <version>2.4</version>
-                <configuration>
-                    <archive>
-                        <manifest>
-                            <mainClass>com.sangfor.yara.Main</mainClass>
-                        </manifest>
-                        <manifestEntries>
-                            <Class-Path>.</Class-Path>
-                        </manifestEntries>
-                    </archive>
-                    <!-- exclude resource files or directories -->
-                    <excludes>
-                    </excludes>
-                    <includes>
+    <finalName>test-yara</finalName>
+    <plugins>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-jar-plugin</artifactId>
+            <version>2.4</version>
+            <configuration>
+                <archive>
+                    <manifest>
+                        <mainClass>com.sangfor.yara.Main</mainClass>
+                    </manifest>
+                    <manifestEntries>
+                        <Class-Path>.</Class-Path>
+                    </manifestEntries>
+                </archive>
+                <!-- exclude resource files or directories -->
+                <excludes>
+                </excludes>
+                <includes>
 
-                    </includes>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
+                </includes>
+            </configuration>
+        </plugin>
+    </plugins>
+</build>
 ```
 
 
