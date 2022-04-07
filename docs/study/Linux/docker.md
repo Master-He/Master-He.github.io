@@ -88,6 +88,15 @@ docker pull [想要下拉镜像] # docker pull mysql:8
 
 docker rmi [想要删除的镜像id] # docker rmi feb5d9fea6a5
 	docker rmi -f $(docker images -aq)
+	
+docker commit -m="描述信息" -a="作者" 容器id 目标镜像名：tag
+	# 例如 docker commit -a="hwj" -m="add webapps app" d798a5946c1f tomcat-hwj:1.0
+
+docker tag SOURCE_IMAGE[:TAG] TARGET_IMAGE[:TAG] # 增加容器标签 （由此可实现改镜像名）
+	# 例如 docker tag tomcat-hwj:1.0 tomcat-hwj:latest
+	
+docker history [镜像名or镜像id] # 查看镜像的提交层
+	# 例如 docker history mysql:5.7
 ```
 
 
@@ -106,6 +115,9 @@ docker run [可选参数] image
 	-p	容器端口
 	容器端口
 -P		随机指定端口
+--restart=always 随着docker服务的重启而重启
+--privileged=true 优先启动
+--rm 容器用完就删
 
 
 docker rm [想要删除的容器id]  # 删除容器
@@ -133,6 +145,27 @@ docker cp [源] [目的]  # 容器和宿主机之前相互复制文件
 
 
 
+## 数据卷
+
+```shell
+docker volume ls  # 数据卷一般都是在/var/lib/docker/volumes/[数据据卷名]/_data目录里面
+docker run -d -P --name nginx01 -v /etc/nginx nginx  # 匿名挂载
+docker run -d -P --name nginx02 -v juming-nginx:/etc/nginx nginx # 具名挂载，自动创建一个叫juming-nginxjuming-nginx的数据卷
+	# 如何确定是具名挂载还是匿名挂载，还是指定路径挂载！
+    -v	容器内路径					# 匿名挂载
+    -v	卷名:容器内路径			   # 具名挂载
+    -v /主机路径:容器内路径			  # 指定路径挂载
+docker run -d -P --name nginx02 -v juming-nginx:/etc/nginx:ro nginx 
+	# :ro read only
+	# :rw read write
+	
+docker run --volumes-from [某容器名或容器id] #使用某容器的数据卷作为自己的数据卷， 实现容器之间数据共享
+$ docker run -d -p 3344:3306 -v /etc/mysql/conf.d -v /var/lib/mysql -e MYSQL_ROOT_PASSWORD=123456 --name mysql01 mysql:5.7
+$ docker run -d -p 3345:3306 -v /etc/mysql/conf.d -v /var/lib/mysql -e MYSQL_ROOT_PASSWORD=123456 --name mysql02 --volumes-from mysql01 mysql:5.7
+```
+
+
+
 
 
 ## 网络
@@ -148,6 +181,14 @@ docker version # docker版本信息
 docker info # 系统级别的信息，包括镜像和容器的数量, docker镜像源
 docker 具体命令 --help # 比如 docker run --help
 docker inspect [容器id或者镜像id] # 查看容器或者镜像的元信息
+docker stats  # 查看容器状态，包括CPU使用率和MEM使用率
+docker prune # 命令用来删除不再使用的 docker 对象。
+	docker image prune -a # 删除所有未被容器使用的镜像
+	docker container prune # 删除所有停止运行的容器
+	docker volume prune # 删除所有未被挂载的卷
+	docker network prune # 删除所有未被使用的网络:
+	docker system prune # 删除 docker 所有资源:
+docker push # 发布镜像到DockerHub或者阿里云镜像仓库
 ```
 
 
@@ -172,11 +213,9 @@ curl https://registry.hub.docker.com/v1/repositories/mysql/tags\
 
 
 
-# 其他
+# 部署
 
-> 部署Demo (Nginx, Tomcat, ES+kibana)
-
-部署Nginx
+> 部署Nginx
 
 ```shell
 docker run -d --name nginx01 -p 3344:80 nginx	# 后台方式启动启动镜像 （注意要防火墙要开启3344端口）
@@ -190,9 +229,208 @@ curl localhost:3344	# 本地访问测试
 
 
 
-部署Tomcat
+>  部署Tomcat
 
-部署ES+kibana
+```shell
+docker run -d -p 3355:8080 --name tomcat01 tomcat:9
+```
+
+
+
+>  部署ES
+
+```shell
+docker run -d --name es -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" -e ES_JAVA_OPTS="-Xms64m -Xmx512m"  elasticsearch:7.6.2
+
+docker stats  # 查看容器状态，CPU使用率和MEM使用率
+# 参数说明
+# -e 是设置环境变量
+# ES_JAVA_OPTS="-Xms64m -Xmx512m" 将jvm的内存限制在64~512M
+```
+
+
+
+> 部署Docker可视化界面 portainer
+
+```shell
+docker run -d -p 9000:9000 --restart=always -v /var/run/docker.sock:/var/run/docker.sock --privileged=true portainer/portainer
+```
+
+
+
+> 部署Mysql
+
+```shell
+docker run -d -p 3355:3306 -v /home/mysql/conf:/etc/mysql/conf.d -v /home/mysql/data:/var/lib/mysql -e MYSQL_ROOT_PASSWORD=123456 --name mysql01 mysql:5.7
+
+# 用户名root
+# 密码123456
+# 端口3355
+```
+
+
+
+
+
+# Dockerfile
+
+Dockerfile hello-world
+
+```shell
+# 创建一个dockerfile文件， 名字可以随机
+vim dockerfile1
+
+
+# 文件的内容 指定（大写） 参数,  这里的每一个命令都是镜像的一层！
+​```
+FROM centos
+
+VOLUME ["volume01", "volume02"]
+
+CMD echo "----end----"
+CMD /bin/bash
+​```
+
+:wq退出
+
+docker build -f dockerfile1 -t my-centos:1.0 .  # 在"."，即当前目录下生成镜像
+# -t 指定标签
+
+docker run -it [镜像id] bash  # 进入容器
+```
+
+简化版hello-world
+
+```shell
+
+vim Dockerfile  # 默认
+
+# 输入内容
+​```
+FROM centos
+
+VOLUME ["volume01", "volume02"]
+
+CMD echo "----end----"
+CMD /bin/bash
+​```
+
+:wq退出
+
+docker build -t my-centos:2.0 . # 如果名字是Dockerfile，可以省略
+
+docker run -it [镜像id] bash   # 进入容器
+```
+
+
+
+## Dockerfile命令
+
+```shell
+FROM			# 基础镜像，一切从这里开始构建
+MAINTAINER		# 镜像是谁写的？ 姓名+邮箱
+RUN				# 镜像构建的时候需要运行的命令
+WORKDIR			# 镜像的工作目录
+VOLUME			# 挂载的目录
+EXPOSE			# 暴露的端口
+ONBUILD			# 当构建一个被继承DockerFile 这个时候就会运行 ONBUILD 的指令，触发指令
+ENV 			# 构建的时候设置环境变量！ 注意是构建环境时！
+-------------------------------------
+CMD				# 指定这个容器启动(运行)的时候要运行的命令，只有最后一个会生效可被替代
+ENTRYPOINT		# 指定这个容器启动的时候要运行的命令， 可以追加命令
+-------------------------------------
+ADD				# 复制并自动解压
+COPY			# 类似ADD, 将我们文件拷贝到镜像中
+```
+
+
+
+> Dockerfile 命令 Demo1
+
+```shell
+# 1. 编写Dockerfile的文件
+[root@locahost /home/hwj]# cat mydockerfile-centos 
+FROM centos:7
+MAINTAINER hwj<123456789@qq.com>
+
+ENV MYPATH /usr/local
+WORKDIR $MYPATH		# 镜像的工作目录
+
+RUN yum -y install vim
+RUN yum -y install net-tools
+
+EXPOSE 80
+
+CMD echo $MYPATH  # 不生效
+CMD echo "---end---"  # 不生效
+CMD /bin/bash  # 只有最后一个CMD会生效
+
+# 2. 通过这个文件构建镜像
+# 命令 docker build -f dockerfile文件路径 -t 镜像名:[tag] .
+
+[root@locahost /home/hwj]# docker build -f mydockerfile-centos -t mycentos:0.1 .
+
+Successfully built d2d9f0ea8cb2
+Successfully tagged mycentos:0.1
+```
+
+
+
+> Dockerfile 命令 Demo2
+
+```shell
+# 1. 编写Dockerfile的文件
+FROM centos:7
+MAINTAINER hwj<123456789@qq.com>
+
+COPY readme.txt /usr/local/readme.txt
+
+# 需要提前下载好这两个jar包到宿主机内
+ADD jdk-8u73-linux-x64.tar.gz /usr/local/
+ADD apache-tomcat-9.0.37.tar.gz /usr/local/
+
+RUN yum -y install vim
+
+ENV MYPATH /usr/local
+WORKDIR $MYPATH
+
+ENV JAVA_HOME /usr/local/jdk1.8.0_73
+ENV CLASSPATH $JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar
+ENV CATALINA_HOME /usr/local/apache-tomcat-9.0.37
+ENV CATALINA_BASH /usr/local/apache-tomcat-9.0.37
+ENV PATH $PATH:$JAVA_HOME/bin:$CATALINA_HOME/lib:$CATALINA_HOME/bin
+
+EXPOSE 8080
+
+CMD /usr/local/apache-tomcat-9.0.37/bin/startup.sh && tail -F /usr/local/apache-tomcat-9.0.37/bin/logs/catalina.out
+
+# 2. 构建镜像
+docker build -t diytomcat .
+
+# 3. 测试
+```
+
+
+
+
+
+
+
+
+
+# 其他
+
+
+
+##  UFS联合文件系统
+
+对文件系统进行分层管理， 一次修改提交就是一层
+
+bootfs 引导加载内核
+
+rootfs 包含了基本命令，工具， 程序库等
+
+容器比启动的比VM虚拟机快的原因： 直接使用宿主机的内核，  所以效率很快！
 
 
 
@@ -201,4 +439,6 @@ curl localhost:3344	# 本地访问测试
 镜像配置目录： /etc/docker/daemon.json
 
 默认工作路径： /var/lib/docker/
+
+
 
