@@ -97,6 +97,12 @@ docker tag SOURCE_IMAGE[:TAG] TARGET_IMAGE[:TAG] # 增加容器标签 （由此�
 	
 docker history [镜像名or镜像id] # 查看镜像的提交层
 	# 例如 docker history mysql:5.7
+	
+docker save # 保存成tar包
+	# docker save -o ./tomcat-hwj.tar tomcat-hwj:1.0  # -o output
+	
+docker load # 载入tar包
+	# docker load -q -i tomcat-hwj.tar # -q镇压载入时的输出， -i input
 ```
 
 
@@ -119,7 +125,6 @@ docker run [可选参数] image
 --privileged=true 优先启动
 --rm 容器用完就删
 
-
 docker rm [想要删除的容器id]  # 删除容器
 	docker rm -f [想要删除的容器id]  # 强制删除容器
 	docker rm -f $(docker ps -aq)		# 删除所有容器
@@ -141,6 +146,7 @@ docker logs -tf --tail [尾部行数] [容器id] # 查看容器运行的日志
 docker cp [源] [目的]  # 容器和宿主机之前相互复制文件
 	docker cp a.txt 32fc06bf21e6:/tmp  # 将宿主机的a.txt复制到容器32fc06bf21e6的/tmp下
 	docker cp 32fc06bf21e6:/tmp/b.txt ./  # 将容器32fc06bf21e6的/tmp/b.txt复制到宿主机的当前目录./下
+
 ```
 
 
@@ -170,6 +176,13 @@ $ docker run -d -p 3345:3306 -v /etc/mysql/conf.d -v /var/lib/mysql -e MYSQL_ROO
 
 ## 网络
 
+```shell
+docker network ls 
+docker network inspect [网络id] # docker network inspect ac8239bb3527
+docker network rm
+docker network create
+```
+
 
 
 
@@ -188,6 +201,7 @@ docker prune # 命令用来删除不再使用的 docker 对象。
 	docker volume prune # 删除所有未被挂载的卷
 	docker network prune # 删除所有未被使用的网络:
 	docker system prune # 删除 docker 所有资源:
+docker login # 登录
 docker push # 发布镜像到DockerHub或者阿里云镜像仓库
 ```
 
@@ -412,6 +426,41 @@ docker build -t diytomcat .
 
 
 
+# 网络
+
+在宿主机和容器里输入 ip addr 命令， 发现宿主机和容器的网卡是成对的，
+
+这里使用的是linux的 **evth-pair** 技术: 就是一对虚拟设备接口，成对出现
+
+
+
+> 容器互连 --link
+
+```shell
+docker run -dit --name centos01 centos:7 bash
+docker run -dit --name centos02 --link centos01 centos:7 bash
+	# 这样centos02里面可以直接ping centos01的名字了
+	# 解释：相当于centos01变成了一个域名，不用知道centos01的ip就能ping通
+docker exec -it [centos02的容器id] cat /etc/hosts
+	# docker exec -it 581f361a9313 cat /etc/hosts
+```
+
+
+
+## 网络分类
+
+桥接
+
+host
+
+none
+
+container
+
+
+
+## 自定义网络
+
 
 
 
@@ -433,6 +482,10 @@ rootfs 包含了基本命令，工具， 程序库等
 容器比启动的比VM虚拟机快的原因： 直接使用宿主机的内核，  所以效率很快！
 
 
+
+## 更换docker镜像存储目录
+
+pass...
 
 
 
