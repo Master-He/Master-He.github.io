@@ -181,6 +181,7 @@ docker network ls
 docker network inspect [网络id] # docker network inspect ac8239bb3527
 docker network rm
 docker network create
+docker network connect
 ```
 
 
@@ -441,13 +442,15 @@ docker run -dit --name centos01 centos:7 bash
 docker run -dit --name centos02 --link centos01 centos:7 bash
 	# 这样centos02里面可以直接ping centos01的名字了
 	# 解释：相当于centos01变成了一个域名，不用知道centos01的ip就能ping通
+docker exec -it [centos02的容器id] ping centos01
+	# docker exec -it 581f361a9313 ping centos01
 docker exec -it [centos02的容器id] cat /etc/hosts
 	# docker exec -it 581f361a9313 cat /etc/hosts
 ```
 
 
 
-## 网络分类
+## 网络模式
 
 桥接
 
@@ -460,6 +463,39 @@ container
 
 
 ## 自定义网络
+
+自定义网络
+
+```shell
+docker network create -d bridge --subnet 192.168.0.0/16 --gateway 192.168.0.1 mynet
+	# -d, --driver string        Driver to manage the Network (default "bridge")
+	# --subnet strings       Subnet in CIDR format that represents a network segment
+	# --gateway strings      IPv4 or IPv6 Gateway for the master subnet
+docker network inspect [网络id]  # 查看网络
+```
+
+使用自定义网络
+
+```shell
+docker run -dit --name centos01 --net mynet centos-hwj:7 bash   # 容器id：5886c0299c11
+	# centos-hwj:7是在centos:7的基础上加net-tools工具
+docker run -dit --name centos02 --net mynet centos-hwj:7 bash   # 容器id：b22d43ffe7d9
+docker network inspect [网络id]  # 再次查看网络，会发现有两个容器连入了自定义网络
+docker exec -it b22d43ffe7d9 ping centos01  # 发现可以ping通centos01
+
+
+docker run -dit --name centos03 centos-hwj:7 bash  # 容器id：eea5527a450e
+docker run -dit --name centos04 centos-hwj:7 bash  # 容器id: 6ca85a8dffc7
+docker exec -it b22d43ffe7d9 ping centos03  # 发现不能ping通centos03
+
+
+docker network connect mynet eea5527a450e  #将centos03加入mynet网络，实际上多了一个ip
+docker network connect mynet 6ca85a8dffc7  
+	# docker exec -it 6ca85a8dffc7 ip addr 发现6ca85a8dffc7有两个ip地址
+docker exec -it b22d43ffe7d9 ping centos03  # 加入网络后就可以正常ping通centos03
+```
+
+
 
 
 
