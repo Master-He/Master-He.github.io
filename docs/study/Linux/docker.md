@@ -204,6 +204,9 @@ docker prune # 命令用来删除不再使用的 docker 对象。
 	docker system prune # 删除 docker 所有资源:
 docker login # 登录
 docker push # 发布镜像到DockerHub或者阿里云镜像仓库
+docker build # 需要写Dockerfile文件
+	docker build -f dockerfile1 -t my-centos:1.0 .  # 
+	docker build -t my-centos:1.0 .  # 当文件为Dockerfile， 可以省略-f Dockerfile
 ```
 
 
@@ -230,7 +233,7 @@ curl https://registry.hub.docker.com/v1/repositories/mysql/tags\
 
 # 部署
 
-> 部署Nginx
+## 部署Nginx
 
 ```shell
 docker run -d --name nginx01 -p 3344:80 nginx	# 后台方式启动启动镜像 （注意要防火墙要开启3344端口）
@@ -244,7 +247,7 @@ curl localhost:3344	# 本地访问测试
 
 
 
->  部署Tomcat
+## 部署Tomcat
 
 ```shell
 docker run -d -p 3355:8080 --name tomcat01 tomcat:9
@@ -252,7 +255,7 @@ docker run -d -p 3355:8080 --name tomcat01 tomcat:9
 
 
 
->  部署ES
+## 部署ES
 
 ```shell
 docker run -d --name es -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" -e ES_JAVA_OPTS="-Xms64m -Xmx512m"  elasticsearch:7.6.2
@@ -265,7 +268,7 @@ docker stats  # 查看容器状态，CPU使用率和MEM使用率
 
 
 
-> 部署Docker可视化界面 portainer
+## 部署Docker可视化界面 portainer
 
 ```shell
 docker run -d -p 9000:9000 --restart=always -v /var/run/docker.sock:/var/run/docker.sock --privileged=true portainer/portainer
@@ -273,7 +276,7 @@ docker run -d -p 9000:9000 --restart=always -v /var/run/docker.sock:/var/run/doc
 
 
 
-> 部署Mysql
+## 部署Mysql
 
 ```shell
 docker run -d -p 3355:3306 -v /home/mysql/conf:/etc/mysql/conf.d -v /home/mysql/data:/var/lib/mysql -e MYSQL_ROOT_PASSWORD=123456 --name mysql01 mysql:5.7
@@ -497,13 +500,181 @@ docker exec -it b22d43ffe7d9 ping centos03  # 加入网络后就可以正常ping
 
 
 
+# Docker-Compose
+
+> 下载安装docker-compose
+
+```shell
+curl -L https://github.com/docker/compose/releases/download/1.8.1/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose 
+chmod 777 /usr/local/bin/docker-compose
+docker-compose version # 查看版本看是否下载成功
+```
+
+> hello-word demo 参考官网： https://docs.docker.com/compose/gettingstarted/
+
+```yaml
+version: "3.9"
+services:
+  web:
+    build: .
+    ports:
+      - "8000:5000"
+  redis:
+    image: "redis:alpine"
+```
+
+> Docker build 太慢解决方法
+
+因为Alpine基础镜像用的是apk包管理工具，国内访问apk仓库极度缓慢，所以换成国内的仓库
+
+参考https://yeasy.gitbook.io/docker_practice/os/alpine
+
+```shell
+# 原本是 RUN apk add --no-cache gcc musl-dev linux-headers
+# 在apk前面加上 sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories &&
+RUN sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories && apk add --no-cache gcc musl-dev linux-headers
+```
+
+pip源也换成国内的！
+
+参考https://blog.csdn.net/qq_40244755/article/details/112388320
+
+```shell
+# RUN pip install -U pip
+RUN pip config set global.index-url http://mirrors.aliyun.com/pypi/simple
+RUN pip config set install.trusted-host mirrors.aliyun.com
+```
 
 
 
+
+
+## docker-compose常用命令
+
+```shell
+docker-compose build
+docker-compose up
+```
+
+
+
+实战: 部署wordpress
+
+参考https://docs.docker.com/samples/wordpress/ ， 如果链接失效就去搜索docker 文档里搜 wordpress
+
+
+
+
+
+# Docker-Swarm
+
+[工作机制](https://docs.docker.com/engine/swarm/how-swarm-mode-works/nodes/)
+
+![Swarm mode cluster](docker.assets/swarm-diagram.png)
+
+## 常用命令
+
+```shell
+docker swarm init
+  # demo: docker swarm init --advertise-addr 192.168.0.111
+  # 会生成一个swarm集群
+docker swarm join
+  # demo: docker swarm join-token manager  # 会打印加入集群成为manager的命令
+  # demo: docker swarm join-token worker # # 会打印加入集群成为worker的命令
+docker node ls  # 查看节点
+docker swarm leave # 离开集群
+```
+
+
+
+执行docker swarm init --advertise-addr 192.168.0.111会打印， **这个时候需要开放2377端口！**
+
+```shell
+Swarm initialized: current node (stw3wnedp6yurwp5lczwaulp7) is now a manager.
+
+To add a worker to this swarm, run the following command:
+
+    docker swarm join --token SWMTKN-1-4qe8r3jrbwejpv7vlino8xcj8y6npebypm6z0l23dc0csqp6sd-8tq8hhga99yk8p0oq4njdxyks 192.168.0.111:2377
+
+To add a manager to this swarm, run 'docker swarm join-token manager' and follow the instructions.
+```
+
+
+
+参考 [Docker swarm集群增加节点](https://www.cnblogs.com/zoujiaojiao/p/10886262.html)
+
+
+
+## warm 网络
+
+overlay
+
+ingress, 就是特殊的overlay网络
+
+这些内容有空再继续深入研究
+
+
+
+
+
+# Docker服务
+
+
+
+## 常用命令
+
+```shell
+docker service create  # 创建服务
+  # demo: docker service create -p 8888:80 --name my-nginx nginx
+docker service ls # 查看有哪些服务
+docker service ps [服务名] # 查看服务
+  # demo： docker service ps my-nginx
+docker service update # 动态更新容器, 可以扩缩容
+  # demo: docker service update --replicas 5 my-nginx
+docker service scale # 
+  # demo: docker service scale my-nginx=5
+docker service rm # 移除服务
+  # demo: docker service rm my-nginx
+```
+
+
+
+遇到一个问题：Pool overlaps with other one on this address space ，导致服务的5个容器都创建在同一台机器上。
+
+解决办法：`docker network prune`
+
+参考：
+
+https://github.com/maxking/docker-mailman/issues/85
+
+https://blog.csdn.net/x1097374154/article/details/105481211
 
 
 
 # 其他
+
+
+
+## docker stack
+
+```shell
+# 单机部署项目
+docker-compose up -d wordpress.yaml
+# 集群部署项目
+docker stack deploy  # 百度搜一下， 有空再了解
+```
+
+
+
+## docker secret
+
+安全相关， 配置密码，证书
+
+
+
+## docker config
+
+多个容器统一配置
 
 
 
