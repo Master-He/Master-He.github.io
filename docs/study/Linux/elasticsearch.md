@@ -190,9 +190,25 @@ ik提供两种分词算法： ik_smart 和 ik_max_word， 其中ik_smart是最�
 
 ik_smart 效果：
 
+```shell
+GET _analyze 
+{
+  "analyzer": "ik_smart",
+  "text": "中国共产党"
+}
+```
+
 ![image-20220410221318789](elasticsearch.assets/image-20220410221318789.png)
 
 ik_max_word效果：
+
+```shell
+GET _analyze 
+{
+  "analyzer": "ik_max_word",
+  "text": "中国共产党"
+}
+```
 
 ![image-20220410221335195](elasticsearch.assets/image-20220410221335195.png)
 
@@ -271,4 +287,492 @@ GET _cat/indices?v
 
 
 # 6. 文档的CURD(重点)
+
+ 
+
+## 1、添加数据 PUT
+
+```shell
+PUT /index1/_doc/1
+{
+  "name": "hwj",
+  "age": 27
+}
+```
+
+
+
+![image-20220411222935324](elasticsearch.assets/image-20220411222935324.png)
+
+
+
+## 2、 查询数据 GET
+
+### 简单的条件查询
+
+```shell
+GET /index1/_doc/1
+```
+
+
+
+![image-20220412212048576](elasticsearch.assets/image-20220412212048576.png)
+
+ 
+
+### 复杂的条件搜索
+
+```SH
+# 这几个等价
+GET index1/_doc/_search?q=name:hwj
+GET index1/_search?q=name:hwj
+GET index1/_search
+{
+  "query": {
+    "match": {
+      "name": "hwj"
+    }
+  }
+}
+```
+
+![image-20220412214540720](elasticsearch.assets/image-20220412214540720.png)
+
+
+
+### 结果字段的过滤用_source
+
+```shell
+GET index1/_search
+{
+  "query": {
+    "match": {
+      "name": "特朗普"
+    }
+  }, 
+  "_source": ["name", "age"]
+}
+```
+
+  
+
+### 排序
+
+```shell
+GET index1/_search
+{
+  "query": {
+    "match": {
+      "name": "特朗普"
+    }
+  }, 
+  "_source": ["name", "age"],
+  "sort": [
+    {
+      "age": {
+        "order": "asc"
+      }
+    }
+  ]
+}
+```
+
+
+
+### 分页
+
+```
+GET index1/_search
+{
+  "query": {
+    "match": {
+      "name": "特朗普"
+    }
+  }, 
+  "_source": ["name", "age"],
+  "sort": [
+    {
+      "age": {
+        "order": "asc"
+      }
+    }
+  ],
+  "from": 0,
+  "size": 2
+}
+```
+
+
+
+### 布尔值查询
+
+#### must ( and )， 所有的条件都要符合！
+
+```shell
+# 搜索名叫特朗普并且是71岁的人
+GET index1/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "match": {
+            "name": "唐特朗普"
+          }
+        },
+        {
+          "match": {
+            "age": "71"
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+#### should（or）, 有一个条件符合即可！
+
+```shell
+# 搜索名叫特朗普或者71岁的人
+GET index1/_search
+{
+  "query": {
+    "bool": {
+      "should": [
+        {
+          "match": {
+            "name": "特朗普"
+          }
+        },
+        {
+          "match": {
+            "age": "71"
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+#### must_not ( not )， 条件取反
+
+```json
+# 搜索不叫特朗普的人
+GET index1/_search
+{
+  "query": {
+    "bool": {
+      "must_not": [
+        {
+          "match": {
+            "name": "唐特朗普"
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+#### filter ,过滤得到符合条件的
+
+```json
+# 过滤得到71-72年龄段的人
+GET index1/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "match": {
+            "name": "唐特朗普"
+          }
+        }
+      ],
+      "filter": [
+        {
+          "range": {
+            "age": {
+              "gte": 71,
+              "lte": 72
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+### 匹配多个条件
+
+匹配一个条件
+
+```json
+GET index1/_search
+{
+  "query": {
+    "match": {
+      "tags": "总统"
+    }
+  }
+}
+```
+
+
+
+匹配多个条件（多个条件用空格分开，只要有个条件匹配到即可，条件匹配到的越多score越高）
+
+```json
+GET index1/_search
+{
+  "query": {
+    "match": {
+      "tags": "总统 男人 负翁"
+    }
+  }
+}
+```
+
+
+
+### 精确查询 term
+
+term 查询是直接通过**倒排索引**指定的词条进行精确的查找
+
+**关于分词：**
+
+term， 直接查询精确的值
+
+match， 会使用分词器解析！（先分析文档，然后再通过分析的文档进行查询！）
+
+**两个类型：**
+
+text: 会被分词器解析
+
+keyword: 不会被分词器解析
+
+
+
+我们先创建测试用的索引
+
+```json
+PUT test_index
+{
+  "mappings": {
+    "properties": {
+      "name": {
+        "type": "text"
+      },
+      "desc": {
+        "type": "keyword"
+      }
+    }
+  }
+}
+```
+
+然后插入数据
+
+```json
+PUT test_index/_doc/1
+{
+  "name": "特朗普教java name",
+  "desc": "特朗普教java desc"
+}
+PUT test_index/_doc/2
+{
+  "name": "特朗普教java name",
+  "desc": "特朗普教java desc2"
+}
+```
+
+然后进行分词查看， 发现**standard会被分词器解析， 而keyword不会**
+
+```json
+# 没有被拆分
+GET _analyze
+{
+  "analyzer": "keyword",
+  "text": "特朗普说java name"
+}
+
+# 被拆分成了特，朗，普，说，java，name
+GET _analyze
+{
+  "analyzer": "standard",
+  "text": "特朗普说java name"
+}
+```
+
+然后进行搜索查询
+
+```json
+GET test_index/_search
+{
+  "query": {
+    "term": {
+      "name": {
+        "value": "特"
+      }
+    }
+  }
+}
+GET test_index/_search
+{
+  "query": {
+    "term": {
+      "desc": {
+        "value": "特朗普教java desc"
+      }
+    }
+  }
+}
+GET test_index/_search
+{
+  "query": {
+    "term": {
+      "desc": {
+        "value": "特朗普教java desc2"
+      }
+    }
+  }
+}
+```
+
+### 多个值匹配精确查询
+
+```json
+# 创建数据1
+PUT test_index/_doc/3
+{
+  "t1": "22",
+  "ts": "2022-02-02"
+}
+
+# 创建数据2
+PUT test_index/_doc/4
+{
+  "t1": "33",
+  "ts": "2033-03-03"
+}
+
+# 多个值匹配（方法1）
+GET test_index/_search
+{
+  "query": {
+    "bool": {
+      "should": [
+        {
+          "term": {
+            "t1": {
+              "value": "22"
+            }
+          }
+        },
+        {
+          "term": {
+            "t1": {
+              "value": "33"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+
+# 多个值匹配（方法2）
+GET test_index/_search
+{
+  "query": {
+    "terms": {
+      "t1": [
+        "22",
+        "33"
+      ]
+    }
+  }
+}
+```
+
+  
+
+### 高亮查询
+
+```json
+# 对name字段进行高亮
+GET index1/_search
+{
+  "query": {
+    "match": {
+      "name": "特朗普"
+    }
+  },
+  "highlight": {
+    "fields": {
+      "name": {}
+    }
+  }
+}
+```
+
+
+
+
+
+
+
+
+
+## 3、更新数据 PUT POST
+
+put 全部更新（不建议使用）
+
+```
+PUT index1/_doc/1
+{
+  "name": "hwj",
+  "age": 18,
+  "date": "1999-12-12"
+}
+```
+
+
+
+![image-20220412213152293](elasticsearch.assets/image-20220412213152293.png)
+
+post _update 部分更新 (推荐使用)
+
+```shell
+POST /index1/_doc/1/_update
+{
+  "doc": {
+    "age": 35
+  }
+}
+```
+
+![image-20220412213646005](elasticsearch.assets/image-20220412213646005.png)
+
+```shell
+POST /index1/_update/1
+{
+  "doc": {
+    "age": 20
+  }
+}
+```
+
+![image-20220412213725654](elasticsearch.assets/image-20220412213725654.png)
+
+
+
+# 7. SpringBoot集成ES
+
+
+
+
 
