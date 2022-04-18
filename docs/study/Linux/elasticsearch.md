@@ -476,7 +476,7 @@ GET index1/_search
 }
 ```
 
-#### filter ,过滤得到符合条件的
+#### filter 过滤得到符合条件的
 
 ```json
 # 过滤得到71-72年龄段的人
@@ -572,6 +572,8 @@ PUT test_index
     }
   }
 }
+
+# 这里name字段的值会被解析， 而desc字段的值不会被解析
 ```
 
 然后插入数据
@@ -592,24 +594,27 @@ PUT test_index/_doc/2
 然后进行分词查看， 发现**standard会被分词器解析， 而keyword不会**
 
 ```json
-# 没有被拆分
+# 尝试运行
 GET _analyze
 {
   "analyzer": "keyword",
   "text": "特朗普说java name"
 }
+# 发现如果是keyword， “特朗普说java name”没有被拆分
 
-# 被拆分成了特，朗，普，说，java，name
+# 尝试运行
 GET _analyze
 {
   "analyzer": "standard",
   "text": "特朗普说java name"
 }
+# 发现被拆分成了特，朗，普，说，java，name
 ```
 
 然后进行搜索查询
 
 ```json
+# 尝试运行
 GET test_index/_search
 {
   "query": {
@@ -620,6 +625,10 @@ GET test_index/_search
     }
   }
 }
+# 发现只有“特”，“朗”，“普”，“说”，“java”，“name”才能匹配到结果， “特朗普”不能匹配到结果
+# 因为name字段的type是text， “特朗普说java name”文本被拆分成了“特”，“朗”，“普”，“说”，“java”，“name”这几个关键词
+
+# 尝试运行
 GET test_index/_search
 {
   "query": {
@@ -640,6 +649,8 @@ GET test_index/_search
     }
   }
 }
+# 发现“特朗普教java desc”, “特朗普教java desc2”才能匹配到结果
+# 因为desc字段的type是keyword
 ```
 
 ### 多个值匹配精确查询
@@ -772,7 +783,7 @@ POST /index1/_update/1
 
 # 7. SpringBoot集成ES
 
+代码地址
 
-
-
+https://github.com/Master-He/springboot-es-demo
 
