@@ -1,3 +1,38 @@
+###  魔法方法总结
+
+with 上下文管理器相关的魔法方法
+
+```python3
+class A(object):
+    def __enter__(self):
+        print("with 进来了")
+        return "我是as关键字后面的东西"
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        print("with 出去了")
+
+
+a = A()
+with a as f:
+    print("with 里面")
+    print(f)
+
+```
+
+输出结果
+
+```shell
+with 进来了
+with 里面
+我是as关键字后面的东西
+with 出去了
+```
+
+
+
+
+
+
 ### 常见排序算法
 
 ```python
@@ -272,6 +307,10 @@ traceback
 import traceback
 traceback.format_exc()
 ```
+
+
+
+#### 日志配置
 
 
 

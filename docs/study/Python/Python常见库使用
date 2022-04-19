@@ -1,0 +1,104 @@
+##  fastavro
+
+使用步骤
+
+```
+1. 生成schema文件
+2. 根据schema, 写avro文件
+3. 根据schema, 读avro文件
+```
+
+1. 生成alert.avsc文件
+
+   ```json
+   {
+   	"namespace": "org.example",
+   	"type": "record",
+   	"name": "Alert",
+   	"fields": [
+   		{"name": "ruleid", "type": "string"},
+   		{"name": "ts", "type": "long"},
+   		{"name": "result", "type": "string"},
+   		{"name": "type", "type": ["null", "string"], "default":null}
+   	]
+   }
+   ```
+
+2. 根据schema, 写avro文件
+   ```python
+   import os
+   from fastavro.schema import load_schema
+   from fastavro import writer
+   
+   dir_path = os.path.dirname(os.path.abspath(__file__))
+   alert_avsc = os.path.join(dir_path, "alert.avsc")
+   
+   schema = load_schema(alert_avsc)
+   
+   records = [
+       {
+           u'ruleid': u'117891001',
+           u'ts': 1433269388,
+           u'result': u'result'
+       }
+]
+   
+   out_avro = os.path.join(dir_path, "alert.avro")
+   with open(out_avro, 'wb') as out:
+       writer(out, schema, records)
+   
+   ```
+   
+3.  根据schema, 读avro文件
+
+   ```python
+   import os
+   from fastavro.schema import load_schema
+   from fastavro import reader
+   
+   dir_path = os.path.dirname(os.path.abspath(__file__))
+   alert_avsc = os.path.join(dir_path, "alert.avsc")
+   
+   schema = load_schema(alert_avsc)
+   
+   alert_avro = os.path.join(dir_path, "alert.avro")
+   with open(alert_avro, 'rb') as avro_file:
+       avro_reader = reader(avro_file, schema)
+       for record in avro_reader:
+           print(record.get("ruleid"))
+   
+   ```
+
+avro IO读写
+
+```python
+import os
+from fastavro.schema import load_schema
+from fastavro import writer, reader
+from io import BytesIO
+
+dir_path = os.path.dirname(os.path.abspath(__file__))
+alert_avsc = os.path.join(dir_path, "alert.avsc")
+
+schema = load_schema(alert_avsc)
+
+records = [
+    {
+        u'ruleid': u'123456789',
+        u'ts': 1433269388,
+        u'result': u'result',
+        u'type': u'type'
+    }
+]
+
+
+fo = BytesIO()
+writer(fo, schema, records)
+
+
+fo.seek(0)
+for record in reader(fo):
+    print(record)
+
+```
+

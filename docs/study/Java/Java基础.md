@@ -229,7 +229,7 @@ https://blog.nowcoder.net/n/0597892d34ae4023add7406cbbe388d0?from=nowcoder_impro
 
 
 
->  类加载器相关代码
+>  类加载器相关示例代码
 
 ```java
 package org.example;
@@ -1421,6 +1421,32 @@ logger.error(org.apache.commons.lang3.exception.ExceptionUtils.getStackTrace(e))
 
 
 
+其他demo
+
+```
+import org.apache.log4j.Logger;
+private static final Logger log = Logger.getLogger(YaraJavaDemo.class);
+// 依赖是：
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-log4j12</artifactId>
+            <version>1.7.22</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>1.7.22</version>
+        </dependency>
+```
+
+
+
+
+
+
+
+
+
 ## 异常处理
 
 ```java
@@ -1769,6 +1795,102 @@ export JAVA_HOME=$(/usr/libexec/java_home -v11)
 
 
 
+## jprofiler 
+
+介绍： JProfiler 是由ej-technologies 公司开发的一款Java 应用性能诊断工具。
+
+下载地址页面 ： https://www.ej-technologies.com/download/jprofiler/version_111
+
+Linux jprofiler下载地址: https://download-gcdn.ej-technologies.com/jprofiler/jprofiler_linux_11_1_4.tar.gz
+
+Windows jprofiler破解版可以去脚本之家看： http://zhannei.baidu.com/cse/site?q=jprofiler&cc=jb51.net&ie=utf
+
+>  安装步骤
+
+windows 安装就不说了,下面说一下在linux下的安装
+
+1. 将jprofiler包解压到服务器/opt/jprofiler/下
+2.  将 export JPROFILER=/opt/jprofiler/jprofiler11.1.4/bin/linux-x64写入/etc/profile文件中
+   创建软连接 ln -s /opt/jprofiler/jprofiler11.1.4/bin/jpenable /usr/local/bin/jpenable
+
+> 开启远程jprofiler
+
+```shell
+# 运行jpenable
+# 第一步选择要监控的进程编号
+# 第二步选1 ，GUI模式
+# 第三部输入开启Jprofiler的端口， 效果如下
+/opt/jprofiler/jprofiler11.1.4/bin # jpenable
+Select a JVM:
+org.logstash.Logstash --path.setti...2/var/run/logstash-config [44407] [1]
+xxxxx.jar [122845] [2]
+org.apache.flink.runtime.entrypoi...m-overhead.max=214748368b [164859] [3]
+org.apache.flink.runtime.taskexec...m-overhead.max=644245104b [165502] [4]
+4
+Please select the profiling mode:
+GUI mode (attach with JProfiler GUI) [1, Enter]
+Offline mode (use config file to set profiling settings) [2]
+1
+Please enter a profiling port
+[33735]
+8849
+You can now use the JProfiler GUI to connect on port 8849
+```
+
+windows客户端
+
+```
+1. ctrl+n 创建new session
+2. attach to remote JVM
+3. 输入远程服务器ip和端口， 确认ok, 就可以看到JVM的各种信息了
+```
+
+
+
+## Arthas
+
+*Arthas* 是Alibaba开源的Java诊断工具 
+
+教程：https://start.aliyun.com/handson-lab?category=arthas
+
+​			https://start.aliyun.com/handson-lab?category=arthas
+
+1. 退出Arthas
+   Arthas启动的时候会同时启动客户端和服务端，并会开启3658（telnet）和8563（http）端口
+   查看命令
+
+   ```shell
+   for pid in $(jps |grep yourApp | grep -v grep | awk -F ' ' '{print $1}'); do netstat -nlp | grep $pid; done
+   ```
+
+   所以需要注意关闭Arthas时，用stop命令退出，才能关闭Arthas服务端。不要使用quit命令，quit只会关闭客户端，服务端还在运行，3658(telnet)和8563(http)端口依旧在监听，主机多暴露两个端口就会多增加安全风险。
+
+2. 查看Jar包是否为最新的
+   查看当前运行的Jar包是否包含了刚更新的代码，之前的话可能需要从服务器上把jar包拉下来，然后反编译看看对应的类是否为最新的。现在有了Arthas，可以直接在线反编译查看。
+   使用 jad命令（反编译指定已加载类的源码，支持关键字高亮），直接反编译对应的类即可
+
+   ```shell
+   jad com.hwj.HashedWheelTimer	// 反编译指定的类
+   jad com.hwj.HashedWheelTimer  processTimeoutModels    // 反编译指定类中的方法
+   jad *HashedWheelTimer processTimeoutModels    // 支持模糊匹配
+   ```
+
+   
+
+
+
+## JDK内置工具
+
+JDK 内置了许多命令行工具，它们可用来获取目标 JVM 不同方面、不同层次的信息。
+
+- jinfo - 用于实时查看和调整目标 JVM 的各项参数。
+- jstack - 用于获取目标 Java 进程内的线程堆栈信息，可用来检测死锁、定位死循环等。
+- jmap - 用于获取目标 Java 进程的内存相关信息，包括 Java 堆各区域的使用情况、堆中对象的统计信息、类加载信息等。
+- jstat - 一款轻量级多功能监控工具，可用于获取目标 Java 进程的类加载、JIT 编译、垃圾收集、内存使用等信息。
+- jcmd - 相比 jstat 功能更为全面的工具，可用于获取目标 Java 进程的性能统计、JFR、内存使用、垃圾收集、线程堆栈、JVM 运行时间等信息。
+
+
+
 ## IDEA
 
 
@@ -1934,7 +2056,7 @@ java -jar xxx.jar
 
 
 
-怎么build jar包？ pom指定入口
+> 怎么build jar包？ pom指定入口
 
 ```xml
 <build>
@@ -1947,7 +2069,7 @@ java -jar xxx.jar
             <configuration>
                 <archive>
                     <manifest>
-                        <mainClass>com.sangfor.yara.Main</mainClass>
+                        <mainClass>com.hwj.yara.Main</mainClass>
                     </manifest>
                     <manifestEntries>
                         <Class-Path>.</Class-Path>
@@ -1964,6 +2086,122 @@ java -jar xxx.jar
     </plugins>
 </build>
 ```
+
+
+
+>  将项目依赖的包也打包进jar包
+
+```xml
+<build>
+    <plugins>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-assembly-plugin</artifactId>
+            <version>3.0.0</version>
+            <configuration>
+                <archive>
+                    <manifest>
+                        <mainClass>org.example.YaraJavaDemo</mainClass>
+                    </manifest>
+                    <manifestEntries>
+                        <Class-Path>.</Class-Path>
+                    </manifestEntries>
+                </archive>
+                <descriptorRefs>
+                    <descriptorRef>jar-with-dependencies</descriptorRef>
+                </descriptorRefs>
+            </configuration>
+            <executions>
+                <execution>
+                    <id>make-assembly</id> <!-- this is used for inheritance merges -->
+                    <phase>package</phase> <!-- 指定在打包节点执行jar包合并操作 -->
+                    <goals>
+                        <goal>single</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
+    </plugins>
+</build>
+```
+
+> 补充： 如果需要将自己本地的jar包也当做依赖打进项目jar包，需要自定义descriptorRefs
+
+参考： https://vzhougm.gitee.io/2020/08/31/other/maven-assembly-plugin%20%E6%89%93%E5%8C%85%E5%8A%A0%E5%85%A5%E6%9C%AC%E5%9C%B0lib%E4%B8%AD%E7%9A%84jar%E5%8C%85/
+
+两步走
+
+第一步： 
+
+```xml
+<plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>Main</mainClass>
+                        </manifest>
+                        <manifestEntries>
+                            <Class-Path>.</Class-Path>
+                        </manifestEntries>
+                    </archive>
+                    	<!-- 注释这个 -->
+<!--                    <descriptorRefs>-->
+<!--                        <descriptorRef>jar-with-dependencies</descriptorRef>-->
+<!--                    </descriptorRefs>-->
+
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <!-- 增加配置 -->
+                        <configuration>
+                            <!-- assembly.xml文件路径 -->
+                            <descriptors>
+                                <descriptor>${project.basedir}/assembly.xml</descriptor>
+                            </descriptors>
+                        </configuration>
+                    </execution>
+                </executions>
+
+            </plugin>
+```
+
+第二步 pom.xml同级目录新增assembly.xml文件：
+
+```
+<assembly>
+    <id>all</id>
+    <formats>
+        <format>jar</format>
+    </formats>
+    <includeBaseDirectory>false</includeBaseDirectory>
+    <dependencySets>
+        <!-- 默认的配置 -->
+        <dependencySet>
+            <outputDirectory>/</outputDirectory>
+            <useProjectArtifact>true</useProjectArtifact>
+            <unpack>true</unpack>
+            <scope>runtime</scope>
+        </dependencySet>
+
+        <!-- 增加scope类型为system的配置 -->
+        <dependencySet>
+            <outputDirectory>/</outputDirectory>
+            <useProjectArtifact>true</useProjectArtifact>
+            <unpack>true</unpack>
+            <scope>system</scope>
+        </dependencySet>
+
+    </dependencySets>
+</assembly>
+```
+
+
 
 
 
