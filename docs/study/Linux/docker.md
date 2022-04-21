@@ -690,15 +690,24 @@ rootfs 包含了基本命令，工具， 程序库等
 
 
 
-## 更换docker镜像存储目录
+## 更换docker存储目录
 
-pass...
+1. 停止docker服务： systemctl stop docker.service
+2. 默认工作路径是/var/lib/docker/， 将其mv或者cp到空间大的目录， 比如/data/docker
+3. 修改 /etc/docker/daemon.json 的graph字段，指定为比如/data/docker
+4. 启动docker服务： systemctl start docker.service
 
 
 
 镜像配置目录： /etc/docker/daemon.json
 
-默认工作路径： /var/lib/docker/
+默认工作路径： /var/lib/docker/  包含了以下目录
+
+```
+buildkit  containers  image  network  overlay2  plugins  runtimes  swarm  tmp  trust  volumes
+```
+
+
 
 
 
