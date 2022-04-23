@@ -501,6 +501,10 @@ default 就是什么也不写
 
 
 
+
+
+
+
 ## java 对象销毁时操作
 
 // 重写finalize方法， jvm会调用

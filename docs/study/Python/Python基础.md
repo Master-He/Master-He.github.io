@@ -316,3 +316,68 @@ traceback.format_exc()
 
 
 
+# pip install 问题
+
+一开始安装pip install fastavro==0.24.0报这个错
+
+```shell
+pkg_resources.VersionConflict: (setuptools 0.9.8 (/usr/lib/python2.7/site-packages), Requirement.parse('setuptools>=18.0'))
+
+Command "python setup.py egg_info" failed with error code 1 in /tmp/pip-build-0v3VJX/pip/
+```
+
+然后升级setuptools ：pip install --upgrade setuptools， 发现还是报错，错误如下
+
+```shell
+$ /etc/yum.repos.d # pip install --upgrade setuptools
+Collecting setuptools
+  Downloading http://mirrors.sangfor.org/pypi/packages/ea/a3/3d3cbbb7150f90c4cf554048e1dceb7c6ab330e4b9138a40e130a4cc79e1/setuptools-62.1.0.tar.gz (2.5MB)
+    100% |████████████████████████████████| 2.5MB 36.4MB/s
+    Complete output from command python setup.py egg_info:
+    Traceback (most recent call last):
+      File "<string>", line 1, in <module>
+      File "setuptools/__init__.py", line 8, in <module>
+        import _distutils_hack.override  # noqa: F401
+      File "_distutils_hack/override.py", line 1, in <module>
+        __import__('_distutils_hack').do_override()
+      File "_distutils_hack/__init__.py", line 72, in do_override
+        ensure_local_distutils()
+      File "_distutils_hack/__init__.py", line 55, in ensure_local_distutils
+        importlib.import_module('distutils')
+      File "/usr/lib64/python2.7/importlib/__init__.py", line 37, in import_module
+        __import__(name)
+    AttributeError: find_module
+```
+
+然后   pip install --upgrade pip 还是报错！
+
+```shell
+
+$ /home/hwj/data_convert/conf # python -m pip install --upgrade pip
+Collecting pip
+  Downloading http://mirrors.sangfor.org/pypi/packages/33/c9/e2164122d365d8f823213a53970fa3005eb16218edcfc56ca24cb6deba2b/pip-22.0.4.tar.gz (2.1MB)
+    100% |████████████████████████████████| 2.1MB 33.0MB/s
+    Complete output from command python setup.py egg_info:
+    Traceback (most recent call last):
+      File "<string>", line 1, in <module>
+      File "/tmp/pip-build-dIISr4/pip/setup.py", line 7
+        def read(rel_path: str) -> str:
+                         ^
+    SyntaxError: invalid syntax
+
+    ----------------------------------------
+Command "python setup.py egg_info" failed with error code 1 in /tmp/pip-build-dIISr4/pip/
+```
+
+最后，不管了pip 太旧了，想办法升级上去， 下载whl包吧！
+
+```shell
+pip install pip-20.3.4-py2.py3-none-any.whl  # 更新pip后终于能安装fastavro了！
+```
+
+
+
+
+
+
+
