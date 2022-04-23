@@ -177,7 +177,7 @@ class DemoClass {
 
 ## 注解
 
-预定义注解:
+### 预定义注解:
 
 ```
 @Deprecated
@@ -189,7 +189,8 @@ class DemoClass {
 
 
 
-元注解： https://juejin.cn/post/6844903943269548045  这个文章讲的不错
+### 元注解：
+https://juejin.cn/post/6844903943269548045  这个文章讲的不错
 
 ```
 @Retention  // 被描述的注解在它所修饰的类中可以被保留到何时
@@ -201,7 +202,7 @@ class DemoClass {
 
 
 
-自定义注解：
+### 自定义注解：
 
 ```
 @Retention(RetentionPolicy.RUNTIME)
@@ -212,6 +213,71 @@ public @interface Name {
 ```
 
 
+
+@Inherited
+
+```java
+import java.lang.annotation.*;
+import java.util.Arrays;
+
+
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+@Inherited
+@interface IsInheritedAnnotation {
+
+}
+
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+@interface NoInheritedAnnotation {
+
+}
+
+
+@NoInheritedAnnotation
+@IsInheritedAnnotation
+class InheritedBase {
+}
+
+class MyInheritedClass extends InheritedBase {
+}
+
+
+@NoInheritedAnnotation
+@IsInheritedAnnotation
+interface InheritedInterface {
+}
+
+interface InheritedInterfaceChild extends InheritedInterface {
+}
+
+
+class MyInheritedClassUseInterface implements InheritedInterface {
+}
+
+public class Test {
+    public static void main(String[] args) {
+        // 结论1
+        // @IsInheritedAnnotation注解被元注解@Inherited修饰， 父类InheritedBase加了@IsInheritedAnnotation注解， 子类MyInheritedClass也会有@IsInheritedAnnotation注解
+        Annotation[] annotations = MyInheritedClass.class.getAnnotations();
+        System.out.println(Arrays.toString(annotations)); // [@test.IsInheritedAnnotation()]
+
+        Annotation[] annotations1 = InheritedInterface.class.getAnnotations();
+        System.out.println(Arrays.toString(annotations1)); // [@test.NoInheritedAnnotation(), @test.IsInheritedAnnotation()]
+
+        // 结论2
+        // 子类接口不会继承父类接口的任何注解
+        Annotation[] annotations2 = InheritedInterfaceChild.class.getAnnotations();
+        System.out.println(Arrays.toString(annotations2)); // []
+
+        // 结论3
+        // 实现接口，不会继承接口的任何注解
+        Annotation[] annotations3 = MyInheritedClassUseInterface.class.getAnnotations();
+        System.out.println(Arrays.toString(annotations3)); // []
+    }
+}
+```
 
 
 
@@ -275,8 +341,13 @@ public class ClassLoaderDemo {
 > Java的类加载体系
 
 ```shell
-BootStrap ClassLoader -> ExtClassLoader ->  AppClassLoader  # 每种类加载器都有自己的加载目录
+BootStrapClassLoader -> ExtClassLoader ->  AppClassLoader  # 每种类加载器都有自己的加载目录
+
+# ExtClassLoader 指定jar包路径的参数： -Djava.ext.dirs=/opt/java/ext/lib
+# AppClassLoader 指定jar包路径的参数：-Djava.class.path=/opt/module/project
 ```
+
+
 
 
 
@@ -284,7 +355,7 @@ BootStrap ClassLoader -> ExtClassLoader ->  AppClassLoader  # 每种类加载器
 
 <img src="Java基础.assets/2505886_1564538979490_D5D109BB8EA439F60D4960AF194310AF" alt="img" style="zoom:67%;" />
 
-> 双亲委派机制
+### 双亲委派机制
 
 双亲委派机制就是 当JVM收到一个类加载请求的时候，不会直接让当前类的类加载器加载该类，而是将请求委派给它的上层类加载器，这个过程一直持续到启动类加载器。如果上层的类加载器加载过了类， 就直接返回类， 如果类没有加载过，就自定向下尝试加载类， 如果找到了类就直接加载后返回，否则就抛出ClassNotFoundException异常
 
@@ -364,7 +435,7 @@ protected Class<?> loadClass(String name, boolean resolve)
 
 
 
->  JDK中类加载器的继承关系
+### 代码中类加载器的继承关系
 
 ![image-20220404095613451](Java基础.assets/image-20220404095613451.png)
 
@@ -372,18 +443,23 @@ protected Class<?> loadClass(String name, boolean resolve)
 
 
 
-> 类的加载过程
+### 类的加载过程
 
 <img src="Java基础.assets/v2-ecf6c3d0f5146029e9693d6223d23afb_b.jpg" alt="img" style="zoom:67%;" />
 
 一个类的的类加载过程通常分为**加载、连接、初始化**三个部分， 具体的行为在java虚拟机规范中有详细的定义， 这里大致说一下
 
-- 加载Loading：这个过程是Java将字节码数据从不通的数据源读取到JVM中，并映射成为JVM认可的数据结构。而如果输入的Class不符合JVM的规范，就会抛出异常，这个阶段是用户可以参与的阶段，我们自定义的类加载器，就是工作在这个过程。
-- 连接Linking：这个是核心的步骤。又可以大致分成三个小阶段： 
-    - 1、验证： 检查JVM加载的字节信息是否符合Java虚拟机规范，否则就会报错。这个阶段是JVM的安全大门，防止黑客大神的恶意信息或者不合规信息危害JVM的正常运行
-    - 2、 准备： 这一阶段创建类或接口的静态变量， 并给这些静态变量赋一个初始值（不是最终指定的值）， 这一个部分的作用更大的是预分配内存。
-    - 3、 解析： 这一步主要是将常量池中的符号引用替换为直接引用。 例如我们有个类A调用类B的方法， 这些在代码层次还只是一些对计算机没有意义符号引用，在这一阶段就会转换成计算机所能理解的堆栈，引用等这些直接引用。
-- 初始化Initialization: 这一步才是真正去执行类初始化的代码逻辑， 包括执行static静态代码块，给静态变量赋值等。
+- **加载**Loading：这个过程是Java将字节码数据从不同的数据源读取到JVM中，并映射成为JVM认可的数据结构。而如果输入的Class不符合JVM的规范，就会抛出异常，这个阶段是用户可以参与的阶段，我们自定义的类加载器，就是工作在这个过程。
+- **连接**Linking：这个是核心的步骤。又可以大致分成三个小阶段： 
+    - 1、**验证**： 检查JVM加载的字节信息是否符合Java虚拟机规范，否则就会报错。这个阶段是JVM的安全大门，防止黑客大神的恶意信息或者不合规信息危害JVM的正常运行
+    - 2、 **准备**： 这一阶段创建类或接口的静态变量， 并给这些静态变量赋一个初始值（不是最终指定的值）， 这一个部分的作用更大的是**预分配内存**。
+    - 3、 **解析**： 这一步主要是将常量池中的符号引用替换为直接引用。 例如我们有个类A调用类B的方法， 这些在代码层次还只是一些对计算机没有意义符号引用，在这一阶段就会转换成计算机所能理解的堆栈，引用等这些直接引用。
+- **初始化**Initialization: 这一步才是真正去执行类初始化的代码逻辑， 包括执行static静态代码块，给静态变量赋值等。
+
+
+
+### JDBC、Tomcat为什么要破坏双亲委派模型
+https://www.javazhiyin.com/44347.html
 
 
 
@@ -415,7 +491,12 @@ Java SPI就是提供这样的一个机制：为某个接口寻找服务实现的
 
 
 
+使用Java SPI，需要遵循如下约定：
 
+- 1、当服务提供者提供了接口的一种具体实现后，在jar包的META-INF/services目录下创建一个以“接口全限定名”为命名的文件，内容为实现类的全限定名；
+- 2、接口实现类所在的jar包放在主程序的classpath中；
+- 3、主程序通过java.util.ServiceLoder动态装载实现模块，它通过扫描META-INF/services目录下的配置文件找到实现类的全限定名，把类加载到JVM；
+- 4、SPI的实现类必须携带一个不带参数的构造方法；
 
 
 
@@ -1507,7 +1588,7 @@ mvn -Dtest=TestSquare,TestCi*le test #maven运行特定的test case
 
 
 
-> maven 导入本地jar
+### maven 导入本地jar
 
 https://blog.csdn.net/wangjian1204/article/details/54563988
 
@@ -1515,7 +1596,7 @@ https://blog.csdn.net/w605283073/article/details/90120722
 
 
 
-> maven build jar包
+### maven build jar包， 指定入口类
 
 ```xml
 <build>
@@ -1544,6 +1625,8 @@ https://blog.csdn.net/w605283073/article/details/90120722
 ```
 
 
+
+### 其他
 
 >  Maven打jar包把配置文件放在META-INF目录下
 
@@ -2246,12 +2329,14 @@ class HelloWorld {
 
 绑定和测试 Building and testing:
 
-```java
+```shell
 $ javac HelloWorld.java
 $ javah -classpath . HelloWorld
 $ gcc -shared -fPIC -I $JAVA_HOME/include -I $JAVA_HOME/include/linux HelloWorld.c -o libHelloWorld.so
 $ java -classpath . -Djava.library.path=. HelloWorld
 Hello World!
+   
+# 运行时指定非java库文件路径，比如so库，dll库： -Djava.library.path=/opt/java/lib
 ```
 
 **注意 ：put `lib` at the beginning of the library's filename **
@@ -2282,6 +2367,26 @@ echo $LD_LIBRARY_PATH 可以查看动态链接库路径
 ​		在网上搜索问题时没有用合适的关键词，同时搜索到答案后没有一眼看懂，或者全是英文，你就不往下面看了，结果导致错过了解决方案。  另外这个在yara-java的工程里面也是相似的案例，就算你不在网上查相关问题你应该也可以解决的！ 你研究的时候没有想到看源码和调试，当时你在想so文件是linux下的动态链接库文件， windows下调试没用，实际上。windows也可以调试，因为java本身是跨平台的。
 
 ​		最后： 因为java不能直接load jar包里面的so文件， 不能直接load的原因是load函数必须传入绝对路径， jar里的so文件不是绝对路径。 需要将so文件临时复制出来load. 最后这个工作交给hawtjni.runtime包解决，具体请参考yara-java load so文件时候的代码
+
+```
+1. 打包时将libMyLib.so库放在/META-INF/native/linux64/下
+2. pom加入依赖:
+        <dependency>
+            <groupId>org.fusesource.hawtjni</groupId>
+            <artifactId>hawtjni-runtime</artifactId>
+            <version>${hawtjni-version}</version>
+        </dependency>
+3. 加载so库的代码:
+public class MyLib {
+    public MyLib() {
+    }
+    public native byte[] myMethod(byte[] var1, int var2);
+    static {
+        Library library = new Library("MyLib", MyLib.class);
+        library.load();
+    }
+}
+```
 
 
 
