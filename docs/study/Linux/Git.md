@@ -50,3 +50,36 @@ $ git submodule update
 $ python setup.py install
 ```
 
+
+
+### github连接问题
+
+有一天突然git pull没有用， git clone， ssh 连不上github了
+
+```shell
+Admin@PS2020TQTPXTCF MINGW64 /d/Document
+$ git clone git@github.com:Master-He/Master-He.github.io.git
+Cloning into 'Master-He.github.io'...
+ssh: connect to host github.com port 22: Connection timed out
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+
+Admin@PS2020TQTPXTCF MINGW64 /d/Document
+$ ssh -T git@github.com
+ssh: connect to host github.com port 22: Connection timed out
+
+```
+
+解决办法
+
+在C:\Users\Admin\.ssh加一个config文件，config文件内容为
+
+```
+Host github.com
+ Hostname ssh.github.com
+ Port 443
+```
+
+然后问题就解决了
