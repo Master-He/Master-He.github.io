@@ -377,7 +377,11 @@ pip install pip-20.3.4-py2.py3-none-any.whl  # 更新pip后终于能安装fastav
 
 
 
+错误： fatal error: Python.h: No such file or directory
+
+https://stackoverflow.com/questions/21530577/fatal-error-python-h-no-such-file-or-directory
 
 
 
+# 内存分析
 

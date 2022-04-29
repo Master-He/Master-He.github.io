@@ -173,6 +173,14 @@ class DemoClass {
 
 
 
+### PECS原则
+
+PECS（Producer Extends Consumer Super）
+
+频繁往外读取内容的，适合用<? extends T>。 
+
+经常往里插入的，适合用<? super T>
+
 
 
 ## 注解
@@ -582,10 +590,6 @@ default 就是什么也不写
 
 
 
-
-
-
-
 ## java 对象销毁时操作
 
 // 重写finalize方法， jvm会调用
@@ -629,6 +633,108 @@ public class demo {
 
 
 
+## Object类的方法
+
+https://fangjian0423.github.io/2016/03/12/java-Object-method/
+
+理解wait() notify() synchronized()
+
+```java
+package com.sangfor.alphasecurity.hwj;
+
+public class WaitNotifyTest {
+
+    public static void main(String[] args) {
+        Factory factory = new Factory();
+        new Thread(new Producer(factory, 5)).start();
+        new Thread(new Producer(factory, 5)).start();
+        new Thread(new Producer(factory, 20)).start();
+        new Thread(new Producer(factory, 30)).start();
+        new Thread(new Producer(factory, 30)).start();
+        new Thread(new Producer(factory, 30)).start();
+        new Thread(new Consumer(factory, 10)).start();
+        new Thread(new Consumer(factory, 20)).start();
+        new Thread(new Consumer(factory, 5)).start();
+        new Thread(new Consumer(factory, 5)).start();
+        new Thread(new Consumer(factory, 20)).start();
+        new Thread(new Consumer(factory, 30)).start();
+        new Thread(new Consumer(factory, 30)).start();
+    }
+
+}
+
+class Factory {
+
+    public static final Integer MAX_NUM = 50;
+
+    private int currentNum = 0;
+
+    public void consume(int num) throws InterruptedException {
+        synchronized (this) {
+            while(currentNum - num < 0) {
+                this.wait();
+            }
+            currentNum -= num;
+            System.out.println("consume " + num + ", left: " + currentNum);
+            this.notifyAll();
+        }
+    }
+
+    public void produce(int num) throws InterruptedException {
+        synchronized (this) {
+            while(currentNum + num > MAX_NUM) {
+                this.wait();
+            }
+            currentNum += num;
+            System.out.println("produce " + num + ", left: " + currentNum);
+            this.notifyAll();
+        }
+    }
+
+}
+
+class Producer implements Runnable {
+    private final Factory factory;
+    private final int num;
+    public Producer(Factory factory, int num) {
+        this.factory = factory;
+        this.num = num;
+    }
+    @Override
+    public void run() {
+        try {
+            factory.produce(num);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
+class Consumer implements Runnable {
+    private final Factory factory;
+    private final int num;
+    public Consumer(Factory factory, int num) {
+        this.factory = factory;
+        this.num = num;
+    }
+    @Override
+    public void run() {
+        try {
+            factory.consume(num);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+
+
+
+
+
+
 为什么尽量不要Override finalize方法？
 
 https://yfsyfs.github.io/2019/06/28/%E4%B8%BA%E4%BB%80%E4%B9%88%E5%B0%BD%E9%87%8F%E4%B8%8D%E8%A6%81Override-finalize%E6%96%B9%E6%B3%95/
@@ -636,6 +742,10 @@ https://yfsyfs.github.io/2019/06/28/%E4%B8%BA%E4%BB%80%E4%B9%88%E5%B0%BD%E9%87%8
 
 
 可以使用try(){}语句 : try()括号中的资源会自动调用close()方法
+
+
+
+# 接口
 
 
 
@@ -1588,7 +1698,7 @@ mvn -Dtest=TestSquare,TestCi*le test #maven运行特定的test case
 
 
 
-### maven 导入本地jar
+### maven 导入本地jar包
 
 https://blog.csdn.net/wangjian1204/article/details/54563988
 
@@ -1596,11 +1706,11 @@ https://blog.csdn.net/w605283073/article/details/90120722
 
 
 
-### maven build jar包， 指定入口类
+### 怎么build jar包？ 
 
 ```xml
 <build>
-    <finalName>my-project</finalName>
+    <finalName>test-yara</finalName>
     <plugins>
         <plugin>
             <groupId>org.apache.maven.plugins</groupId>
@@ -1609,7 +1719,8 @@ https://blog.csdn.net/w605283073/article/details/90120722
             <configuration>
                 <archive>
                     <manifest>
-                        <mainClass>com.xxx.yyy.Main</mainClass>
+                        <!-- 指定入口类 -->
+                        <mainClass>com.hwj.yara.Main</mainClass>
                     </manifest>
                     <manifestEntries>
                         <Class-Path>.</Class-Path>
@@ -1618,10 +1729,129 @@ https://blog.csdn.net/w605283073/article/details/90120722
                 <!-- exclude resource files or directories -->
                 <excludes>
                 </excludes>
+                <includes>
+
+                </includes>
             </configuration>
         </plugin>
     </plugins>
 </build>
+```
+
+
+
+### 将项目依赖的包也打包进jar包
+
+```xml
+<build>
+    <plugins>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-assembly-plugin</artifactId>
+            <version>3.0.0</version>
+            <configuration>
+                <archive>
+                    <manifest>
+                        <mainClass>org.example.YaraJavaDemo</mainClass>
+                    </manifest>
+                    <manifestEntries>
+                        <Class-Path>.</Class-Path>
+                    </manifestEntries>
+                </archive>
+                <descriptorRefs>
+                    <descriptorRef>jar-with-dependencies</descriptorRef>
+                </descriptorRefs>
+            </configuration>
+            <executions>
+                <execution>
+                    <id>make-assembly</id> <!-- this is used for inheritance merges -->
+                    <phase>package</phase> <!-- 指定在打包节点执行jar包合并操作 -->
+                    <goals>
+                        <goal>single</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
+    </plugins>
+</build>
+```
+
+这种只能将pom中依赖的jar包打进项目jar包
+
+> 补充： 如果需要将自己本地的jar包也当做依赖打进项目jar包，需要自定义descriptorRefs
+
+参考： https://vzhougm.gitee.io/2020/08/31/other/maven-assembly-plugin%20%E6%89%93%E5%8C%85%E5%8A%A0%E5%85%A5%E6%9C%AC%E5%9C%B0lib%E4%B8%AD%E7%9A%84jar%E5%8C%85/
+
+两步走
+
+第一步： 
+
+```xml
+<plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>Main</mainClass>
+                        </manifest>
+                        <manifestEntries>
+                            <Class-Path>.</Class-Path>
+                        </manifestEntries>
+                    </archive>
+                    	<!-- 注释这个 -->
+<!--                    <descriptorRefs>-->
+<!--                        <descriptorRef>jar-with-dependencies</descriptorRef>-->
+<!--                    </descriptorRefs>-->
+
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <!-- 增加配置 -->
+                        <configuration>
+                            <!-- assembly.xml文件路径 -->
+                            <descriptors>
+                                <descriptor>${project.basedir}/assembly.xml</descriptor>
+                            </descriptors>
+                        </configuration>
+                    </execution>
+                </executions>
+
+            </plugin>
+```
+
+第二步 pom.xml同级目录新增assembly.xml文件：
+
+```
+<assembly>
+    <id>all</id>
+    <formats>
+        <format>jar</format>
+    </formats>
+    <includeBaseDirectory>false</includeBaseDirectory>
+    <dependencySets>
+        <!-- 默认的配置 -->
+        <dependencySet>
+            <outputDirectory>/</outputDirectory>
+            <useProjectArtifact>true</useProjectArtifact>
+            <unpack>true</unpack>
+            <scope>runtime</scope>
+        </dependencySet>
+
+        <!-- 增加scope类型为system的配置 -->
+        <dependencySet>
+            <outputDirectory>/</outputDirectory>
+            <useProjectArtifact>true</useProjectArtifact>
+            <unpack>true</unpack>
+            <scope>system</scope>
+        </dependencySet>
+
+    </dependencySets>
+</assembly>
 ```
 
 
@@ -1683,15 +1913,15 @@ https://codeantenna.com/a/B0elYtcAXh
 
 > 给指定的系统build jar包， 比如nd4j的包依赖于特定系统， 不同系统有不同的jar包
 
-```xml
-
-```
-
 https://stackoverflow.com/questions/40535909/how-to-build-a-jar-with-maven-for-a-specific-os
 
 https://gist.github.com/agibsonccc/b4e22b861070adcede859f523c172936
 
 https://github.com/neo4j-graph-analytics/ml-models/issues/10
+
+
+
+
 
 
 
@@ -1976,6 +2206,14 @@ JDK 内置了许多命令行工具，它们可用来获取目标 JVM 不同方�
 - jstat - 一款轻量级多功能监控工具，可用于获取目标 Java 进程的类加载、JIT 编译、垃圾收集、内存使用等信息。
 - jcmd - 相比 jstat 功能更为全面的工具，可用于获取目标 Java 进程的性能统计、JFR、内存使用、垃圾收集、线程堆栈、JVM 运行时间等信息。
 
+```
+java堆栈信息调试：
+jstack -l pid查看各个消费线程及对应线程id：nid
+strace -p nid（16进制转10进制）查看对应信息
+获取dump文件：jmap -dump:format=b,file=文件名 pid
+java查看当前进程内存占用：jps -lvm|grep pid
+```
+
 
 
 ## IDEA
@@ -2143,154 +2381,7 @@ java -jar xxx.jar
 
 
 
-> 怎么build jar包？ pom指定入口
-
-```xml
-<build>
-    <finalName>test-yara</finalName>
-    <plugins>
-        <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-jar-plugin</artifactId>
-            <version>2.4</version>
-            <configuration>
-                <archive>
-                    <manifest>
-                        <mainClass>com.hwj.yara.Main</mainClass>
-                    </manifest>
-                    <manifestEntries>
-                        <Class-Path>.</Class-Path>
-                    </manifestEntries>
-                </archive>
-                <!-- exclude resource files or directories -->
-                <excludes>
-                </excludes>
-                <includes>
-
-                </includes>
-            </configuration>
-        </plugin>
-    </plugins>
-</build>
-```
-
-
-
->  将项目依赖的包也打包进jar包
-
-```xml
-<build>
-    <plugins>
-        <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-assembly-plugin</artifactId>
-            <version>3.0.0</version>
-            <configuration>
-                <archive>
-                    <manifest>
-                        <mainClass>org.example.YaraJavaDemo</mainClass>
-                    </manifest>
-                    <manifestEntries>
-                        <Class-Path>.</Class-Path>
-                    </manifestEntries>
-                </archive>
-                <descriptorRefs>
-                    <descriptorRef>jar-with-dependencies</descriptorRef>
-                </descriptorRefs>
-            </configuration>
-            <executions>
-                <execution>
-                    <id>make-assembly</id> <!-- this is used for inheritance merges -->
-                    <phase>package</phase> <!-- 指定在打包节点执行jar包合并操作 -->
-                    <goals>
-                        <goal>single</goal>
-                    </goals>
-                </execution>
-            </executions>
-        </plugin>
-    </plugins>
-</build>
-```
-
-> 补充： 如果需要将自己本地的jar包也当做依赖打进项目jar包，需要自定义descriptorRefs
-
-参考： https://vzhougm.gitee.io/2020/08/31/other/maven-assembly-plugin%20%E6%89%93%E5%8C%85%E5%8A%A0%E5%85%A5%E6%9C%AC%E5%9C%B0lib%E4%B8%AD%E7%9A%84jar%E5%8C%85/
-
-两步走
-
-第一步： 
-
-```xml
-<plugin>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <configuration>
-                    <archive>
-                        <manifest>
-                            <mainClass>Main</mainClass>
-                        </manifest>
-                        <manifestEntries>
-                            <Class-Path>.</Class-Path>
-                        </manifestEntries>
-                    </archive>
-                    	<!-- 注释这个 -->
-<!--                    <descriptorRefs>-->
-<!--                        <descriptorRef>jar-with-dependencies</descriptorRef>-->
-<!--                    </descriptorRefs>-->
-
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>make-assembly</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>single</goal>
-                        </goals>
-                        <!-- 增加配置 -->
-                        <configuration>
-                            <!-- assembly.xml文件路径 -->
-                            <descriptors>
-                                <descriptor>${project.basedir}/assembly.xml</descriptor>
-                            </descriptors>
-                        </configuration>
-                    </execution>
-                </executions>
-
-            </plugin>
-```
-
-第二步 pom.xml同级目录新增assembly.xml文件：
-
-```
-<assembly>
-    <id>all</id>
-    <formats>
-        <format>jar</format>
-    </formats>
-    <includeBaseDirectory>false</includeBaseDirectory>
-    <dependencySets>
-        <!-- 默认的配置 -->
-        <dependencySet>
-            <outputDirectory>/</outputDirectory>
-            <useProjectArtifact>true</useProjectArtifact>
-            <unpack>true</unpack>
-            <scope>runtime</scope>
-        </dependencySet>
-
-        <!-- 增加scope类型为system的配置 -->
-        <dependencySet>
-            <outputDirectory>/</outputDirectory>
-            <useProjectArtifact>true</useProjectArtifact>
-            <unpack>true</unpack>
-            <scope>system</scope>
-        </dependencySet>
-
-    </dependencySets>
-</assembly>
-```
-
-
-
-
+> 
 
 ## JNI
 
