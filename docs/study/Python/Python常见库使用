@@ -1,4 +1,4 @@
-##  fastavro
+# fastavro
 
 使用步骤
 
@@ -101,4 +101,29 @@ for record in reader(fo):
     print(record)
 
 ```
+
+
+
+# argparse
+
+参数解析库
+
+
+
+
+
+# fcntl
+
+文件锁
+
+```
+PID_FILE = open(DATA_PID_FILE, 'w')
+fcntl.flock(PID_FILE, fcntl.LOCK_EX) # 加锁
+fcntl.flock(PID_FILE, fcntl.LOCK_UN) # 解锁
+PID_FILE.close()
+```
+
+
+
+
 

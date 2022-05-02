@@ -808,7 +808,49 @@ https://github.com/cdarlint/winutils
 
 4. 解决报错
 
+这个时候需要安装微软的运行库
+
+资源连接https://www.52pojie.cn/thread-1239861-1-1.html
 
 
 
+> API代码
+
+https://github.com/Master-He/HdfsClientDemo/blob/main/src/test/java/HdfsClientTest.java
+
+
+
+## HDFS读写流程
+
+
+
+### 写数据流程
+
+个人理解： 客户端先问NameNode能不能上传文件（查看权限和目录结构），如果能就再问上传到哪些DataNode节点,  然后挨个访问DataNode节点上传数据
+
+<img src="尚硅谷Hadoop.assets/image-20220427214521503.png" alt="image-20220427214521503" style="zoom:100%;" />
+
+
+
+### 读数据流程
+
+个人理解: 客户端先问NameNode能不能下载文件（查看文件，文件是否存在）得到文件的元数据， 然后串行请求DataNode获取数据
+
+![image-20220427214617341](尚硅谷Hadoop.assets/image-20220427214617341.png)
+
+### 网络拓扑-节点距离计算
+
+
+
+
+
+# 其他
+
+> 学习hadoop期间自己煲的鸡汤
+
+别人再强也是别人，不是你的。你要做的事就是快速成长！
+
+现在的工作如果不能让你变强， 那就尽量不要做！
+
+远离是非，专注自己的成长，不要把注意力移到无关紧要的事情上了
 

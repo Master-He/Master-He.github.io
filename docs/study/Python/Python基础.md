@@ -32,6 +32,56 @@ with 出去了
 
 
 
+`__repr__`
+
+```python
+python中，repr是一个特殊的方法，用于将类（class）的一个实例表示为字符串。repr即represent，简言之，就是对象的字符串表示。
+
+对象通过__repr__方法转化为字符串后，该字符串又可以用来创建该对象。
+在类中定义了__repr__方法后， 可以通过python内置的repr()函数来调用。
+```
+
+```python
+# A simple Person class
+
+class Person:
+    def __init__(self, name, age):
+        self.name = name
+        self.age = age
+
+    def __repr__(self):
+        rep = 'Person(' + self.name + ',' + str(self.age) + ')'
+        return rep
+
+# Let's make a Person object and print the results of repr()
+person = Person("John", 20)
+print(repr(person))  # 输出Person(John,20)
+```
+
+```
+与__str__方法的区别
+我们知道__str__方法也可以返回表示对象的字符串，对应的调用方法是python内置的str()函数。
+
+区别在于，
+
+python的官方文档说__repr__创建的字符串更加”official“（官方 ，更加正式的意思？）
+__repr__返回的字符串可以用于创建对象。
+__repr__的字符串所包含的信息更加丰富（对机友好）。
+但__str__方法返回的字符创更加易读（对人友好）。
+下面的例子说明两种方法返回的字符串有什么不一样：
+
+>>> import datetime
+>>> now = datetime.datetime.now()
+>>> now.__str__()
+'2020-12-27 22:28:00.324317' # 更易读（人）
+>>> now.__repr__()
+'datetime.datetime(2020, 12, 27, 22, 28, 0, 324317)' # 信息更丰富（机）
+```
+
+
+
+
+
 
 ### 常见排序算法
 
@@ -315,8 +365,27 @@ traceback.format_exc()
 
 
 
+# pip
 
-# pip install 问题
+
+
+## pip 源
+
+https://zhuanlan.zhihu.com/p/109939711	
+
+```shell
+# 直接运行这个命令就能修改源，本质就是自动创建/root/.config/pip/pip.conf
+pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/
+```
+
+
+
+
+
+
+
+
+## pip install 问题
 
 一开始安装pip install fastavro==0.24.0报这个错
 

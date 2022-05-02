@@ -23,9 +23,12 @@ t_suite2 = tunittest.defaultTestLoader.discover(testcase_path, pattern=model_pat
 
 
 
-
-
-
-
 github比较好的项目： https://github.com/search?q=python+unittest+framework
 
+
+
+
+
+python 测试框架 内网总结
+
+http://tungwaiyip.info/software/HTMLTestRunner.html

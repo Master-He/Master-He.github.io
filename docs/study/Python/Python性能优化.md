@@ -1,3 +1,33 @@
+# 工具
+
+> py-spy
+
+https://blog.csdn.net/liming89/article/details/109663846?spm=1001.2101.3001.6650.1&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7ECTRLIST%7Edefault-1.pc_relevant_default&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7ECTRLIST%7Edefault-1.pc_relevant_default&utm_relevant_index=2
+
+```shell
+# 打印当前调用栈 
+py-spy dump --pid 115930
+```
+
+
+
+
+
+https://stackoverflow.com/questions/3378953/is-there-a-visual-profiler-for-python
+
+```py
+  python -m cProfile -o profile.dat my_program.py
+  gprof2dot.py -f pstats profile.dat | dot -Tpng -o profile.png
+```
+
+
+
+
+
+
+
+
+
 # 速率
 
 ```
@@ -12,7 +42,13 @@ time.time()分析方法也不错
 
 # 内存
 
-​	
+Memory Profiling in Python - Checking Code Memory Usage (2021)
+
+​	https://www.youtube.com/watch?v=tIKo2uex8x4
+
+
+
+
 
 > memory_profiler
 
@@ -41,7 +77,44 @@ top -c -d 0.5 | grep dnsdetect
 
 
 
+## 大内存对象分析
+
+https://blog.csdn.net/qq_16681169/article/details/113804000
+
+
+
+
+
 # CPU
+
+
+
+
+
+```shell
+[root@localhost111 ~]# py-spy -help
+py-spy 0.3.11
+Sampling profiler for Python programs
+
+USAGE:
+    py-spy <SUBCOMMAND>
+
+OPTIONS:
+    -h, --help       Prints help information
+    -V, --version    Prints version information
+
+SUBCOMMANDS:
+    record    Records stack trace information to a flamegraph, speedscope or raw file
+    top       Displays a top like view of functions consuming CPU
+    dump      Dumps stack traces for a target program to stdout
+    help      Prints this message or the help of the given subcommand(s)
+
+[root@localhost111 ~]# py-spy top --pid 115930
+```
+
+
+
+
 
 
 

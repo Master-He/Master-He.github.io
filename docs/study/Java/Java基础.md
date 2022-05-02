@@ -2201,8 +2201,8 @@ windows客户端
 JDK 内置了许多命令行工具，它们可用来获取目标 JVM 不同方面、不同层次的信息。
 
 - jinfo - 用于实时查看和调整目标 JVM 的各项参数。
-- jstack - 用于获取目标 Java 进程内的线程堆栈信息，可用来检测死锁、定位死循环等。
-- jmap - 用于获取目标 Java 进程的内存相关信息，包括 Java 堆各区域的使用情况、堆中对象的统计信息、类加载信息等。
+- jstack - 用于获取目标 Java 进程内的线程堆栈信息，可用来检测**死锁、定位死循环**等。
+- jmap - 用于获取目标 Java 进程的内存相关信息，包括 Java 堆各区域的使用情况、堆中对象的统计信息、**类加载信息**等。
 - jstat - 一款轻量级多功能监控工具，可用于获取目标 Java 进程的类加载、JIT 编译、垃圾收集、内存使用等信息。
 - jcmd - 相比 jstat 功能更为全面的工具，可用于获取目标 Java 进程的性能统计、JFR、内存使用、垃圾收集、线程堆栈、JVM 运行时间等信息。
 
@@ -2212,6 +2212,8 @@ jstack -l pid查看各个消费线程及对应线程id：nid
 strace -p nid（16进制转10进制）查看对应信息
 获取dump文件：jmap -dump:format=b,file=文件名 pid
 java查看当前进程内存占用：jps -lvm|grep pid
+
+top -Hp [pid] # 可以看到Java进程下的所有线程
 ```
 
 
@@ -2295,6 +2297,8 @@ https://blog.csdn.net/qq_35246620/article/details/78289074
 ```shell
 # 看类结构
 alt+7 或者 ctrl+F12
+# 将局部变量变成成员变量
+ctrl+shift+f
 ```
 
 ### IDEA 快捷键(mac)
