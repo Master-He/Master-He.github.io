@@ -357,11 +357,11 @@ xsync /opt/module/hadoop-3.1.3/etc/hadoop/workers
 
 
 
-## 2.4 群起集群
+## 2.4 群起集群（开发重点）
 
 
 
-### 启动hdfs
+### 启动hdfs命令
 
 第一次启动hdfs, 需要在机器localhost111上进行格式化
 
@@ -826,9 +826,13 @@ https://github.com/Master-He/HdfsClientDemo/blob/main/src/test/java/HdfsClientTe
 
 ### 写数据流程
 
-个人理解： 客户端先问NameNode能不能上传文件（查看权限和目录结构），如果能就再问上传到哪些DataNode节点,  然后挨个访问DataNode节点上传数据
+个人理解： 客户端先问NameNode能不能上传文件（查看权限和目录结构），如果能就再问上传到哪些DataNode节点,  然后访问某个DataNode节点上传数据
 
 <img src="尚硅谷Hadoop.assets/image-20220427214521503.png" alt="image-20220427214521503" style="zoom:100%;" />
+
+
+
+
 
 
 
@@ -838,11 +842,167 @@ https://github.com/Master-He/HdfsClientDemo/blob/main/src/test/java/HdfsClientTe
 
 ![image-20220427214617341](尚硅谷Hadoop.assets/image-20220427214617341.png)
 
+
+
 ### 网络拓扑-节点距离计算
 
+在HDFS写数据的过程中，NameNode会选择距离待上传数据最近距离的DataNode接收数据。那么这个最近距离怎么计算呢？
+
+![image-20220502102046186](尚硅谷Hadoop.assets/image-20220502102046186.png)
 
 
 
+## NN和2NN工作机制
+
+### NameNode和SecondaryNameNode的工作机制
+
+思考：NameNode中的元数据是存储在哪里的？
+
+首先，我们做个假设，如果存储在NameNode节点的磁盘中，因为经常需要进行随机访问，还有响应客户请求，必然是效率过低。因此，元数据需要存放在内存中。但如果只存在内存中，一旦断电，元数据丢失，整个集群就无法工作了。因此产生在磁盘中备份元数据的FsImage。
+
+这样又会带来新的问题，当在内存中的元数据更新时，如果同时更新FsImage，就会导致效率过低，但如果不更新，就会发生一致性问题，一旦NameNode节点断电，就会产生数据丢失。因此，引入Edits文件（只进行追加操作，效率很高）。每当元数据有更新或者添加元数据时，修改内存中的元数据并追加到Edits中。这样，一旦NameNode节点断电，可以通过FsImage和Edits的合并，合成元数据。
+
+但是，如果长时间添加数据到Edits中，会导致该文件数据过大，效率降低，而且一旦断电，恢复元数据需要的时间过长。因此，需要定期进行FsImage和Edits的合并，如果这个操作由NameNode节点完成，又会效率过低。因此，引入一个新的节点SecondaryNamenode，专门用于FsImage和Edits的合并。
+
+
+
+写Eidts文件效率很高是因为， 顺序写磁盘的效率和随机内存访问的持平，甚至顺序写磁盘比随机内存访问更快
+
+![img](尚硅谷Hadoop.assets/735367-20190611193807170-2101813158.png)
+
+https://houbb.github.io/2018/09/19/kafka-fast-reason
+
+![image-20220502103137040](尚硅谷Hadoop.assets/image-20220502103137040.png)
+
+
+
+### Fsimage和Edits解析
+
+![image-20220502103511163](尚硅谷Hadoop.assets/image-20220502103511163.png)
+
+
+
+oiv和oev命令 查看Fsimage文件和Edits文件
+
+```shell
+[root@localhost111 ~]# hdfs oiv --help
+Usage: bin/hdfs oiv [OPTIONS] -i INPUTFILE -o OUTPUTFILE
+Offline Image Viewer
+View a Hadoop fsimage INPUTFILE using the specified PROCESSOR,
+saving the results in OUTPUTFILE.
+# 查看Fsimage
+# hdfs oiv -p XML -i fsimage_0000000000000000025 -o /opt/module/hadoop-3.1.3/fsimage.xml
+# 思考：可以看出，Fsimage中没有记录块所对应DataNode，为什么？
+# 在集群启动后，要求DataNode上报数据块信息，并间隔一段时间后再次上报。
+
+[root@localhost111 ~]# hdfs oev --help
+Usage: bin/hdfs oev [OPTIONS] -i INPUT_FILE -o OUTPUT_FILE
+Offline edits viewer
+Parse a Hadoop edits log file INPUT_FILE and save results in OUTPUT_FILE.
+
+# 查看Edits
+# hdfs oev -p XML -i edits_0000000000000000012-0000000000000000013 -o /opt/module/hadoop-3.1.3/edits.xml
+# 思考：NameNode如何确定下次开机启动的时候合并哪些Edits？
+# fsimages文件后缀是个序号，这个需要之前的都已经进行合并了，只需要合并这个序号之后的Edits
+```
+
+
+
+5.3 CheckPoint时间设置
+1）通常情况下，SecondaryNameNode每隔一小时执行一次。
+	[hdfs-default.xml]
+
+```xml
+<property>
+  <name>dfs.namenode.checkpoint.period</name>
+  <value>3600s</value>
+</property>
+```
+
+2）一分钟检查一次操作次数，当操作次数达到1百万时，SecondaryNameNode执行一次。
+
+```xml
+<property>
+  	<name>dfs.namenode.checkpoint.check.period</name>
+  	<value>60s</value>
+	<description> 1分钟检查一次操作次数</description>
+</property>
+
+<property>
+  	<name>dfs.namenode.checkpoint.check.period</name>
+  	<value>60s</value>
+	<description> 1分钟检查一次操作次数</description>
+</property>
+```
+
+
+
+## DataNode工作机制
+
+### DataNode工作机制
+
+![image-20220502105253577](尚硅谷Hadoop.assets/image-20220502105253577.png)
+
+（1）一个数据块在DataNode上以文件形式存储在磁盘上，包括两个文件，一个是数据本身，一个是元数据包括数据块的长度，块数据的校验和，以及时间戳。（2）DataNode启动后向NameNode注册，通过后，周期性（6小时）的向NameNode上报所有的块信息。
+
+DN向NN汇报当前解读信息的时间间隔，默认6小时；
+
+```xml
+<property>
+	<name>dfs.blockreport.intervalMsec</name>
+	<value>21600000</value>
+	<description>Determines block reporting interval in milliseconds.</description>
+</property>
+```
+
+DN扫描自己节点块信息列表的时间，默认6小时
+
+```xml
+<property>
+	<name>dfs.datanode.directoryscan.interval</name>
+	<value>21600s</value>
+	<description>Interval in seconds for Datanode to scan data directories and reconcile the difference between blocks in memory and on the disk. Support multiple time unit suffix(case insensitive), as described in dfs.heartbeat.interval.</description>
+</property>
+```
+
+（3）心跳是每3秒一次，心跳返回结果带有NameNode给该DataNode的命令如复制块数据到另一台机器，或删除某个数据块。如果超过10分钟没有收到某个DataNode的心跳，则认为该节点不可用。
+
+
+
+### 数据完整性
+
+如下是DataNode节点保证数据完整性的方法。
+（1）当DataNode读取Block的时候，它会计算CheckSum。
+（2）如果计算后的CheckSum，与Block创建时值不一样，说明Block已经损坏。
+（3）Client读取其他DataNode上的Block。
+（4）常见的校验算法crc（32），md5（128），sha1（160）
+（5）DataNode在其文件创建后周期验证CheckSum。
+
+
+
+### 掉线时限参数设置
+
+![image-20220502110019779](尚硅谷Hadoop.assets/image-20220502110019779.png)
+
+需要注意的是hdfs-site.xml 配置文件中的heartbeat.recheck.interval的单位为毫秒，dfs.heartbeat.interval的单位为秒。
+
+```xml
+<property>
+    <name>dfs.namenode.heartbeat.recheck-interval</name>
+    <value>300000</value>
+</property>
+
+<property>
+    <name>dfs.heartbeat.interval</name>
+    <value>3</value>
+</property>
+```
+
+
+
+## 总结
+
+1. 
 
 # 其他
 
