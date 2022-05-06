@@ -808,7 +808,7 @@ https://github.com/cdarlint/winutils
 
 4. 解决报错
 
-这个时候需要安装微软的运行库
+这个时候需要安装微软常用运行库合集
 
 资源连接https://www.52pojie.cn/thread-1239861-1-1.html
 
@@ -1002,7 +1002,280 @@ DN扫描自己节点块信息列表的时间，默认6小时
 
 ## 总结
 
-1. 
+1.  HDFS文件块大小（面试重点）
+    1. 看硬盘读写速度， 在企业中 一般128m（小公司），256m（大公司）
+2. HDFS的shell操作（开发重点）
+3. HDFS的读写流程（面试重点）
+
+
+
+# 4.MapReduce
+
+说明： 因为工作中没有用MapReduce， 用的是Flink， 所以这里不做深入的探究。
+
+项目代码demo ：https://github.com/Master-He/MapReduceDemo
+
+
+
+## MapReduce定义、优缺点
+
+> 定义
+
+MapReduce 是一个分布式运算程序的编程框架，是用户开发“基于 Hadoop 的数据分析
+应用”的核心框架。
+MapReduce 核心功能是将用户编写的业务逻辑代码和自带默认组件整合成一个完整的
+分布式运算程序，并发运行在一个 Hadoop 集群上。
+
+> 优点
+
+1）MapReduce 易于编程， 它简单的实现一些接口，就可以完成一个分布式程序
+
+2）良好的扩展性， 简单的增加机器来扩展它的计算能力。
+
+3）高容错性，其中一台机器挂了，它可以把上面的计算任务转移到另外一个节点上运行， 不至于这个任务运行失败，这些由 Hadoop 内部完成
+
+4）适合 PB 级以上海量数据的离线处理
+
+> 缺点
+
+1）不擅长实时计算
+
+2）不擅长流式计算
+
+3）不擅长 DAG（有向无环图）计算, MapReduce 并不是不能做，而是使用后，每个 MapReduce 作业的输出结果都会写入到磁盘，
+会造成大量的磁盘 IO，导致性能非常的低下。
+
+
+
+MapReduce核心思想
+
+![image-20220506213716635](尚硅谷Hadoop.assets/image-20220506213716635.png)
+
+个人理解：map阶段主要做计算， reduce阶段主要做结果统计（可以没有reduce阶段）
+
+
+
+
+
+## MapReduce进程
+
+（1）MrAppMaster：负责整个程序的过程调度及状态协调。
+（2）MapTask：负责 Map 阶段的整个数据处理流程。
+（3）ReduceTask：负责 Reduce 阶段的整个数据处理流程。
+
+
+
+## MapReduce编写
+
+> 常用数据序列化类型
+
+| Java类型   | HadoopWritable类型 |
+| ---------- | ------------------ |
+| Boolean    | BooleanWritable    |
+| Byte       | ByteWritable       |
+| Int        | IntWritable        |
+| Float      | FloatWritable      |
+| Long       | LongWritable       |
+| Double     | DoubleWritable     |
+| **String** | **Text**           |
+| Map        | MapWritable        |
+| Array      | ArrayWritable      |
+| Null       | NullWritable       |
+
+
+
+> 编程规范
+
+1．Mapper阶段
+（1）用户自定义的Mapper要继承自己的父类
+（2）Mapper的输入数据是KV对的形式（KV的类型可自定义） 
+（3）Mapper中的业务逻辑写在map()方法中
+（4）Mapper的输出数据是KV对的形式（KV的类型可自定义） 
+（5）map()方法（MapTask进程）对每一个<K,V>调用一次
+
+2.Reduce阶段
+（1）用户自定义的Reducer要继承自己的父类 
+（2）Reducer的输入数据类型对应Mapper的输出数据类型，也是KV 
+（3）Reducer的业务逻辑写在reduce()方法中 
+（4）ReduceTask进程对每一组相同k的<k,v>组调用一次reduce()方法 Reducer阶段
+
+3.Driiver阶段
+相当于YARN集群的客户端，用于提交我们整个程序到YARN集群，提交的是封装了MapReduce程序相关运行参数的job对象
+
+
+
+项目代码demo ：https://github.com/Master-He/MapReduceDemo
+
+打包maven项目， 然后放到服务器中运行
+
+```shell
+hadoop jar /opt/MapReduceDemo-1.0-SNAPSHOT-jar-with-dependencies.jar org.example.mapreduce.wordcount2.WordCountDriver /input/inputword /output/output888
+
+# 在hdfs系统中（http://localhost111:9870/explorer.html#/）上传/input/inputword文件，内容为
+atguigu atguigu
+ss ss
+cls cls
+jiao
+banzhang
+xue
+hadoop
+```
+
+
+
+## Hadoop序列化
+
+自定义bean对象实现序列化接口（Writable）
+
+查看案例代码： https://github.com/Master-He/MapReduceDemo/tree/main/src/main/java/org/example/mapreduce/writable
+
+
+
+## MapReduce框架
+
+![image-20220506232140963](尚硅谷Hadoop.assets/image-20220506232140963.png)
+
+### 切片与MapTask并行度决定机制
+
+**数据切片**：数据切片只是在逻辑上对输入进行分片，并不会在磁盘上将其切分成片进行存储。数据切片是MapReduce程序计算输入数据的单位，一个切片会对应启动一个MapTask。
+
+**数据块**：Block是HDFS物理上把数据分成一块一块。数据块是HDFS存储数据单位。
+
+![image-20220506232331817](尚硅谷Hadoop.assets/image-20220506232331817.png)
+
+
+
+### 切片机制
+
+![image-20220506232526320](尚硅谷Hadoop.assets/image-20220506232526320.png)
+
+![image-20220506232643834](尚硅谷Hadoop.assets/image-20220506232643834.png)
+
+### TextInputFormat
+
+TextInputFormat是默认的FileInputFormat实现类。
+
+
+
+### CombineTextInputFormat
+
+框架默认的TextInputFormat切片机制是对任务按文件规划切片，不管文件多小，都会是一个单独的切片，都会交给一个MapTask，这样如果有大量小文件，就会产生大量的MapTask，处理效率极其低下。这个时候可以用CombineTextInputFormat解决这个问题
+
+CombineTextInputFormat 用于小文件过多的场景，它可以将多个小文件从逻辑上规划到一个切片中，这样，多个小文件就可以交给一个MapTask处理。
+CombineTextInputFormat 生成切片过程包括：虚拟存储过程和切片过程二部分。
+CombineTextInputFormat案例： https://github.com/Master-He/MapReduceDemo/tree/main/src/main/java/org/example/mapreduce/combineTextInputforamt
+
+
+
+### MapReduce工作流程
+
+![image-20220506234912413](尚硅谷Hadoop.assets/image-20220506234912413.png)
+
+![image-20220506235007768](尚硅谷Hadoop.assets/image-20220506235007768.png)
+
+Map方法之后，Reduce方法之前的数据处理过程称之为Shuffle。
+
+具体Shuffle过程详解，如下：
+（1）MapTask收集我们的map()方法输出的kv对，放到内存缓冲区中
+（2）从内存缓冲区不断溢出本地磁盘文件，可能会溢出多个文件
+（3）多个溢出文件会被合并成大的溢出文件
+（4）在溢出过程及合并的过程中，都要调用Partitioner进行分区和针对key进行排序
+（5）ReduceTask根据自己的分区号，去各个MapTask机器上取相应的结果分区数据
+（6）ReduceTask会抓取到同一个分区的来自不同MapTask的结果文件，ReduceTask会将这些文件再进行合并（归并排序）
+（7）合并成大文件后，Shuffle的过程也就结束了，后面进入ReduceTask的逻辑运算过程（从文件中取出一个一个的键值对Group，调用用户自定义的reduce()方法）
+注意：
+（1）Shuffle中的缓冲区大小会影响到MapReduce程序的执行效率，原则上说，缓冲区越大，磁盘io的次数越少，执行速度就越快。
+（2）缓冲区的大小可以通过参数调整，参数：mapreduce.task.io.sort.mb默认100M。
+
+![image-20220506235216869](尚硅谷Hadoop.assets/image-20220506235216869.png)
+
+
+
+### Partition分区
+
+分区案例代码： https://github.com/Master-He/MapReduceDemo/tree/main/src/main/java/org/example/mapreduce/partitioner
+
+分区总结：
+
+![image-20220506235612965](尚硅谷Hadoop.assets/image-20220506235612965.png)
+
+
+
+### Conbiner
+
+Conbiner 本质就是Map阶段的特殊的Reduce, 它继承与Reduce。 在Map阶段Conbiner有助于减少网络传输
+**注意！** **注意!** Conbiner的应用必须不能影响最后的业务逻辑，如果有印象则不能使用！
+
+案例代码 https://github.com/Master-He/MapReduceDemo/tree/main/src/main/java/org/example/mapreduce/combiner
+
+
+
+### TextOutputFormat
+
+TextOutputFormat是默认的FileOutputFormat实现类。
+
+
+
+### 自定义OutputFormat
+
+案例： https://github.com/Master-He/MapReduceDemo/tree/main/src/main/java/org/example/mapreduce/outputformat
+
+
+
+## Join应用
+
+例子： 如何实现将表1和表2 join 生成表3？
+
+表1
+
+```
+# order表
+1001	01	1
+1002	02	2
+1003	03	3
+1004	01	4
+1005	02	5
+1006	03	6
+```
+
+表2
+
+```
+# product表
+01	小米
+02	华为
+03	格力
+```
+
+表3
+
+```
+# 展示表
+1001	小米	1
+1002	华为	2
+1003	格力	3
+1004	小米	4
+1005	华为	5
+1006	格力	6
+```
+
+
+
+代码：
+
+https://github.com/Master-He/MapReduceDemo/tree/main/src/main/java/org/example/mapreduce/reduceJoin
+
+https://github.com/Master-He/MapReduceDemo/tree/main/src/main/java/org/example/mapreduce/mapjoin
+
+
+
+# 5.Yarn
+
+
+
+
+
+
 
 # 其他
 
