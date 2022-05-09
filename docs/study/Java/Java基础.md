@@ -1740,6 +1740,24 @@ https://blog.csdn.net/w605283073/article/details/90120722
 
 
 
+### 指定java编译版本
+
+```
+<plugin>
+    <groupId>org.apache.maven.plugins</groupId>
+    <artifactId>maven-compiler-plugin</artifactId>
+    <version>2.3.2</version>
+    <configuration>
+        <source>1.8</source>
+        <target>1.8</target>
+        <encoding>UTF-8</encoding>
+    </configuration>
+</plugin>
+<plugin>
+```
+
+
+
 ### 将项目依赖的包也打包进jar包
 
 ```xml

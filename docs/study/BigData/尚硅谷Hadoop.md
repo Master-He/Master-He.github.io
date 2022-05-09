@@ -1271,9 +1271,117 @@ https://github.com/Master-He/MapReduceDemo/tree/main/src/main/java/org/example/m
 
 # 5.Yarn
 
+## 基本概念
+
+Yarn是一个资源调度平台，负责为运算程序提供服务器运算资源，相当于一个分布式的操作系统平台，而MapReduce等运算程序则相当于运行于操作系统之上的应用程序。
+
+YARN主要由ResourceManager、NodeManager、ApplicationMaster和Container等组件构成。
+
+基础架构图
+
+![image-20220507212726374](尚硅谷Hadoop.assets/image-20220507212726374.png)
 
 
 
+工作流程图
+
+![image-20220507212756507](尚硅谷Hadoop.assets/image-20220507212756507.png)
+
+
+
+## Yarn调度算法
+
+FIFO、容量（Capacity Scheduler）和公平（Fair Scheduler）。Apache Hadoop3.1.3默认的资源调度器是Capacity Scheduler。
+
+### FIFO
+
+FIFO调度器（First In First Out）：单队列，根据提交作业的先后顺序，先来先服务。
+
+### Capacity Scheduler
+
+容量调度器 Capacity Scheduler是Yahoo开发的多用户调度器。 （小公司用这个）
+核心调度策略：优先选择资源利用率低的队列
+资源分配方式： FIFO, DRF
+
+
+### Fair Scheduler
+
+Fair Schedulere是Facebook开发的多用户调度器。（大公司用这个）
+核心调度策略：优先选择对资源的缺额比例大的
+资源分配方式： FIFO, FAIR, DRF
+
+
+
+## Yarn常用命令
+
+```shell
+# 查看任务列表
+yarn application -list
+yarn application -list -appStates ALL # 状态包括 ALL、NEW、NEW_SAVING、SUBMITTED、ACCEPTED、RUNNING、FINISHED、FAILED、KILLED
+
+# kill任务
+yarn application -kill <ApplicationId>
+
+# 查看Application日志
+yarn logs -applicationId <ApplicationId>
+# 查看Container日志
+yarn logs -applicationId <ApplicationId> -containerId <ContainerId>
+
+# 查看尝试运行的任务
+yarn applicationattempt -list <ApplicationId>
+# 打印ApplicationAttemp状态
+yarn applicationattempt -status <ApplicationAttemptId>
+
+# 查看容器
+yarn container -list <ApplicationAttemptId> 
+# 查看容器状态， 只有在任务跑的途中才能看到container的状态
+yarn container -status <ContainerId>  
+
+# 查看node节点状态
+yarn node -list -all
+
+# yarn rmadmin更新队列配置
+yarn rmadmin -refreshQueues
+
+# yarn 查看队列
+yarn queue -status <QueueName>  # eg. yarn queue -status default
+```
+
+
+
+## Yarn生产环境核心参数
+
+```shell
+# 1）ResourceManager相关
+yarn.resourcemanager.scheduler.class 配置调度器，默认容量调度器
+yarn.resourcemanager.scheduler.client.thread-count ResourceManager 处理调度器请求的线程数量，默认50
+
+# 2）NodeManager相关
+yarn.nodemanager.resource.detect-hardware-capabilities 是否让yarn自己检测硬件进行配置，默认false
+yarn.nodemanager.resource.count-logical-processors-as-cores 是否将虚拟核数当作CPU核数，默认false
+yarn.nodemanager.resource.pcores-vcores-multiplier 虚拟核数和物理核数乘数，例如：4核8线程，该参数就应设为2，默认1.0
+
+yarn.nodemanager.resource.memory-mb NodeManager使用内存，默认8G
+yarn.nodemanager.resource.system-reserved-memory-mb NodeManager为系统保留多少内存
+以上二个参数配置一个即可
+
+yarn.nodemanager.resource.cpu-vcores NodeManager使用CPU核数，默认8个
+yarn.nodemanager.pmem-check-enabled 是否开启物理内存检查限制container，默认打开
+yarn.nodemanager.vmem-check-enabled 是否开启虚拟内存检查限制container，默认打开
+yarn.nodemanager.vmem-pmem-ratio 虚拟内存物理内存比例，默认2.1
+
+# 3）Container相关
+yarn.scheduler.minimum-allocation-mb 容器最小内存，默认1G
+yarn.scheduler.maximum-allocation-mb 容器最大内存，默认8G
+yarn.scheduler.minimum-allocation-vcores 容器最小CPU核数，默认1个
+yarn.scheduler.maximum-allocation-vcores 容器最大CPU核数，默认4个
+```
+
+
+
+# todo 看到134集
+
+https://www.bilibili.com/video/BV1Qp4y1n7EN?p=134
 
 
 
