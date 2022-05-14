@@ -1,6 +1,22 @@
 「尚硅谷大数据技术之flink(java) 含书签.pdf」https://www.aliyundrive.com/s/rLf7szByhuw 
 
-# Flink时间和窗口
+
+
+# DataStream API
+
+## 执行环境（Execution Environment）
+
+StreamExecutionEnvironment 类的方法
+
+```
+getExecutionEnvironment
+createLocalEnvironment
+createRemoteEnvironment
+```
+
+
+
+# Flink中的时间和窗口
 
 ## 怎么理解水位线watermark
 watermark是当前事件的时钟，这个时钟还有一点延迟
