@@ -1598,6 +1598,17 @@ String.format("一本书的价格是：% 50.5f元%n", 49.8);
 
 
 
+## 字符串链接
+
+https://zhuanlan.zhihu.com/p/367918632#:~:text=%E5%8F%AF%E4%BB%A5%E7%94%A8String.join(),joining()%E6%96%B9%E6%B3%95%E8%BF%9B%E8%A1%8C%E5%90%88%E5%B9%B6%E3%80%82
+
+- 可以用String.join()方法将字符串的List或数组拼接成一个大字符串，并指定分隔符。
+- 也可以手动创建StringJoiner对象，指定分隔符、前缀和后缀。
+- 如果需要先对字符串进行处理，可以将List或数组转成Stream，处理后再利用Collectors.joining()方法进行合并。
+- 避免在循环中使用+操作符进行字符串拼接
+
+
+
 # 项目相关
 
 
@@ -2403,8 +2414,6 @@ java -jar xxx.jar
 
 
 
-> 
-
 ## JNI
 
 JNI 的hello world  demo参考
@@ -2430,12 +2439,12 @@ Java_HelloWorld_print (JNIEnv *env, jobject obj) {
 
 ```java
 class HelloWorld {
-     private native void print();
+     private native void print(); // 声明native方法
      public static void main(String[] args) {
-         new HelloWorld().print();
+         new HelloWorld().print();  // 打印Hello World
      }
      static {
-         System.loadLibrary("HelloWorld");
+         System.loadLibrary("HelloWorld");  // 载入libHelloWorld.SO库
      }
  }
 ```
@@ -2452,11 +2461,33 @@ Hello World!
 # 运行时指定非java库文件路径，比如so库，dll库： -Djava.library.path=/opt/java/lib
 ```
 
-**注意 ：put `lib` at the beginning of the library's filename **
+**注意 ：put `lib` at the beginning of the library's filename **，linux下的so库必须以lib开头
 
+ **ps:**linux下编译共享库时，必须加上-fPIC参数，否则在链接时会有错误提示（有资料说AMD64的机器才会出现这种错误）
 
+**-shared:** 表明产生共享库，也就告诉gcc生成的是库，而不是可执行程序
+
+-fPIC：表明使用地址无关代码， gcc -v --help查看-fPIC: position independent code。共享对象可能被不同的进程加载到不同的位置上，如果共享对象中的指令使用了绝对地址，外部模块地址，那么在共享对象被加载时就必须根据相关模块的加载位置对这个地址做调整，也就是修改这些地址，让它在对应进程中能正确访问。
+
+linux在**gcc**编译时加上-shared 参数时，目的是使源码编译成动态库.so 文件； 而-**fPIC**的作用是告知编译器生成位置无关代码（编译产生的代码没有绝对位置，只有相对位置）；从而可以在任意地方调用生成的动态库。
+
+参考：
+
+​	https://blog.csdn.net/weixin_38145317/article/details/105241512
+
+​	https://www.cnblogs.com/sanshigoodgoodstudy/p/14682875.html#:~:text=linux%E5%9C%A8gcc%E7%BC%96%E8%AF%91%E6%97%B6,%E8%B0%83%E7%94%A8%E7%94%9F%E6%88%90%E7%9A%84%E5%8A%A8%E6%80%81%E5%BA%93%E3%80%82
 
 echo $LD_LIBRARY_PATH 可以查看动态链接库路径
+
+
+
+java调用本地方法--JNI字符串参数传递与返回
+
+https://blog.csdn.net/w1992wishes/article/details/80283435
+
+NDK/JNI 中Java和C/C++互相传递数组
+
+https://blog.csdn.net/ezconn/article/details/101321564
 
 
 
@@ -2502,6 +2533,68 @@ public class MyLib {
 ```
 
 
+
+打包时用的pom.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.sangfor</groupId>
+    <artifactId>hello-jni-jar</artifactId>
+    <version>1.0</version>
+
+    <properties>
+        <maven.compiler.source>8</maven.compiler.source>
+        <maven.compiler.target>8</maven.compiler.target>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.fusesource.hawtjni</groupId>
+            <artifactId>hawtjni-runtime</artifactId>
+            <version>1.14</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.0.0</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>com.sangfor.sip.HelloWorld</mainClass>
+                        </manifest>
+                        <manifestEntries>
+                            <Class-Path>.</Class-Path>
+                        </manifestEntries>
+                    </archive>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id> <!-- this is used for inheritance merges -->
+                        <phase>package</phase> <!-- 指定在打包节点执行jar包合并操作 -->
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
+```
 
 
 

@@ -74,7 +74,7 @@ ssh: connect to host github.com port 22: Connection timed out
 
 解决办法
 
-在C:\Users\Admin\.ssh加一个config文件，config文件内容为
+在C:\Users\Admin\\.ssh加一个config文件，config文件内容为
 
 ```
 Host github.com
