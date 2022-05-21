@@ -430,6 +430,16 @@ docker build -t diytomcat .
 
 
 
+# Centos7 Dockerfile
+
+设置了镜像源,基本环境的dockerfile
+
+```dockerfile
+
+```
+
+
+
 # 网络
 
 在宿主机和容器里输入 ip addr 命令， 发现宿主机和容器的网卡是成对的，

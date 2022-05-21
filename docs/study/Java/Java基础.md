@@ -508,6 +508,10 @@ Java SPI就是提供这样的一个机制：为某个接口寻找服务实现的
 
 
 
+使用Java SPI的优点
+
+使用Java SPI机制的优势是实现解耦，使得第三方服务模块的装配控制的逻辑与调用者的业务代码分离，而不是耦合在一起。应用程序可以根据实际业务情况启用框架扩展或替换框架组件。
+
 
 
 ## lambda
@@ -1223,6 +1227,20 @@ map.forEach((k,v)->{
 ```java
 list.stream().allMatch(x -> x == 1)
 ```
+
+
+
+> 将集合中的null元素设置为默认值
+
+```shell
+List<String> list = Arrays.asList("1", "2", "3", null);
+List<String> newList = list.stream().map(str->Optional.ofNullable(str).orElse("10")).collect(Collectors.toList());
+System.out.println(newList);  // [1, 2, 3, 10]  null 变成了默认值10
+```
+
+
+
+
 
 
 
@@ -2615,6 +2633,22 @@ https://blog.csdn.net/todorovchen/article/details/21319033
 
 
 ## 安装java（环境）
+
+> win系统
+
+去官网下载jdk1.8.0_xxx.exe，一键安装，然后设置环境变量
+
+```
+JAVA_HOME C:\Java\jdk1.8.0_311
+PATH
+	%JAVA_HOME%\bin
+	%JAVA_HOME%\jre\bin
+CLASSPATH .;%JAVA_HOME%\lib;%JAVA_HOME%\lib\tools.jar
+```
+
+
+
+
 
 > mac系统
 
