@@ -83,3 +83,19 @@ Host github.com
 ```
 
 然后问题就解决了
+
+
+
+### github拒绝连接
+
+![image-20220524212855978](Git.assets/image-20220524212855978.png)
+
+去gitee 搜索github520项目，然后修改hosts文件就可以解决了
+
+
+
+### git  push 报错
+
+![image-20220524220654156](Git.assets/image-20220524220654156.png)
+
+清空之前在C:\Users\Admin\\.ssh加的config文件内容， 让config变成空文件， 就可以正常提交了！ 我被搞晕了。。。
