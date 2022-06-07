@@ -48,6 +48,10 @@ $ cd pyltp
 $ git submodule init
 $ git submodule update
 $ python setup.py install
+
+
+git rebase 
+
 ```
 
 

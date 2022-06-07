@@ -1,5 +1,11 @@
 # Netty
 
+相关代码
+
+
+
+
+
 # 一. NIO 基础
 
 non-blocking io 非阻塞 IO
@@ -228,6 +234,13 @@ compact 方法，是把未读完的部分向前压缩，然后切换至写模式
 #### 💡 调试工具类
 
 ```java
+import io.netty.util.internal.StringUtil;
+
+import java.nio.ByteBuffer;
+
+import static io.netty.util.internal.MathUtil.isOutOfBounds;
+import static io.netty.util.internal.StringUtil.NEWLINE;
+
 public class ByteBufferUtil {
     private static final char[] BYTE2CHAR = new char[256];
     private static final char[] HEXDUMP_TABLE = new char[256 * 4];
@@ -3289,6 +3302,7 @@ ChannelHandler 用来处理 Channel 上的各种事件，分为入站、出站�
 先搞清楚顺序，服务端
 
 ```java
+// 测试发现没什么用
 new ServerBootstrap()
     .group(new NioEventLoopGroup())
     .channel(NioServerSocketChannel.class)
@@ -3347,6 +3361,7 @@ new ServerBootstrap()
 客户端
 
 ```java
+// 测试发现没什么用
 new Bootstrap()
     .group(new NioEventLoopGroup())
     .channel(NioSocketChannel.class)

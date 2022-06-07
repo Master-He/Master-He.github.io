@@ -1795,6 +1795,25 @@ mvn -Dtest=TestSquare,TestCi*le test #maven运行特定的test case
 
 
 
+### pom指定java8
+
+```
+<plugin>
+    <groupId>org.apache.maven.plugins</groupId>
+    <artifactId>maven-compiler-plugin</artifactId>
+    <version>3.6.2</version>
+    <configuration>
+       <target>1.8</target>   
+       <source>1.8</source>
+       <encoding>utf-8</encoding>
+    </configuration>
+ </plugin>
+```
+
+
+
+
+
 ### maven 导入本地jar包
 
 https://blog.csdn.net/wangjian1204/article/details/54563988
@@ -1840,17 +1859,20 @@ https://blog.csdn.net/w605283073/article/details/90120722
 ### 指定java编译版本
 
 ```
-<plugin>
-    <groupId>org.apache.maven.plugins</groupId>
-    <artifactId>maven-compiler-plugin</artifactId>
-    <version>2.3.2</version>
-    <configuration>
-        <source>1.8</source>
-        <target>1.8</target>
-        <encoding>UTF-8</encoding>
-    </configuration>
-</plugin>
-<plugin>
+<build>
+	<plugins>
+		<plugin>
+			<groupId>org.apache.maven.plugins</groupId>
+			<artifactId>maven-compiler-plugin</artifactId>
+			<version>2.3.2</version>
+			<configuration>
+				<source>1.8</source>
+				<target>1.8</target>
+				<encoding>UTF-8</encoding>
+			</configuration>
+		</plugin>
+	</plugins>
+</build>
 ```
 
 
