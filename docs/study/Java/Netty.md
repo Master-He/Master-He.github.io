@@ -3302,7 +3302,6 @@ ChannelHandler 用来处理 Channel 上的各种事件，分为入站、出站�
 先搞清楚顺序，服务端
 
 ```java
-// 测试发现没什么用
 new ServerBootstrap()
     .group(new NioEventLoopGroup())
     .channel(NioServerSocketChannel.class)
@@ -3361,7 +3360,6 @@ new ServerBootstrap()
 客户端
 
 ```java
-// 测试发现没什么用
 new Bootstrap()
     .group(new NioEventLoopGroup())
     .channel(NioSocketChannel.class)
