@@ -1,12 +1,24 @@
+
+
+# Python基础
+
+
+
 ###  魔法方法总结
 
 with 上下文管理器相关的魔法方法
 
 ```python3
+#!/usr/bin/env python
+# encoding: utf-8
+
 class A(object):
+    def __init__(self):
+        print "初始化"
+
     def __enter__(self):
         print("with 进来了")
-        return "我是as关键字后面的东西"
+        return "我是as关键字后面的东西（f）"
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         print("with 出去了")
@@ -16,7 +28,7 @@ a = A()
 with a as f:
     print("with 里面")
     print(f)
-
+    
 ```
 
 输出结果
@@ -348,23 +360,6 @@ def __init__(self, lock1, lock2):
 
 
 
-
-### 调试问题
-
-traceback
-
-```python
-import traceback
-traceback.format_exc()
-```
-
-
-
-#### 日志配置
-
-
-
-
 # pip
 
 
@@ -374,11 +369,9 @@ traceback.format_exc()
 https://zhuanlan.zhihu.com/p/109939711	
 
 ```shell
-# 直接运行这个命令就能修改源，本质就是自动创建/root/.config/pip/pip.conf
+# 直接运行这个命令就能修改源，本质就是自动创建/root/.config/pip/pip.conf(linux下),C:\Users\User\pip\pip.ini(win下)
 pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/
 ```
-
-
 
 
 
@@ -453,4 +446,110 @@ https://stackoverflow.com/questions/21530577/fatal-error-python-h-no-such-file-o
 
 
 # 内存分析
+
+
+
+# collections包
+
+
+
+
+
+# 工具类
+
+## 时间
+
+### 计算时间差（天，秒）
+
+```python
+import datetime
+d1 = datetime.datetime(2018,10,31)   # 第一个日期
+d2 = datetime.datetime(2019,2,2)   # 第二个日期
+interval = d2 - d1                   # 两日期差距
+interval.days                        # 具体的天数                     
+
+d1 = datetime.datetime(2018,10,31)   # 第一个日期
+d2 = datetime.datetime.now()   # 第二个日期
+interval = d2 - d1                   # 两日期差距
+interval.seconds  # 具体秒数， 没有具体分钟数，秒数/60即可
+interval.total_seconds() # 总描述
+```
+
+### 获取当前日期时间字符串
+
+```python
+import time
+time.strftime("%Y%m%d-%H%M%S", time.localtime()) # '20220609-170220'
+```
+
+
+
+
+
+## 文件读取
+
+## 读json,yaml
+
+```python
+import yaml
+import json
+# 获取当前脚本所以在的目录
+dir_path = os.path.dirname(os.path.abspath(__file__))
+conf_file = os.path.join(dir_path, "conf", "conf.yaml")
+desc_file = os.path.join(dir_path, "desc.json")
+with open(conf_file, 'r') as f:
+    conf = yaml.load(f.read())
+
+with open(desc_file, 'r') as f:
+    desc = json.load(f)
+```
+
+## glob批量获取文件
+
+```python
+import os
+import glob
+
+data_dir_path = "/data/log_data/*/*/_progress"
+for data_path in glob.glob(data_dir_path):
+    print "remove {}".format(data_path)
+    os.remove(data_path)
+```
+
+
+
+## 执行shell命令
+
+
+
+os.system
+
+commands
+
+os.popen
+
+subprocess
+
+
+
+## 调试问题
+
+traceback
+
+```python
+import traceback
+traceback.format_exc()
+```
+
+
+
+
+
+## 日志
+
+...待补充
+
+
+
+
 

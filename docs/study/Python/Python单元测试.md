@@ -32,3 +32,10 @@ github比较好的项目： https://github.com/search?q=python+unittest+framewor
 python 测试框架 内网总结
 
 http://tungwaiyip.info/software/HTMLTestRunner.html
+
+
+
+
+
+
+

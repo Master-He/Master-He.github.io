@@ -2223,6 +2223,18 @@ private void swap(int[] arr, int i, int j) {
 
 
 
+# 序列化
+
+常见的序列化有
+
+- java原生流序列化
+- Json/Xml序列化
+- Protobuff序列化
+
+
+
+
+
 # 加密解密
 
 待总结
