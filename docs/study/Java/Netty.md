@@ -4364,7 +4364,7 @@ serverBootstrap.option(ChannelOption.SO_RCVBUF, 10);
 * 原因
     * 应用层：接收方 ByteBuf 设置太大（Netty 默认 1024）
     * 滑动窗口：假设发送方 256 bytes 表示一个完整报文，但由于接收方处理不及时且窗口大小足够大，这 256 bytes 字节就会缓冲在接收方的滑动窗口中，当滑动窗口中缓冲了多个报文就会粘包
-    * Nagle 算法：会造成粘包
+    * **Nagle 算法：会造成粘包**
 
 半包
 
@@ -4372,11 +4372,11 @@ serverBootstrap.option(ChannelOption.SO_RCVBUF, 10);
 * 原因
     * 应用层：接收方 ByteBuf 小于实际发送数据量
     * 滑动窗口：假设接收方的窗口只剩了 128 bytes，发送方的报文大小是 256 bytes，这时放不下了，只能先发送前 128 bytes，等待 ack 后才能发送剩余部分，这就造成了半包
-    * MSS 限制：当发送的数据超过 MSS 限制后，会将数据切分发送，就会造成半包
+    * **MSS 限制：当发送的数据超过 MSS 限制后，会将数据切分发送，就会造成半包**
 
 
 
-本质是因为 TCP 是流式协议，消息无边界
+**本质是因为 TCP 是流式协议，消息无边界**
 
 
 
@@ -4392,7 +4392,7 @@ serverBootstrap.option(ChannelOption.SO_RCVBUF, 10);
 >
 >     ![](Netty.assets/0051.png)
 >
-> * 窗口实际就起到一个缓冲区的作用，同时也能起到流量控制的作用
+> * 窗口实际就起到一个缓冲区的作用，同时也能起到流量控制的作用（发送方可以根据接收方的速度进行发送）
 >
 >     * 图中深色的部分即要发送的数据，高亮的部分即窗口
 >     * 窗口内的数据才允许被发送，当应答未到达前，窗口必须停止滑动
@@ -4415,7 +4415,7 @@ serverBootstrap.option(ChannelOption.SO_RCVBUF, 10);
 >   * TCP 在传递大量数据时，会按照 MSS 大小将数据进行分割发送
 >   * MSS 的值在三次握手时通知对方自己 MSS 的值，然后在两者之间选择一个小值作为 MSS
 >
->   <img src="E:/下载/Netty网络编程/Netty教程源码资料/讲义/Netty-讲义/img/0031.jpg" style="zoom:50%;" />
+>   <img src="E:/下载/Netty网络编程/Netty教程源码资料/讲义/Netty-讲义/img/0031.jpg" style="zoom:100%;" />
 
 
 

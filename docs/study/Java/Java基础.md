@@ -2436,6 +2436,9 @@ https://blog.csdn.net/qq_35246620/article/details/78289074
 alt+7 或者 ctrl+F12
 # 将局部变量变成成员变量
 ctrl+shift+f
+
+# 将代码块抽取成方法
+ctrl+alt+m
 ```
 
 ### IDEA 快捷键(mac)
