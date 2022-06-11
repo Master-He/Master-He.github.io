@@ -91,6 +91,41 @@ https://pulsar.apache.org/admin-rest-api/是Pulsar Admin REST API的接口文档
 
 
 
+## 游标回退脚本
+
+```python
+#!/usr/bin/env python
+# encoding: utf-8
+import os
+import datetime
+
+pulsar_home = "/opt/pulsar/apache-pulsar-2.8.1"
+pulsar_tenant = "tenant"
+pulsar_namespace = "new_new_schema_avro"
+pulsar_topic_list = ["http_log", "dns_log", "dce_rpc_log", "ssl_log", "icmp_log", "db2_log", "ldap_log", "redis_log",
+                     "redis_login_log", "snmp_log", "sql_server_log", "http_login_log", "mysql_log", "ntlm_log",
+                     "rdp_log", "ssh_log", "ftp_login_log", "pop3_login_log", "smtp_login_log", "oracle_log", "tcp_log",
+                     "imap_login_log", "telnet_login_log", "smb_log"]
+subscription_list = ["alpha_app", "alpha_engine"]
+
+mark_time = datetime.datetime(2022, 5, 19)
+now_time = datetime.datetime.now()
+beforeDays = (now_time - mark_time).days
+
+
+for sub in subscription_list:
+    for topic in pulsar_topic_list:
+        print("{}/bin/pulsar-admin topics reset-cursor --subscription {} --time {}d persistent://{}/{}/{}".format(
+            pulsar_home, sub, beforeDays, pulsar_tenant, pulsar_namespace, topic))
+        os.system("{}/bin/pulsar-admin topics reset-cursor --subscription {} --time {}d persistent://{}/{}/{}".format(
+            pulsar_home, sub, beforeDays, pulsar_tenant, pulsar_namespace, topic))
+
+```
+
+
+
+
+
 # 四、pulsar web 管理
 
 https://github.com/apache/pulsar-manager

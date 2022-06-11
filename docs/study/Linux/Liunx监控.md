@@ -28,4 +28,13 @@ strace命令
 ???
 
 iotop
+
+```shell
+iotop -oP  
+# -o： Only show processes or threads actually doing I/O
+# -P:  Only show processes. Normally iotop shows all threads.
+```
+
+
+
 iftop
