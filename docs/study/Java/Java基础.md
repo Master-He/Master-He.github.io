@@ -191,8 +191,8 @@ PECS（Producer Extends Consumer Super）
 @Deprecated
 @Override
 @SuppressWarnings
-@SafeVarargs
-@FunctionalInterface
+@SafeVarargs // 抑制编译器对变量参数的警告
+@FunctionalInterface // 函数式接口
 ```
 
 
@@ -201,9 +201,34 @@ PECS（Producer Extends Consumer Super）
 https://juejin.cn/post/6844903943269548045  这个文章讲的不错
 
 ```
-@Retention  // 被描述的注解在它所修饰的类中可以被保留到何时
-@Documented  // 描述在使用 javadoc 工具为类生成帮助文档时是否要保留其注解信息。
+@Retention  // 被描述的注解在它所修饰的类中可以被保留到何时，用来描述注解的生命周期
+生命周期长度 SOURCE < CLASS < RUNTIME， 前者能作用的地方后者一定也能作用。
+如果需要在运行时去动态获取注解信息，那只能用 RUNTIME 注解；
+如果要在编译时进行一些预处理操作，比如生成一些辅助代码（如 ButterKnife），就用 CLASS注解；
+如果只是做一些检查性的操作，比如 @Override 和 @SuppressWarnings，则可选用 SOURCE 注解。
+public enum RetentionPolicy {
+    SOURCE,    // 源文件保留
+    CLASS,       // 编译期保留，默认值
+    RUNTIME   // 运行期保留，可通过反射去获取注解信息
+}
+
+@Documented  // 在使用 javadoc 工具为类生成帮助文档时保留其注解信息。
+
 @Target // 被修饰的注解可以用在什么地方
+public enum ElementType {
+    TYPE, // 类、接口、枚举类
+    FIELD, // 成员变量（包括：枚举常量）
+    METHOD, // 成员方法
+    PARAMETER, // 方法参数
+    CONSTRUCTOR, // 构造方法
+    LOCAL_VARIABLE, // 局部变量
+    ANNOTATION_TYPE, // 注解类
+    PACKAGE, // 可用于修饰：包
+    TYPE_PARAMETER, // 类型参数，JDK 1.8 新增
+    TYPE_USE // 使用类型的任何地方，JDK 1.8 新增
+}
+
+
 @Inherited  // 如果某个类使用了被@Inherited修饰的注解，则其子类将自动具有该注解
 @Repeatable // 即允许在同一申明类型（类，属性，或方法）前多次使用同一个类型注解。
 ```
@@ -286,6 +311,60 @@ public class Test {
     }
 }
 ```
+
+
+
+## 枚举
+
+```java
+public class Test
+{
+    enum Color
+    {
+        RED, GREEN, BLUE;
+    }
+ 
+    // 执行输出结果
+    public static void main(String[] args)
+    {
+        Color c1 = Color.RED; 
+        System.out.println(c1); // RED
+        
+        for (Color myVar : Color.values()) {
+      		System.out.println(myVar);  // RED, GREEN BLUE
+    	}
+        
+        Color myVar = Color.BLUE;
+        switch(myVar) {
+            case RED:
+                System.out.println("红色");
+                break;
+            case GREEN:
+                System.out.println("绿色");
+                break;
+            case BLUE:
+                System.out.println("蓝色");
+                break;
+        }
+        
+        // 调用 values()
+        Color[] arr = Color.values();
+ 
+        // 迭代枚举
+        for (Color col : arr)
+        {
+            // 查看索引
+            System.out.println(col + " at index " + col.ordinal());
+        }
+ 
+        // 使用 valueOf() 返回枚举常量，不存在的会报错 IllegalArgumentException
+        System.out.println(Color.valueOf("RED"));
+        // System.out.println(Color.valueOf("WHITE"));
+    }
+}
+```
+
+
 
 
 
@@ -2473,19 +2552,6 @@ https://blog.csdn.net/weixin_39625782/article/details/114051500
 
 
 
-## 练手项目
-
-- Java 实现简单计算器：https://www.lanqiao.cn/courses/185
-- Eclipse 实现 Java 编辑器：https://www.lanqiao.cn/courses/287
-- 一本糊涂账：https://how2j.cn/module/104.html
-- Java 五子棋：https://blog.csdn.net/cnlht/article/details/8176130
-- Java 中国象棋：https://blog.csdn.net/cnlht/article/details/8205733
-- JAVA GUI 图书馆管理系统：https://github.com/uboger/LibraryManager
-- JAVA 坦克大战小游戏：https://github.com/wangzhengyi/TankWar
-- Swing 编写的俄罗斯方块：https://github.com/HelloClyde/Tetris-Swing
-- 小小记账本：https://github.com/xenv/SmallAccount （适合了解数据库的同学）
-- 
-
 ## 怎么看回调函数的调用栈
 
 ```java
@@ -2820,6 +2886,86 @@ export PATH=.:$JAVA_HOME/bin:$JRE_HOME/bin:$PATH
 java -version
 javac -version 
 ```
+
+
+
+
+
+## Lombok
+
+参考https://www.bilibili.com/video/BV1qJ411G7Dv?vd_source=6cd527c3a43bcb0943d3d64a7923b3bc
+
+
+
+> Lombok原理
+
+Lombok是在编译阶段生效的 @Retention(RetentionPolicy.SOURCE)
+
+![image-20220612142949210](Java基础.assets/image-20220612142949210.png)
+
+> Maven pom引入依赖
+
+```xml
+<dependency>
+    <groupId>org.projectlombok</groupId>
+    <artifactId>lombok</artifactId>
+    <version>1.18.22</version>
+</dependency>
+```
+
+
+
+> IDEA安装 插件
+
+IDEA需要安装Lombok插件， IDEA才不会提示编译错误
+
+
+
+> Lombok注解
+
+```
+@Getter/@Setter
+@ToString
+@EqualsAndHashCode
+@NotNull
+@NoArgsConstructor/@RequiredArgsConstructor/@AllArgsConstructor
+@Data  // 包含了@Getter/@Setter，@ToString，@EqualsAndHashCode，@RequiredArgsConstructor
+@Builder // 使用建造者模式增加了一个XxxBuilder内部类， 增加了一个builder()方法提供XxxBuilder内部类
+@Log // 引入log变量
+@Slf4j // 引入slf4j的log变量
+val // lombok引入的关键字，类似js的var关键字
+@Cleanup  // 帮忙处理 IO close
+```
+
+
+
+> lombok.config
+
+
+
+lombok.config中配置项config.stopBubbling=true指明lombok的根目录为当前配置文件所在目录
+
+```
+config.stopBubbling = true
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

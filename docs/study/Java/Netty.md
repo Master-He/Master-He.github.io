@@ -6161,7 +6161,7 @@ public final void connect(
 
 #### 2）SO_BACKLOG
 
-* 属于 ServerSocketChannal 参数
+* 属于 ServerSocketChannal 参数 ， 可以用来全连接队列的长度
 
 ```mermaid
 sequenceDiagram
@@ -6280,13 +6280,18 @@ java.net.SocketTimeoutException: connect timed out
 
 #### 3）ulimit -n
 
-* 属于操作系统参数
+* 属于操作系统参数， linux最大文件描述符的个数
+
+```shell
+ulimit -n # 查看最大文件描述符数
+ulimit -n 4096  # 设置最大文件描述符数为4096
+```
 
 
 
 #### 4）TCP_NODELAY
 
-* 属于 SocketChannal 参数
+* 属于 SocketChannal 参数， 默认是false（也就是默认开启Nagle算法）
 
 
 
@@ -6294,6 +6299,8 @@ java.net.SocketTimeoutException: connect timed out
 
 * SO_SNDBUF 属于 SocketChannal 参数
 * SO_RCVBUF 既可用于 SocketChannal 参数，也可以用于 ServerSocketChannal 参数（建议设置到 ServerSocketChannal 上）
+* 这两个参数最好不要调，这个很多操作系统现在tcp流量控制和拥塞控制会自动控制这两个参数
+* 这两个参数是用来调整发送缓冲器和接收缓冲器的大小
 
 
 
@@ -6308,7 +6315,7 @@ java.net.SocketTimeoutException: connect timed out
 
 * 属于 SocketChannal 参数
 * 控制 netty 接收缓冲区大小
-* 负责入站数据的分配，决定入站缓冲区的大小（并可动态调整），统一采用 direct 直接内存，具体池化还是非池化由 allocator 决定
+* 负责入站数据的分配，决定入站缓冲区的大小（并可动态调整），统一采用 direct 直接内存，具体池化还是非池化由 上面的allocator 决定
 
 
 
