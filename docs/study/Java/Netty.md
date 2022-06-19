@@ -6291,7 +6291,7 @@ ulimit -n 4096  # 设置最大文件描述符数为4096
 
 #### 4）TCP_NODELAY
 
-* 属于 SocketChannal 参数， 默认是false（也就是默认开启Nagle算法）
+* 属于 SocketChannal 参数， 默认是false（也就是说默认开启了Nagle算法（数据少时等一段时间才发的算法））
 
 
 
@@ -6308,6 +6308,8 @@ ulimit -n 4096  # 设置最大文件描述符数为4096
 
 * 属于 SocketChannal 参数
 * 用来分配 ByteBuf， ctx.alloc()
+    * ByteBuf默认是池化直接内存
+    * ByteBuf设置为非池化堆内存：设置VM options： -Dio.netty.allocator.type=unpooed  -Dio.netty.noPreferDirect=true
 
 
 
@@ -6315,7 +6317,7 @@ ulimit -n 4096  # 设置最大文件描述符数为4096
 
 * 属于 SocketChannal 参数
 * 控制 netty 接收缓冲区大小
-* 负责入站数据的分配，决定入站缓冲区的大小（并可动态调整），统一采用 direct 直接内存，具体池化还是非池化由 上面的allocator 决定
+* 负责入站数据的分配，决定入站缓冲区的大小（并可动态调整），**统一采用 direct 直接内存（强制）**，具体池化还是非池化由上面的allocator 决定
 
 
 
@@ -6767,6 +6769,12 @@ public class RpcResponseMessageHandler extends SimpleChannelInboundHandler<RpcRe
 ```
 
 
+
+可以把Futures理解为一个背包， t0是买面包的人， t1是做面包的人， t0让t1做好面包后放入背包里
+
+![image-20220614080447091](Netty.assets/image-20220614080447091.png)
+
+ 
 
 
 

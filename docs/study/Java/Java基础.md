@@ -177,7 +177,7 @@ class DemoClass {
 
 PECS（Producer Extends Consumer Super）
 
-频繁往外读取内容的，适合用<? extends T>。 
+频繁往外读取内容的，适合用<? extends T>。  // 个人理解是泛型最好只取值，不赋值，赋值往往很多问题
 
 经常往里插入的，适合用<? super T>
 
