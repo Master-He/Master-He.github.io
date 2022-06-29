@@ -480,6 +480,7 @@ interval.total_seconds() # 总描述
 ```python
 import time
 time.strftime("%Y%m%d-%H%M%S", time.localtime()) # '20220609-170220'
+time.strftime("%Y%m%d-%H%M%S", time.localtime(time.time())) # '20220609-170220'
 ```
 
 

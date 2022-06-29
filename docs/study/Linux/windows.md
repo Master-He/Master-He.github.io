@@ -52,3 +52,17 @@ https://jingyan.baidu.com/article/1974b2898d91b3f4b1f77493.html
 
 
 
+# 激活
+
+```
+slmgr /ckms
+slmgr /ipk W269N-WFGWX-YVC9B-4J6C9-T83GX
+slmgr /skms kms.03k.org
+slmgr /ato
+```
+
+
+
+## 蓝屏问题定位
+
+https://bluescreenview.en.softonic.com/

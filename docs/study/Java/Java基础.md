@@ -2959,7 +2959,29 @@ config.stopBubbling = true
 
 
 
+## Jedis
 
+
+
+### jedis cluster pipeline
+
+参考： https://xie.infoq.cn/article/92dcb516327addd3ddd7dc189
+
+JedisCluster 不支持 Pipeline,可以选择其他框架Redisson， lettuce
+
+Jedis 对 Redis Cluster 提供了 JedisCluster 客户端，但是没有 Pipeline 模式，那么 JedisCluster 为什么不支持 Pipeline？
+
+在 redis 中一共有 16384 个 Slot，每个节点负责一部分 Slot，当对 Key 进行操作时，redis 会通过 *CRC16* 计算出 key 对应的 Slot，将 Key 映射到 Slot 所在节点上执行操作。  16384个slot可以通过 `cluster nodes`命令查看
+
+因为不同 Key 映射的节点不同，所以 JedisCluster 需要持有 Redis Cluster 每个节点的连接才能执行操作，而 Pipeline 是面向于一个 redis 连接的执行模式，所以 JedisCluster 无法支持 Pipeline。
+
+*那么我们自己有没有办法利用 JedisCluster 去封装一个具有 Pipeline 模式的客户端？*
+
+> 思路
+
+**刚刚提到，JedisCluster 会持有 Redis Cluster 所有节点的连接**。那么，如果我们可以获取到所有节点的连接，对每个节点的连接都开启 Pipeline。首先计算出每个 Key 所在的 Slot，再找到 Slot 对应节点，就可以将 Key 放到对应节点连接的 Pipeline 上，这样不就实现了集群版的 Pipeline 了么！
+
+我们要做的工作就是找到对应关系，**将每个 Key 分配到对应的节点连接中**。
 
 
 
