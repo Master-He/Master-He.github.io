@@ -366,6 +366,18 @@ public class Test
 
 
 
+## 异常
+
+Java异常总结文档： https://www.jianshu.com/p/188cbc07d2f3
+
+
+
+Throwable分为Error, Exception
+Error分为Virtual MachineError和AWTError （比如OOM异常）
+Exception分为RuntimeException和IOException
+		RuntimeException （是非检查异常， 比如NullPointerException、ArrayIndexOutOfBoundsException）
+		IOException（是检查异常，编译期强制要求的，必须进行处理）
+
 
 
 # 类
@@ -1818,7 +1830,7 @@ private static final Logger log = Logger.getLogger(YaraJavaDemo.class);
 
 
 
-## 异常处理
+## mock异常处理
 
 ```java
 // 抛出异常和返回一个值类似，可以直接抛出一个异常类，也可以返回一个异常对象，对象也可以自定义异常信息 	
@@ -2310,9 +2322,21 @@ private void swap(int[] arr, int i, int j) {
 - Json/Xml序列化
 - Protobuff序列化
 
+yaml配置 用 snakeyaml
+
+五种读取yaml的方式： https://developer.51cto.com/article/699653.html
 
 
 
+json序列化
+
+fastjson2
+
+jackson
+
+Jackson(1)之ObjectMapper配置详解
+
+https://blog.csdn.net/Seky_fei/article/details/109960178
 
 # 加密解密
 
