@@ -780,7 +780,7 @@ union connect
 
 我们知道在 Flink 中，一个算子任务会按照并行度分为多个并行子任务执行，而不同的子任务会占据不同的任务槽（task slot）。
 
-由于不同的 slot 在计算资源上是物理隔离的，所以 Flink能管理的状态在并行任务间是无法共享的，每个状态只能针对当前子任务的实例有效。而很多有状态的操作（比如聚合、窗口）都是要先做 keyBy 进行按键分区的。按键分区之后，任务所进行的所有计算都应该只针对当前 key 有效，所以状态也应该按照 key 彼此隔离。在这种情况下，状态的访问方式又会有所不同。
+**<u>由于不同的 slot 在计算资源上是物理隔离的，所以 Flink能管理的状态在并行任务间是无法共享的</u>**，每个状态只能针对当前子任务的实例有效。而很多有状态的操作（比如聚合、窗口）都是要先做 keyBy 进行按键分区的。按键分区之后，任务所进行的所有计算都应该只针对当前 key 有效，所以状态也应该按照 key 彼此隔离。在这种情况下，状态的访问方式又会有所不同。
 
 所以我们又可以将托管状态分为两类：算子状态和按键分区状态。
 
@@ -1087,6 +1087,105 @@ public interface CheckpointedFunction {
 每次应用保存检查点做快照时，都会调用.snapshotState()方法，将状态进行外部持久化。而在算子任务进行初始化时，会调用. initializeState()方法。这又有两种情况：一种是整个应用第一次运行，这时状态会被初始化为一个默认值（default value）；另一种是应用重启时，从检查点（checkpoint）或者保存点（savepoint）中读取之前状态的快照，并赋给本地状态。所以，接口的.snapshotState()方法定义了检查点的快照保存逻辑，而. initializeState()方法不仅定义了初始化逻辑，也定义了恢复逻辑。
 
 这里需要注意，CheckpointedFunction 接口中的两个方法，分别传入了一个上下文（context）作为参数。不同的是，.snapshotState()方法拿到的是快照的上下文 FunctionSnapshotContext，它可以提供检查点的相关信息，不过无法获取状态句柄；而. initializeState()方法拿到的是FunctionInitializationContext，这是函数类进行初始化时的上下文，是真正的“运行时上下文”。FunctionInitializationContext 中提供了“算子状态存储”（OperatorStateStore）和“按键分区状态存储（” KeyedStateStore），在这两个存储对象中可以非常方便地获取当前任务实例中的 OperatorState 和 Keyed State。
+
+例子：
+
+```java
+package com.github.chapter09.section05;
+
+import com.github.chapter05.ClickSource;
+import com.github.chapter05.Event;
+import org.apache.flink.api.common.eventtime.SerializableTimestampAssigner;
+import org.apache.flink.api.common.eventtime.WatermarkStrategy;
+import org.apache.flink.api.common.state.ListState;
+import org.apache.flink.api.common.state.ListStateDescriptor;
+import org.apache.flink.api.common.typeinfo.Types;
+import org.apache.flink.runtime.state.FunctionInitializationContext;
+import org.apache.flink.runtime.state.FunctionSnapshotContext;
+import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction;
+import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.sink.SinkFunction;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class BufferingSinkExample {
+    public static void main(String[] args) throws Exception {
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setParallelism(1);
+        env.enableCheckpointing(1000);
+        SingleOutputStreamOperator<Event> stream = env.addSource(new ClickSource())
+            .assignTimestampsAndWatermarks(WatermarkStrategy.<Event>forMonotonousTimestamps()
+                .withTimestampAssigner(new SerializableTimestampAssigner<Event>() {
+                    @Override
+                    public long extractTimestamp(Event element, long
+                        recordTimestamp) {
+                        return element.timestamp;
+                    }
+                })
+            );
+        stream.print("input");
+        // 批量缓存输出
+        stream.addSink(new BufferingSink(10));
+        env.execute();
+    }
+	
+    public static class BufferingSink implements SinkFunction<Event>, CheckpointedFunction {
+        private final int threshold;
+        private transient ListState<Event> checkPointedState;
+        private List<Event> bufferedElements;
+
+        public BufferingSink(int threshold) {
+            this.threshold = threshold;
+            this.bufferedElements = new ArrayList<>();
+        }
+
+        @Override
+        public void invoke(Event value, Context context) throws Exception {
+            bufferedElements.add(value);
+            if (bufferedElements.size() == threshold) {
+                for (Event element : bufferedElements) {
+                    // 输出到外部系统，这里用控制台打印模拟
+                    System.out.println(element);
+                }
+                System.out.println("==========输出完毕=========");
+                bufferedElements.clear();
+            }
+        }
+
+        @Override
+        public void snapshotState(FunctionSnapshotContext context) throws Exception {
+            checkPointedState.clear();
+            // 把当前局部变量中的所有元素写入到检查点中
+            for (Event element : bufferedElements) {
+                checkPointedState.add(element);
+            }
+        }
+
+        @Override
+        public void initializeState(FunctionInitializationContext context) throws Exception {
+            ListStateDescriptor<Event> descriptor = new ListStateDescriptor<>(
+                "buffered-elements",
+                Types.POJO(Event.class));
+
+            checkPointedState = context.getOperatorStateStore().getListState(descriptor);
+
+            // 如果是从故障中恢复，就将 ListState 中的所有元素添加到局部变量中
+            if (context.isRestored()) {
+                System.out.println("======从故障中恢复=======");
+                for (Event element : checkPointedState.get()) {
+                    bufferedElements.add(element);
+                }
+            }
+        }
+    }
+}
+```
+
+
+
+
 
 
 
