@@ -147,7 +147,6 @@ public class ExampleIntegrationTest {
 ```
 
 
-
 https://nightlies.apache.org/flink/flink-docs-release-1.14/api/java/org/apache/flink/streaming/api/windowing/triggers/CountTrigger.html
 
 
