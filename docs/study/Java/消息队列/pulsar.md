@@ -75,8 +75,18 @@ cd /pulsar/bin
 
 ```shell
 ./pulsar-admin topics create persistent://study/app1/topic-1
+# 创建分区
+/pulsar/bin/pulsar-admin topics create-partitioned-topic -p 1 persistent://study/app1/topic-1
 ./pulsar-admin topics list study/app1
 ```
+
+查看topics的订阅者
+
+```shell
+./pulsar-admin topics subscriptions study/app1/topic-1
+```
+
+
 
 
 

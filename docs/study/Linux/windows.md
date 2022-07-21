@@ -54,6 +54,8 @@ https://jingyan.baidu.com/article/1974b2898d91b3f4b1f77493.html
 
 # 激活
 
+管理员身份打开cmd
+
 ```
 slmgr /ckms
 slmgr /ipk W269N-WFGWX-YVC9B-4J6C9-T83GX

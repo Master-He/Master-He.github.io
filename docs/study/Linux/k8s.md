@@ -1,3 +1,29 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # k8s
 
 视频教程 https://www.bilibili.com/video/BV1w4411y7Go?spm_id_from=333.337.search-card.all.click
@@ -272,13 +298,62 @@ W0629 14:47:39.212492  115587 version.go:104] falling back to the local client v
 
 https://blog.csdn.net/kozazyh/article/details/109168078
 
-
-
 https://www.cnblogs.com/kevin-ying/p/13299977.html
 
 
 
 
 
+# Ansible搭建k8s
 
+
+
+服务器节点IP（hostname）：
+
+
+
+- 192.168.0.111 (kmaster)
+- 192.168.0.112 (knode1)
+- 192.168.0.113 (knode2
+
+
+
+操作系统版本：
+
+- `cat /etc/redhat-release` : CentOS Linux release 7.9.2009 (Core)
+- `uname -a` : 3.10.0-1160.el7.x86_64
+
+
+
+如果还没有Ansible环境，可以参考 [Ansible简明教程][https://mp.weixin.qq.com/s/JIZE1RvN7Yop5dsOHJvStw](https://link.zhihu.com/?target=https%3A//mp.weixin.qq.com/s/JIZE1RvN7Yop5dsOHJvStw)) 搭建。
+
+
+
+1.在Ansible服务器上的/etc/hosts文件中添加k8s服务器节点信息
+
+```text
+192.168.0.111 kmaster
+192.168.0.112 knode1
+192.168.0.113 knode2
+```
+
+
+
+2.在Ansible服务器上的/etc/ansible/hosts文件中添加k8s服务器节点
+
+```text
+[k8s-all]
+kmaster
+knode1
+knode2
+knode3
+
+[k8s-master]
+kmaster
+
+[k8s-nodes]
+knode1
+knode2
+knode3
+```
 
