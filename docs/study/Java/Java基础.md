@@ -2338,6 +2338,27 @@ Jackson(1)之ObjectMapper配置详解
 
 https://blog.csdn.net/Seky_fei/article/details/109960178
 
+
+
+# 编码
+
+## unicode
+
+参考https://segmentfault.com/a/1190000019555729
+
+一开始使用ascii, gb2312,gkb等编码，后来为了世界统一编码就有了unicode编码
+
+原始的Unicode是定长的4个字节，比如字母A，用Unicode表示需要4个字节，比ASCII多了3个字节，由于这样做太浪费空间，因此经过优化制定了变长表示字符的UTF编码。
+
+- UTF-8：用1-6个字节表示所有字符，此处使用变长字节表示，优先使用短字节。
+- UTF-16：用2、4个字节表示所有字符，此处使用变长字节表示，优先使用短字节。
+- UTF-32：用4个字节表示。
+
+##### 编码和解码
+
+- 编码：将字符转为二进制（或unicode）。
+- 解码：将二进制（或unicode）转为字符。
+
 # 加密解密
 
 待总结
@@ -2365,6 +2386,8 @@ export JAVA_HOME=$(/usr/libexec/java_home -v11)
 
 
 ## jprofiler 
+
+### jprofiler 安装和连接
 
 介绍： JProfiler 是由ej-technologies 公司开发的一款Java 应用性能诊断工具。
 
@@ -2406,6 +2429,26 @@ Please enter a profiling port
 You can now use the JProfiler GUI to connect on port 8849
 ```
 
+直接输入命令
+
+```python
+# encoding: utf-8
+import os
+import subprocess
+import commands
+
+cmd = "/home/xxx/yyy/java/jdk/bin/jps | grep TaskManagerRunner | awk {'print $1'}"
+status, task_manager_pid = commands.getstatusoutput(cmd)
+if status != 0 or not task_manager_pid:
+    raise Exception("can't get the pid of TaskManagerRunner, may be flink has not start.")
+
+jprofiler_home = "/home/hwj/jprofiler11.1.4/bin"
+jp_enable_cmd = "{}/jpenable --pid={} --gui --port=8849".format(jprofiler_home, task_manager_pid)
+
+print "execute: {}".format(jp_enable_cmd)
+os.system(jp_enable_cmd)
+```
+
 windows客户端
 
 ```
@@ -2413,6 +2456,12 @@ windows客户端
 2. attach to remote JVM
 3. 输入远程服务器ip和端口， 确认ok, 就可以看到JVM的各种信息了
 ```
+
+
+
+### jprofiler分析内存
+
+
 
 
 

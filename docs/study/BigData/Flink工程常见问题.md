@@ -24,9 +24,46 @@ taskmanager.memory.managed.size: 256m
 
 
 
+```shell
+jobmanager.rpc.address: localhost
+jobmanager.rpc.port: 6123
+jobmanager.memory.process.size: 2g
+
+taskmanager.memory.process.size: 7g
+taskmanager.memory.jvm-metaspace.size: 512m
+taskmanager.memory.managed.size: 1g
+taskmanager.memory.network.max: 256m
+taskmanager.numberOfTaskSlots: 4
+
+parallelism.default: 1
+
+jobmanager.execution.failover-strategy: region
+rest.port: 8081
+
+io.tmp.dirs: /data/tmp/io
+web.tmpdir: /data/tmp/web/tmpdir
+web.upload.dir: /data/tmp/web/upload
 
 
-## 3. flink单元测试
+# for debug
+env.java.opts.jobmanager: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5006"
+env.java.opts.taskmanager: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"
+rest.flamegraph.enabled: true
+
+# hashmap or rocksdb
+state.backend: rocksdb
+state.checkpoints.dir: file:///data/state_checkpoints
+
+heartbeat.timeout: 600000
+```
+
+
+
+
+
+
+
+## 3. flink 单元测试
 
 https://nightlies.apache.org/flink/flink-docs-master/zh/docs/dev/datastream/testing/#%e6%b5%8b%e8%af%95-flink-%e4%bd%9c%e4%b8%9a
 
@@ -146,8 +183,154 @@ public class ExampleIntegrationTest {
 }
 ```
 
-
 https://nightlies.apache.org/flink/flink-docs-release-1.14/api/java/org/apache/flink/streaming/api/windowing/triggers/CountTrigger.html
+
+
+
+## 4. flink 异步调用
+
+> flink 异步 + httpasyncclient 异步
+
+https://blog.csdn.net/u010271601/article/details/104803866
+
+```java
+package com.github.async;
+
+import org.apache.flink.streaming.api.datastream.AsyncDataStream;
+import org.apache.flink.streaming.api.datastream.DataStreamSource;
+import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import java.util.concurrent.TimeUnit;
+
+public class HttpAsyncQuery {
+    public static void main(String[] args) throws Exception {
+
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+
+        DataStreamSource<String> lines = env.socketTextStream("10.60.62.123", 7777);
+
+        SingleOutputStreamOperator<String> result = AsyncDataStream.unorderedWait(
+                lines,                          //输入的数据流
+                new AsyncHttpQueryFunction(),   //异步查询的Function实例
+                2000,                   //超时时间
+                TimeUnit.MILLISECONDS,         //时间单位
+                10                     //最大异步并发请求数量（并发的线程队列数）
+        );
+
+        result.print();
+
+        env.execute("HttpAsyncQuery");
+    }
+}
+```
+
+
+
+```java
+package com.github.async;
+
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.streaming.api.functions.async.ResultFuture;
+import org.apache.flink.streaming.api.functions.async.RichAsyncFunction;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
+import org.apache.http.impl.nio.client.HttpAsyncClients;
+import org.apache.http.util.EntityUtils;
+import java.util.Collections;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+
+public class AsyncHttpQueryFunction extends RichAsyncFunction<String, String> {
+
+    private CloseableHttpAsyncClient httpclient = null;
+
+    @Override
+    public void open(Configuration parameters) throws Exception {
+        // 要是api有问题？比如api不可用这个异常情况？
+        RequestConfig requestConfig = RequestConfig.custom()
+                .setSocketTimeout(3000)
+                .setConnectTimeout(3000) //设置HttpClient连接池超时时间
+                .build();
+
+        httpclient = HttpAsyncClients.custom()
+                .setMaxConnTotal(10) //连接池最大连接数
+                .setDefaultRequestConfig(requestConfig)
+                .build();
+        httpclient.start();
+        System.out.println("====");
+    }
+
+    // 关闭连接
+    @Override
+    public void close() throws Exception {
+        httpclient.close();
+    }
+// 异步处理函数的主执行方法
+    @Override
+    public void asyncInvoke(String line, ResultFuture<String> resultFuture) throws Exception {
+
+        // try 处理异常的json解析
+        try {
+            // 1. 创建httpGet请求
+            HttpGet httpGet = new HttpGet("http://10.60.62.123:5000/");
+
+            // 2、提交httpclient异步请求，获取异步请求的future对象
+            Future<HttpResponse> future = httpclient.execute(httpGet, null);//callback是回调函数（也可通过回调函数拿结果）
+
+            // 3、从成功的Future中取数据
+            CompletableFuture<String> completableFuture =
+                    CompletableFuture.supplyAsync(new Supplier<String>() {
+
+                        @Override
+                        public String get() {
+
+                            // 用try包住，处理get不到值时的报错程序
+                            try {
+                                HttpResponse response = future.get();
+
+                                if (response.getStatusLine().getStatusCode() == 200) {
+
+                                    //拿出响应的实例对象, 将对象toString
+                                    HttpEntity entity = response.getEntity();
+                                    return EntityUtils.toString(entity);
+                                } else {
+                                    return null;
+                                }
+
+                            } catch (Exception e) {
+                                // 拿不到的返回null(还没有查询到结果，就从future取了)
+                                return null;
+                            }
+                        }
+                    });
+
+
+            // 4、将取出的数据，存入ResultFuture，返回给方法
+            completableFuture.thenAccept(new Consumer<String>() {
+                @Override
+                public void accept(String result) {
+
+                    //complete()里面需要的是Collection集合，但是一次执行只返回一个结果
+                    //所以集合使用singleton单例模式，集合中只装一个对象
+                    resultFuture.complete(Collections.singleton(result));
+                }
+            });
+
+        } catch (Exception e) {
+            resultFuture.complete(Collections.singleton(null));
+        }
+    }
+
+
+}
+```
+
+
 
 
 # flink pulsar的应用
@@ -279,3 +462,51 @@ public static FlinkPulsarProducer<N_alert_tmg_reduced> getSink(SinkParams params
         );
     }
 ```
+
+
+
+
+#  源码阅读
+
+```xml
+<dependency>
+    <groupId>io.streamnative.connectors</groupId>
+    <artifactId>pulsar-flink-connector_2.12</artifactId>
+    <version>1.14.3.4</version>
+</dependency>
+```
+
+
+
+```java
+import org.apache.flink.streaming.connectors.pulsar.FlinkPulsarSource;
+
+FlinkPulsarSource
+  run()
+  	this.pulsarFetcher = createFetcher(ctx, ...)
+    	new PulsarFetcher(sourceContext, ...);
+    pulsarFetcher.runFetchLoop();
+		createAndStartReaderThread(topicsToAssign, exceptionProxy));
+			readerT = createReaderThread(exceptionProxy, state);
+				new ReaderThread()
+			readerT.setDaemon(true);
+			readerT.start();
+
+ReaderThread
+  run()
+    handleTooLargeCursor();
+  	createActualReader(); // log.info("Create a reader at topic...")
+		ReaderBuilder<T> readerBuilder = CachedPulsarClient.getOrCreate(clientConf)
+		readerBuilder.create();
+	Message<T> message = reader.readNext(pollTimeoutMs, TimeUnit.MILLISECONDS);  // 重点
+	emitRecord(message); // while true
+		MessageId messageId = message.getMessageId();
+		final T record = deserializer.deserialize(message);
+		owner.emitRecordsWithTimestamps(record, state, messageId, message.getEventTime());
+			sourceContext.collectWithTimestamp(record, timestamp);
+```
+
+
+
+
+
