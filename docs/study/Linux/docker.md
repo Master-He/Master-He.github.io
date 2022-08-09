@@ -723,3 +723,16 @@ docker flask 容器
 
 https://docs.docker.com/language/python/build-images/
 
+
+
+## docker 启动不起来的问题
+
+Docker Engine fails to restart - Base Device UUID and Filesystem verification failed
+
+https://github.com/moby/moby/issues/23089
+
+```shell
+$ rm -rf /var/lib/docker/devicemapper
+$ systemctl start docker
+```
+
