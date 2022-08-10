@@ -525,6 +525,78 @@ public class AsyncHttpQueryFunction extends RichAsyncFunction<String, String> {
 
 
 
+6. flink source反序列化
+
+```java
+import org.apache.flink.api.common.serialization.DeserializationSchema;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.util.Preconditions;
+import org.apache.pulsar.client.impl.schema.AvroSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+
+
+/**
+ * @author hwj
+ * @version 1.0
+ * @date 2022/8/9 23:18
+ */
+public class ConvertDeserializationSchema<T> implements DeserializationSchema<T> {
+
+    private static final Logger logger = LoggerFactory.getLogger(ConvertDeserializationSchema.class);
+
+    private final Class<T> recordClazz;
+
+    private transient AvroSchema<T> pulsarAvroSchema;
+
+    private ConvertDeserializationSchema(Class<T> recordClazz) {
+        Preconditions.checkNotNull(recordClazz, "Avro record class must not be null.");
+        this.recordClazz = recordClazz;
+    }
+
+    private void checkPulsarAvroSchemaInitialized() {
+        if (pulsarAvroSchema != null) {
+            return;
+        }
+        this.pulsarAvroSchema = AvroSchema.of(recordClazz);
+    }
+
+    public static <T> ConvertDeserializationSchema<T> of(Class<T> recordClazz) {
+        return new ConvertDeserializationSchema<>(recordClazz);
+    }
+
+    @Override
+    public TypeInformation<T> getProducedType() {
+        return TypeInformation.of(recordClazz);
+    }
+
+    @Override
+    public T deserialize(byte[] message) throws IOException {
+        try {
+            checkPulsarAvroSchemaInitialized();
+            return pulsarAvroSchema.decode(message);
+        } catch (Exception e) {
+            logger.warn(e.getMessage() + " raw data: \n" + new String(message));
+            return null;
+        }
+    }
+
+    @Override
+    public boolean isEndOfStream(T nextElement) {
+        return false;
+    }
+
+}
+
+ 
+```
+
+
+
+
+
 
 # flink pulsar的应用
 

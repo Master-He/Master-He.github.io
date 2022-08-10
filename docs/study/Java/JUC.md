@@ -1,17 +1,3 @@
-# 0. 环境准备
-
-IDEA设置成java8
-
-![image-20220301001017575](/Users/hwj/project/Master-He.github.io/docs/study/Java/JUC.assets/image-20220301001017575.png)
-
-![image-20220301001126308](/Users/hwj/project/Master-He.github.io/docs/study/Java/JUC.assets/image-20220301001126308.png)
-
-![image-20220301001210454](/Users/hwj/project/Master-He.github.io/docs/study/Java/JUC.assets/image-20220301001210454.png)
-
-
-
-
-
 
 
 # 1. 什么是JUC
@@ -180,6 +166,14 @@ class Ticket2 {
 
 
 
+可重入锁指的是在一个线程中可以多次获取同一把锁，比如：
+
+一个线程在执行一个带锁的方法，该方法中又调用了另一个需要相同锁的方法，则该线程可以直接执行调用的方法，而无需重新获得锁；
+
+参考https://www.zhihu.com/question/23284564/answer/29633571
+
+
+
 # 4. 生产者和消费者
 
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/202009181016296.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center)
@@ -248,6 +242,35 @@ class Data {
     }
 }
 ```
+
+
+
+使用`notifyAll()`将唤醒所有当前正在`this`锁等待的线程，而`notify()`只会唤醒其中一个（具体哪个依赖操作系统，有一定的随机性）。
+
+注意： 用`notify()`会导致只唤醒了一个线程，而其他线程可能永远等待下去醒不过来了。
+
+注意到`wait()`方法返回时需要*重新*获得`this`锁。假设当前有3个线程被唤醒，这3个线程中只能有一个获取到`this`锁，剩下两个将继续等待。
+
+
+
+**什么是假唤醒？**
+
+> 当一个条件满足时，很多线程都被唤醒了，但是只有其中部分是有用的唤醒，其它的唤醒都是无用功
+> 1.比如说买货，如果商品本来没有货物，突然进了一件商品，这是所有的线程都被唤醒了，但是只能一个人买，所以其他人都是假唤醒，获取不到对象的锁
+
+
+
+**小结**
+
+`wait`和`notify`用于多线程协调运行：
+
+- 必须在`synchronized`内部可以调用`wait()`使线程进入等待状态； 否则报异常： IllegalMonitorStateException
+- 必须在已获得的锁对象上调用`wait()`方法；
+- 必须在`synchronized`内部可以调用`notify()`或`notifyAll()`唤醒其他等待线程； 否则报异常： IllegalMonitorStateException
+- 必须在已获得的锁对象上调用`notify()`或`notifyAll()`方法；
+- 已唤醒的线程还需要重新获得锁后才能继续执行。
+
+
 
 
 
@@ -334,11 +357,9 @@ class Data {
 }
 ```
 
+
+
 ## 4.2. JUC版本的生产者和消费者
-
-<img src="/Users/hwj/project/Master-He.github.io/docs/study/Java/JUC.assets/image-20220304211920627.png" alt="image-20220304211920627" style="zoom:50%;" />
-
-左边是Synchronized版， 右边是JUC版
 
 ```java
 package com.xiaofan.pc;
@@ -408,12 +429,23 @@ class Data1 {
         } finally {
             lock.unlock();
         }
-
-
     }
 }
 
 ```
+
+
+
+**对比**
+
+| synchronized       | ReentrantLock                                         |
+| ------------------ | ----------------------------------------------------- |
+| synchronized关键字 | new ReentrantLock().lock()                            |
+| wait()             | new ReentrantLock().lock().newCondition().await()     |
+| notify()           | new ReentrantLock().lock().newCondition().signal()    |
+| notifyAll()        | new ReentrantLock().lock().newCondition().signalAll() |
+
+ **注意，lock是await() 和 signal()**
 
 
 
