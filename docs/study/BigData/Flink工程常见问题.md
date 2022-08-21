@@ -374,6 +374,14 @@ public class AsyncHttpQueryFunction extends RichAsyncFunction<String, String> {
 
 
 
+python 对应的服务 http://10.60.62.123:5000
+
+```shell
+
+```
+
+
+
 
 
 
@@ -594,6 +602,26 @@ public class ConvertDeserializationSchema<T> implements DeserializationSchema<T>
 ```
 
 
+
+# 6. flink序列化问题
+
+```shell
+The object probably contains or references non serializable fields.
+
+当你看到这个错误时，你处于一知半解的状态，无法序列化。你是什​​么意思？
+
+首先，分析问题。他告诉我们一个类不能被序列化，
+
+如果类中的成员没有实现可序列化的接口会发生什么？关于 Java 序列化过程的一个简单问题。如果你尝试序列化一个实现了可序列化类的对象，但该对象包含对不可序列化类的引用，运行时会抛出不可序列化异常notserializableexception，
+
+那么，如果你把一个对象作为另一个对象的成员变量，那么这个对象的所有成员变量都必须是可序列化的。如果成员变量不能序列化，就会报这个错误。所以。不要将不可序列化的东西视为成员变量。
+```
+
+参考 https://programmerah.com/flink-error-is-not-serializable-the-object-probably-contains-or-references-non-serializable-fields-33955/
+
+```shell
+解决方案，递归地看成员变量的成员变量 是不是 可序列化的基本类型
+```
 
 
 

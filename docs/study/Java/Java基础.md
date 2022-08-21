@@ -2340,6 +2340,8 @@ fastjson2
 
 jackson
 
+
+
 Jackson(1)之ObjectMapper配置详解
 
 https://blog.csdn.net/Seky_fei/article/details/109960178
@@ -2370,6 +2372,18 @@ https://blog.csdn.net/Seky_fei/article/details/109960178
 待总结
 
 
+
+# RPC
+
+# GRPC
+
+java grpc超时
+
+https://grpc.io/blog/deadlines/
+
+java grpc首次调用耗时很严重
+
+http://zyjie.top/posts/grpc%E9%A6%96%E6%AC%A1%E8%B0%83%E7%94%A8%E8%80%97%E6%97%B6%E5%88%86%E6%9E%90/
 
 # 工具
 
