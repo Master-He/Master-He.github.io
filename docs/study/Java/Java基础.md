@@ -2903,7 +2903,7 @@ JAVA_HOME C:\Java\jdk1.8.0_311
 PATH
 	%JAVA_HOME%\bin
 	%JAVA_HOME%\jre\bin
-CLASSPATH .;%JAVA_HOME%\lib;%JAVA_HOME%\lib\tools.jar
+CLASSPATH .;%JAVA_HOME%\lib\dt.jar;%JAVA_HOME%\lib\tools.jar
 ```
 
 

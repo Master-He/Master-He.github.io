@@ -556,7 +556,7 @@ class Data3 {
 
 # 6. 集合类不安全
 
-不安全的集合类，并发修改时会出现并发修改异常ConcurrentModificationException
+不安全的集合类，并发修改时会出现**并发修改异常**ConcurrentModificationException
 
 ## 6.1. List不安全
 
@@ -594,6 +594,17 @@ public class ListTest {
     }
 }
 ```
+
+
+
+> CopyOnWriteArrayList和Collections.synchronizedList是实现线程安全的列表的两种方式。
+> 两种实现方式分别针对不同情况有不同的性能表现，其中CopyOnWriteArrayList的写操作性能较差，而多线程的读操作性能较好。而Collections.synchronizedList的写操作性能比CopyOnWriteArrayList在多线程操作的情况下要好很多，而读操作因为是采用了synchronized关键字的方式，其读操作性能并不如CopyOnWriteArrayList。
+> 因此在不同的应用场景下，应该选择不同的多线程安全实现类。
+> ————————————————
+> 版权声明：本文为CSDN博主「Snowball」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。
+> 原文链接：https://blog.csdn.net/yangzl2008/article/details/39456817
+
+
 
 ## 6.2. Set不安全
 
@@ -646,6 +657,16 @@ private static final Object PRESENT = new Object();
 map的加载因子，初始化容量
 
 参考文档： https://www.cnblogs.com/xumBlog/p/12104274.html
+
+
+
+ConcurrentHashMap的写入与读取的性能都更优
+
+SynchronizedMap 一次锁住整张表来保证线程安全，所以每次只能有一个线程来访为 map。
+
+ConcurrentHashMap 使用分段锁来保证在多线程下的性能。
+
+ConcurrentHashMap 中则是一次锁住一个桶。ConcurrentHashMap 默认将hash 表分为 16 个桶，诸如 get,put,remove 等常用操作只锁当前需要用到的桶。这样，原来只能一个线程进入，现在却能同时有 16 个写线程执行，并发性能的提升是显而易见的。
 
 
 
