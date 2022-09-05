@@ -187,3 +187,53 @@ State 用于声明某个类是一个“状态”，然后接受一个 Scope 参�
 - Group: 该状态为同一个组里面所有线程共享(同一个线程在同一个 group 里共享实例)。
 - Benchmark: 该状态在所有线程间共享(所有测试线程共享一个实例，测试有状态实例在多线程共享下的性能)。
 
+
+
+
+
+# OOM问题
+
+```shell
+java.lang.OutOfMemoryError: GC overhead limit exceeded
+```
+
+I know what an `OutOfMemoryError` is, but what does GC overhead limit mean? How can I solve this?
+
+```shell
+This message means that for some reason the garbage collector is taking an excessive amount of time (by default 98% of all CPU time of the process) and recovers very little memory in each run (by default 2% of the heap).
+
+This effectively means that your program stops doing any progress and is busy running only the garbage collection at all time.
+
+To prevent your application from soaking up CPU time without getting anything done, the JVM throws this Error so that you have a chance of diagnosing the problem.
+
+The rare cases where I've seen this happen is where some code was creating tons of temporary objects and tons of weakly-referenced objects in an already very memory-constrained environment.
+
+Check out the Java GC tuning guide, which is available for various Java versions and contains sections about this specific problem:
+
+Java 11 tuning guide has dedicated sections on excessive GC for different garbage collectors:
+for the Parallel Collector
+for the Concurrent Mark Sweep (CMS) Collector
+there is no mention of this specific error condition for the Garbage First (G1) collector.
+Java 8 tuning guide and its Excessive GC section
+Java 6 tuning guide and its Excessive GC section.
+```
+
+参考
+
+https://stackoverflow.com/questions/1393486/error-java-lang-outofmemoryerror-gc-overhead-limit-exceeded
+
+
+
+
+
+
+
+flink 提交任务oom问题
+
+```shell
+进到alphasecurity  pod  /opt/flink/conf/flink-conf.yaml
+env.java.opts: -Xms4096m -Xmx4096m
+```
+
+
+

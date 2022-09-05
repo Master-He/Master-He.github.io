@@ -1010,7 +1010,35 @@ public static void main(String[] args) {
         logger.error(ExceptionUtils.getStackTrace(e));
     }
 }
+
+// 读字符
+// BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)
 ```
+
+
+
+```java
+// 读csv文件
+public Map<String, Tuple2<String, String>> getUrlDownloaderTIMap() {
+        Map<String, Tuple2<String, String>> urlDownloaderTIMap = new HashMap<>();
+        Path path = Paths.get(UrlDownloaderDetectConfig.URL_DOWNLOADER_OFFLINE_LIB_PATH);
+        try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
+            // 丟掉csv文件head
+            reader.readLine();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] split = line.split(",");
+                urlDownloaderTIMap.put(split[0], Tuple2.of(split[1], split[3]));
+            }
+
+        } catch (Exception e) {
+            logger.warn("load url downloader threat intelligence lib occur error", e);
+        }
+        return urlDownloaderTIMap;
+    }
+```
+
+
 
 
 
@@ -2381,7 +2409,7 @@ java grpc超时
 
 https://grpc.io/blog/deadlines/
 
-java grpc首次调用耗时很严重
+java grpc首次调用耗时
 
 http://zyjie.top/posts/grpc%E9%A6%96%E6%AC%A1%E8%B0%83%E7%94%A8%E8%80%97%E6%97%B6%E5%88%86%E6%9E%90/
 
@@ -3080,7 +3108,31 @@ Jedis 对 Redis Cluster 提供了 JedisCluster 客户端，但是没有 Pipeline
 
 
 
+# 布隆过滤器
 
+
+
+# 多线程
+
+线程池
+
+```java
+    public static ExecutorService getExecutorService() {
+        return new ThreadPoolExecutor(
+                20,
+                20,
+                0,
+                TimeUnit.MILLISECONDS,
+                new ArrayBlockingQueue<>(5000),
+                new ThreadFactoryBuilder().setNameFormat("test-%d").build(),
+                new ThreadPoolExecutor.CallerRunsPolicy()
+        );
+    }
+```
+
+
+
+异步
 
 
 
