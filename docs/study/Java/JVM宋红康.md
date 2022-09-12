@@ -1,4 +1,8 @@
 
+# 前言
+
+参考代码
+https://gitee.com/moxi159753/LearningNotes/tree/master/JVM/Code
 
 
 
@@ -525,7 +529,7 @@ jstat -gc [pid]
 
 配置Eden空间和另外两个Survivor的空间占比
 
-默认比值是8:1:1
+	默认比值是8:1:1
 
 设置方法 -XX:SurvivorRatio=8
 
@@ -588,36 +592,143 @@ http://www.51gjie.com/java/551.html
 2. 关于垃圾回收： 频繁在新生区收集，很少在养老区收集，几乎不在永久区/元空间收集
 
 
+伊甸园区满了， MinorGC会执行，会同时清理Eden和Survivor区
+幸存者去满了，并不会触发MinorGC
+
+
+常见的调优工具
+1.  jdk命令行
+	1. jmap
+	2. jinfo
+	3. jstat
+	4. javap
+2. Eclipse： Memory Analyzer Tool  (MAT)
+3. jconsole
+4. jprofiler
+5. java filght recorder
+6. gcviewer
+7. gc easy
+
 
 
 
 ## 5. Minor GC、 Major GC 、Full GC
 
-伊甸园区满了， MinorGC会执行，会同时清理Eden和Survivor区
+伊甸园区满了， MinorGC（完全等同于YoungGC）会执行，会同时清理Eden和Survivor区
+养老区满了，MajorGC 会执行。
+FullGC 收集整个方法区和java堆的垃圾回收
 
+针对HotSpot VM的实现，它里面的GC按照回收区域又分为两大种类型： 一种是部分收集（Partial GC）, 一种是整堆收集（Full GC）
+1. 部分收集
+	1. Minor GC/ Young GC 只是新生代（Eden,s0,s1）的垃圾收集
+	2. Major GC/ Old GC 只是老年代的垃圾收集， 速度比MinorGC慢10倍以上
+		1. 目前只有CMS GC会单独收集老年代的行为
+		2. 注意很多时候MajorGC和FullGC混淆使用，需要具体分辨是老年代回收还是整堆回收。
+	3. 混合收集（Mixed GC）收集整个新生代以及部分老年代的垃圾收集。
+		1. 目前，只有G1 GC会有这种行为
+2. 整堆收集（Full GC）收集整个Java堆和方法区的垃圾。
 
+GC线程运行的时候，用户线程会受到干预从而停止运行，需要等GC线程收集回收完才进行重新开始运行，整个过程称之为STW(stop the work)
 
+**触发FullGC的五种情况**
+1. 调用System.gc(),系统建议执行FullGC,但不是必然执行
+2. 老年代空间不足
+3. 方法区空间不足
+4. 通过MinorGC进入老年代的平均大小大于老年代的可用内存
+5. 由Eden区，survivor (from区)向（to区）复制时，对象大小大于to区可用内存，则把该对象转到老年代，且老年代的可用内存小于该对象大小
+
+**说明**
+full gc是开发或调优中尽量要避免的，这样暂停时间会短一些
 
 
 ## 6. 堆空间分代思想
 
+为什么要把java堆分代？不分代就不能正常工作吗？
+其实不分代完全可以，分代的唯一理由就是**优化GC性能**。如果没有分代，那所有对象都在一起。分析无用对象的时候就会进行全区域扫描，全区域扫描占用的时间会更长。如果是分代回收，就能减少不必要的扫描。从而达到优化GC性能的目的
+
+	
 
 
 ## 7. 内存分配策略
 
 
+内存分配策略又叫对象提升（Promotion）规则
+
+
+晋升老年代的年龄阈值 可以用过选项 -XX:MaxTenuringThreshold=threshold 来设置】
+
+
+针对不同年龄段的对象分配原则如下所示：
+1. 优先分配到Eden
+2. 大对象直接分配到老年代
+	1. 尽量避免程序中出现过多的大对象（最好大对象的存活时间长!）
+3. 长期存活的对象分配到老年代
+4. 动态对象年龄判断
+	1. 如果Survivor区中相同年龄的所有对象大小的总和大于Survivor空间的一半，年龄大于或等于该年龄的对象可以直接进入老年代，无须等到MaxTenuringThreshold中要求的年龄
+5. 空间分配担保(survivor区无法容纳的对象放在老年代)
+	1. -XX:handlePromotionFailure
+
+
+
+
+
 
 ## 8. 为对象分配内存 TLAB
 
+ThreadLocalAllocationBuffer
+TLAB是为了解决多线程分配内存时可能存在冲突的问题
 
+
+为什么有TLAB？ 
+因为堆区是线程共享的，并发情况下线程不安全，如果要达到线程安全的目的就需要加锁，加锁就会影响程序执行效率
+
+
+从内存模型而不是垃圾收集的角度，对Eden区域继续进行划分，JVM为每个线程分配了一个私有缓存区域，它包含在Eden空间内。
+多线程同时分配内存时，使用TLAB可以避免一系列的非线程安全问题
+同时还能够提升内存分配的吞吐量，因此我们可以将这种内存分配方法称为快速分配策略。
+
+默认情况下，TLAB空间的内存非常小，仅占有整个Eden空间的1%，
+通过选项“-XX: TLABWasteTargetPercent”设置TLAB空间所占用Eden空间的百分比大小。
+
+可以jinfo -flag UseTLAB [PID] 查看是否开启TLAB
+
+在程序中，开发人员可以通过选项“-Xx:UseTLAB”设置是否开启TLAB空间。
+
+
+
+> TLAB分配过程
+对象首先是通过TLAB开辟空间，如果不能放入，那么需要通过Eden来进行分配
 
 ## 9. 小结堆空间的参数配置
+
+-   -XX：+PrintFlagsInitial：查看所有的参数的默认初始值
+-   -XX：+PrintFlagsFinal：查看所有的参数的最终值（可能会存在修改，不再是初始值）
+-   -Xms：初始堆空间内存（默认为物理内存的1/64）
+-   -Xmx：最大堆空间内存（默认为物理内存的1/4）
+-   -Xmn：设置新生代的大小。（初始值及最大值）（NewRatio会失效）
+-   -XX:NewRatio：配置新生代与老年代在堆结构的占比
+-   -XX:SurvivorRatio：设置新生代中Eden和S0/S1空间的比例
+-   -XX:MaxTenuringThreshold：设置新生代垃圾的最大年龄
+-   -XX：+PrintGCDetails：输出详细的GC处理日志
+    -   打印gc简要信息：①-XX：+PrintGC ② - verbose:gc
+-   -XX:HandlePromotionFalilure：是否设置空间分配担保
+
+在发生Minor GC之前，虚拟机会检查老年代最大可用的连续空间是否大于新生代所有对象的总空间。
+
+-   如果大于，则此次Minor GC是安全的
+-   如果小于，则虚拟机会查看-xx:HandlePromotionFailure设置值是否允担保失败。
+    -   如果HandlePromotionFailure=true，那么会继续检查老年代最大可用连续空间是否大于历次晋升到老年代的对象的平均大小。
+    -   如果大于，则尝试进行一次Minor GC，但这次Minor GC依然是有风险的；
+    -   如果小于，则改为进行一次FullGC。
+    -   如果HandlePromotionFailure=false，则改为进行一次Ful1 Gc。
+
+在JDK6 Update24之后，HandlePromotionFailure参数不会再影响到虚拟机的空间分配担保策略，观察openJDK中的源码变化，虽然源码中还定义了HandlePromotionFailure参数，但是在代码中已经不会再使用它。**JDK6 Update 24之后的规则变为只要老年代的连续空间大于新生代对象总大小或者历次晋升的平均大小就会进行Minor GC，否则将进行FullGC。**
 
 
 
 ## 10. 堆是分配对象的唯一选择吗？
 
-
+逃逸分析？（Escape Analysis）
 
 
 
