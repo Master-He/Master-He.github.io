@@ -1,4 +1,14 @@
+# 基本类型
 
+Java的基本数据类型总共有8种，包括三类：数值型，字符型，布尔型，其中
+
+- 数值型： 
+    - 整数类型：byte、short、int、long
+    - 浮点类型：float、double
+- 字符型：char
+- 布尔型：boolean
+
+![img](Java基础.assets/whcz5r2swt.png)
 
 
 
@@ -1258,6 +1268,12 @@ ImmutableMap.of(k1, v1, k2,v2  ....)
 
 
 
+## Map原理
+
+HashMap原理参考https://zhuanlan.zhihu.com/p/127147909
+
+
+
 ## Set操作总结
 
 ```java
@@ -1625,6 +1641,8 @@ List<Long> tsList = Arrays.stream(tsArray).collect(Collectors.toList());
 
 
 
+
+
 # 字符串
 
 ## 字符串方法
@@ -1817,6 +1835,24 @@ https://zhuanlan.zhihu.com/p/367918632#:~:text=%E5%8F%AF%E4%BB%A5%E7%94%A8String
 - 也可以手动创建StringJoiner对象，指定分隔符、前缀和后缀。
 - 如果需要先对字符串进行处理，可以将List或数组转成Stream，处理后再利用Collectors.joining()方法进行合并。
 - 避免在循环中使用+操作符进行字符串拼接
+
+
+
+
+
+## 字符串常量池
+
+字符串常量池在堆中
+
+在jdk中有StringTable的全局变量表，然后有个属性叫String Pool, 其本质就是HashTable
+
+HashTable有key和value， key存的是字符串和字符串长度计算出来的hashValue， value存的是字符串对象的引用
+
+注意，value存的是字符串对象的引用！！！
+
+字符串对象实际存到了这个intern string中了
+
+jdk7之前字符串常量池是在永久代中的， jdk8之后是存在堆中的
 
 
 
