@@ -554,3 +554,9 @@ traceback.format_exc()
 
 
 
+# pycharm 远程调试
+
+https://blog.csdn.net/weixin_35848967/article/details/122242904
+
+
+
