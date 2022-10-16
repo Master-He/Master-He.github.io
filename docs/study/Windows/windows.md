@@ -68,3 +68,41 @@ slmgr /ato
 ## 蓝屏问题定位
 
 https://bluescreenview.en.softonic.com/
+
+
+
+
+
+# 开机启动服务
+
+参考
+
+https://blog.51cto.com/u_15338624/3596049#:~:text=1.%E5%BC%80%E5%A7%8B%2D%3E%E8%BF%90%E8%A1%8C%2D,%E8%BF%99%E6%A0%B7%E5%B0%B1%E5%8F%AF%E4%BB%A5%E4%BA%86%E3%80%82
+
+
+
+## 第一种方法：设置启动项
+
+1. 打开windows运行， 输入shell：startup 
+    1. 或者找到启动文件夹，我的是C:\Users\Admin\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup
+2. 拷贝需要开机启动的程序的快捷方式到此文件夹即可。
+
+这样就设置好了，下次计算机启动时，程序也会自动启动的。
+
+
+
+## 第二种：使用计划任务自启动
+
+...
+
+
+
+## 第三种：通过组策略设置脚本随服务器启动
+
+...
+
+
+
+## 第四种：添加服务自动运行
+
+...
