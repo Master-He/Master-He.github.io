@@ -43,7 +43,7 @@ docker network create es_network
 docker run -d --name elasticsearch --net es_network -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" elasticsearch:7.6.2
 
 # 或者
-docker run -d --name elasticsearch --net somenetwork -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" -e ES_JAVA_OPTS="-Xms64m -Xmx512m"  elasticsearch:7.6.2
+docker run -d --name elasticsearch --net es_network -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" -e ES_JAVA_OPTS="-Xms512m -Xmx512m"  elasticsearch:7.6.2
 # -e 是设置环境变量
 # ES_JAVA_OPTS="-Xms64m -Xmx512m" 将jvm的内存限制在64~512M
 ```
@@ -131,6 +131,10 @@ vi /usr/share/kibana/config/kibana.yml
 
 # 4. IK分词器插件
 
+elasticsearch教程--中文分词器作用和使用： https://cloud.tencent.com/developer/article/1444500
+
+例子：  我爱伟大的祖国 分词成： [我,爱,伟大,的,祖国]
+
 > 一般安装
 
 1. 下载： https://github.com/medcl/elasticsearch-analysis-ik/tree/v7.6.2
@@ -148,6 +152,7 @@ https://www.jianshu.com/p/d8b0c736070f
 
 ```shell
 wget https://github.com/medcl/elasticsearch-analysis-ik/releases/download/v7.6.2/elasticsearch-analysis-ik-7.6.2.zip
+# win下，复制链接下载，而不是去github下载zip包！
 ```
 
 2. 复制到es容器中
@@ -160,7 +165,6 @@ docker cp elasticsearch-analysis-ik-7.6.2.zip [容器id]:/usr/share/elasticsearc
 
 ```shell
 docker exec -it [容器id] unzip -d /usr/share/elasticsearch/plugins/ik /usr/share/elasticsearch/plugins/elasticsearch-analysis-ik-7.6.2.zip
-
 docker exec -it [容器id] rm -f /usr/share/elasticsearch/plugins/elasticsearch-analysis-ik-7.6.2.zip
 ```
 
@@ -233,6 +237,12 @@ GET _analyze
 ```shell
 PUT /索引名/_doc/文档id
 PUT /索引名/类型名/文档id  # 这种以后是是废弃的
+
+PUT /index/_doc/1
+{
+  "name":"hwj",
+  "age":12
+}
 ```
 
 ![image-20220411222935324](elasticsearch.assets/image-20220411222935324.png)
@@ -340,6 +350,18 @@ GET index1/_search
 
 
 
+### 数据准备
+
+```shell
+PUT /index/_doc/1
+{
+  "name":"特朗普",
+  "age":71
+}
+```
+
+
+
 ### 结果字段的过滤用_source
 
 ```shell
@@ -381,7 +403,7 @@ GET index1/_search
 
 ### 分页
 
-```
+```shell
 GET index1/_search
 {
   "query": {
@@ -535,6 +557,22 @@ GET index1/_search
   }
 }
 ```
+
+
+
+term和match， `match_phrase` 的区别
+
+term是代表完全匹配，也就是精确查询，搜索前不会再对搜索词进行分词拆解。
+
+从概念上看，term属于精确匹配，只能查单个词。我想用term匹配多个词怎么做？
+
+
+
+`match_phrase` 称为短语搜索，要求所有的分词必须同时出现在文档中，同时位置必须紧邻一致。
+
+参考：https://www.jianshu.com/p/d5583dff4157
+
+
 
 
 
@@ -788,3 +826,13 @@ POST /index1/_update/1
 https://github.com/Master-He/springboot-es-demo
 
 https://github.com/Master-He/springboot-es-demo/blob/main/src/test/java/com/example/SpringbootEsDemoApplicationTests.java
+
+
+
+
+
+# 8. python es crud
+
+参考文档： 
+
+https://elasticsearch-py.readthedocs.io/en/v8.4.3/
