@@ -2,23 +2,82 @@
 
 
 
+# 装k8s遇到的问题
+
+安装参考 https://k8s.easydoc.net/docs/dRiQjyTY/28366845/6GiNOzyZ/nd7yOvdY
 
 
 
+## 问题1
+
+用 [kubeadm](https://kubernetes.io/docs/reference/setup-tools/kubeadm/) 初始化集群（仅在主节点跑）
+
+![image-20221022000856764](k8s.assets/image-20221022000856764.png)
+
+解决办法
+
+```shell
+# 关闭swapoff
+vim /etc/fstab  # 然后注释掉最后一行
+swapoff -a
+```
 
 
 
+## 问题2
+
+执行: kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+
+发现raw.githubusercontent.com被dns服务器解析成127.0.0.1
+
+![image-20221022004051501](k8s.assets/image-20221022004051501.png)
+
+然后将dns服务器改成8.8.8.8和114.114.114.114， 还是一样解析成127.0.0.1
+
+但是windows下的机器，dns解析是正常的
+
+![image-20221022004353541](k8s.assets/image-20221022004353541.png)
+
+改成执行 kubectl apply -f https://185.199.108.133/coreos/flannel/master/Documentation/kube-flannel.yml
+
+发现还是有问题
 
 
 
+所以将kube-flannel.yml复制下来
+
+然后执行 kubectl apply -f kube-flannel.yml
 
 
 
+# 问题3
+
+![image-20221022011443243](k8s.assets/image-20221022011443243.png)
 
 
 
+# 问题4
 
+部署一个简单的应用
 
+![image-20221022012455618](k8s.assets/image-20221022012455618.png)
+
+![image-20221022012534178](k8s.assets/image-20221022012534178.png)
+
+报错信息是：
+
+```shell
+Failed to create pod sandbox: rpc error: code = Unknown desc = failed to set up sandbox container "195099a84e1d740e53c6c61e3865487b3fa88f11f20df9535c986abbbf9d4d3c" network for pod "testapp": networkPlugin cni failed to set up pod "testapp_default" network: open /run/flannel/subnet.env: no such file or directory
+```
+
+![image-20221022013522555](k8s.assets/image-20221022013522555.png)
+
+```shell
+FLANNEL_NETWORK=10.244.0.0/16
+FLANNEL_SUBNET=10.244.0.1/24
+FLANNEL_MTU=1450
+FLANNEL_IPMASQ=true
+```
 
 
 
