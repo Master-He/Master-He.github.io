@@ -836,3 +836,34 @@ https://github.com/Master-He/springboot-es-demo/blob/main/src/test/java/com/exam
 参考文档： 
 
 https://elasticsearch-py.readthedocs.io/en/v8.4.3/
+
+参考https://kb.objectrocket.com/elasticsearch/get-the-mapping-of-an-elasticsearch-index-in-python-880
+
+看es基本信息， 看索引列表
+
+```shell
+from elasticsearch import Elasticsearch
+
+client = Elasticsearch()
+
+elastic_info = Elasticsearch.info(client)
+print "Cluster info:{}".format(json.dumps(elastic_info, indent=4))
+
+
+all_indices = client.indices.get_alias("*")
+print dir(client.indices)
+
+for ind in all_indices:
+    print ind
+
+idx_mapping = client.indices.get_mapping(index="ngfw.httpflow-2022-10-11")
+print idx_mapping
+print idx_mapping["ngfw.httpflow-2022-10-11"]["mappings"]["properties"].keys()
+```
+
+
+
+
+
+
+

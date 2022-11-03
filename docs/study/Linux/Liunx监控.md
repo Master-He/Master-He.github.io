@@ -1,3 +1,9 @@
+# Linux中CPU、内存、Swap使用情况查看
+
+参考 https://blog.csdn.net/csdn_shoelace/article/details/118916436
+
+
+
 ## top
 
 ```

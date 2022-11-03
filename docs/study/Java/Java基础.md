@@ -330,6 +330,21 @@ public class Test {
 
 
 
+### 常用注解
+
+#### Java依赖注入标准(javax.inject)
+
+```java
+Inject
+Named
+Provider
+Qualifier
+Scope
+Singleton
+```
+
+
+
 ## 枚举
 
 ```java
@@ -1853,6 +1868,172 @@ HashTable有key和value， key存的是字符串和字符串长度计算出来�
 字符串对象实际存到了这个intern string中了
 
 jdk7之前字符串常量池是在永久代中的， jdk8之后是存在堆中的
+
+
+
+# 空指针问题
+
+Optional
+
+# Guice
+
+其他依赖注入框架: spring， dagger
+
+
+
+参考： https://github.com/google/guice/wiki/GettingStarted
+
+应用程序使用 `Module` 告诉 Guice 如何满足这些依赖项。
+
+**依赖注入**就是代替程序员调用构造器或工厂，**依赖注入器**会将依赖传递给对象：
+
+
+## MentalModel
+参考https://github.com/google/guice/wiki/MentalModel
+
+guice就是一个复杂的map
+
+- **Guice key**: a key in the map which is used to fetch a particular value from the map.
+- **Provider**: a value in the map which is used to create objects for your application.
+
+使用guice分两步
+
+1. Configuration
+
+2. Injection
+
+
+
+### Configuration
+
+| Guice DSL syntax                   | Mental model                                                 |
+| ---------------------------------- | ------------------------------------------------------------ |
+| `bind(key).toInstance(value)`      | `map.put(key, () -> value)` (instance binding)               |
+| `bind(key).toProvider(provider)`   | `map.put(key, provider)` (provider binding)                  |
+| `bind(key).to(anotherKey)`         | `map.put(key, map.get(anotherKey))` (linked binding)         |
+| `@Provides Foo provideFoo() {...}` | `map.put(Key.get(Foo.class), module::provideFoo)` (provider method binding) |
+
+
+
+### injection
+
+You don't *pull* things out of a map, you *declare* that you need them. This is the essence of dependency injection. 
+
+
+
+
+
+## Scope
+
+https://github.com/google/guice/wiki/Scopes
+
+文档没有完全看明白，下次再细看
+
+此次了解到， 单例注解@Singleton在不同stage，会分为饿汉式和懒汉式
+
+stage的定义在com.google.inject.Stage，分为： TOOL，PRODUCTION，DEVELOPMENT
+
+| stage                 | PRODUCTION | DEVELOPMENT |
+| --------------------- | ---------- | ----------- |
+| .asEagerSingleton()   | eager      | eager       |
+| .in(Singleton.class)  | eager      | lazy        |
+| .in(Scopes.SINGLETON) | eager      | lazy        |
+| @Singleton            | eager*     | lazy        |
+
+
+
+## Binding
+
+https://github.com/google/guice/wiki/Bindings
+
+https://www.cnblogs.com/throwable/p/15925396.html#multi-binding   # 可以说是翻译版
+
+binding就是将对象的创建方式 put 到 guice map
+
+To create bindings, extend `AbstractModule` and override its `configure` method. In the method body, call `bind()` to specify each binding.
+
+binding方式有：
+
+Use modules to create [linked bindings](https://github.com/google/guice/wiki/LinkedBindings), [instance bindings](https://github.com/google/guice/wiki/InstanceBindings), [@Provides methods](https://github.com/google/guice/wiki/ProvidesMethods), [provider bindings](https://github.com/google/guice/wiki/ProviderBindings), [constructor bindings](https://github.com/google/guice/wiki/ToConstructorBindings) and [untargetted bindings](https://github.com/google/guice/wiki/UntargettedBindings).
+
+文档看到这里。。。https://github.com/google/guice/wiki/Multibindings 有空再继续！ 
+
+
+
+自己写的相关demo见： https://github.com/Master-He/java-demo/tree/master/guice-demo/src/main/java/com/github/demo
+
+
+
+### multibinding
+
+```java
+package com.github.demo.multibinding;
+
+import com.google.inject.*;
+import com.google.inject.multibindings.Multibinder;
+
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Consumer;
+
+public class GuiceMultiBinderDemo {
+
+    public static void main(String[] args) {
+        Injector injector = Guice.createInjector(new AbstractModule() {
+            @Override
+            public void configure() {
+                Multibinder<Processor> multiBinder = Multibinder.newSetBinder(binder(), Processor.class);
+                multiBinder.permitDuplicates().addBinding().to(FirstProcessor.class).in(Scopes.SINGLETON);
+                multiBinder.permitDuplicates().addBinding().to(SecondProcessor.class).in(Scopes.SINGLETON);
+            }
+        });
+        injector.getInstance(Client.class).process();
+    }
+
+    @Singleton
+    public static class Client {
+
+        @Inject
+        private Set<Processor> processors;
+
+        public void process() {
+            Optional.ofNullable(this.processors).ifPresent(ps -> ps.forEach(Processor::process));
+
+            // 相当于
+            /*Optional<Set<Processor>> processors = Optional.ofNullable(this.processors);
+            processors.ifPresent(new Consumer<Set<Processor>>() {
+                @Override
+                public void accept(Set<Processor> processors) {
+                    for (Processor processor : processors) {
+                        processor.process();
+                    }
+                }
+            });*/
+        }
+    }
+
+    interface Processor {
+
+        void process();
+    }
+
+    public static class FirstProcessor implements Processor {
+
+        @Override
+        public void process() {
+            System.out.println("FirstProcessor process...");
+        }
+    }
+
+    public static class SecondProcessor implements Processor {
+
+        @Override
+        public void process() {
+            System.out.println("SecondProcessor process...");
+        }
+    }
+}
+```
 
 
 
