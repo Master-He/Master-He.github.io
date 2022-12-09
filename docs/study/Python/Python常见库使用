@@ -174,3 +174,82 @@ print jd
 python2 : How to get string objects instead of Unicode from JSON
 
 https://stackoverflow.com/questions/956867/how-to-get-string-objects-instead-of-unicode-from-json
+
+
+
+## 如何保证读取json是保证原有字段顺序
+
+参考： https://blog.csdn.net/IT8343/article/details/112868710
+
+```python
+import json
+from collections import OrderedDict
+ 
+ 
+with open("123.json", "r", encoding="utf-8") as f:
+    jsonData = json.load(f,object_pairs_hook=OrderedDict)
+    print(jsonData)
+    jsonData["ID"] = "50"
+with open("66.json", "w", encoding="utf-8") as f:
+    json.dump(jsonData, f)
+```
+
+
+
+## 在指定位置增加key value
+
+
+
+## 自定义json  key 顺序
+
+https://stackoverflow.com/questions/18871217/how-to-custom-sort-a-list-of-dict-to-use-in-json-dumps
+
+```python
+#!/usr/bin/env python
+# encoding: utf-8
+from collections import OrderedDict
+import json
+# 参考 https://stackoverflow.com/questions/18871217/how-to-custom-sort-a-list-of-dict-to-use-in-json-dumps
+allsites = [
+    {
+        'A5': 'G',
+        'A10': 'G',
+        'site': 'example1.com',
+        'A1': 'G'
+    },
+    {
+        'A5': 'R',
+        'A10': 'Y',
+        'site': 'example2.com',
+        'A1': 'G'
+    }
+]
+
+sort_order = ['site', 'A1', 'A5', 'A10']
+
+allsites_ordered = [OrderedDict(sorted(item.items(), key=lambda item: sort_order.index(item[0])))
+                    for item in allsites]
+
+data = {'Author': "joe", 'data': allsites_ordered}
+print(json.dumps(data, indent=4, separators=(',', ': ')))
+```
+
+
+
+
+
+# csv
+
+```python
+with open(mid_hole_id_map_path, "r") as f:
+	csv.DictReader(f)
+```
+
+
+
+# 代码混淆库
+
+pyarmor 库
+
+https://pyarmor.readthedocs.io/en/latest/
+

@@ -919,6 +919,177 @@ public class SemaphoreDemo {
 
 
 
+## 8.4 Phaser
+
+```java
+package org.github.demo.juc;
+
+import java.util.Random;
+import java.util.concurrent.Phaser;
+import java.util.concurrent.TimeUnit;
+
+public class PhaserExample {
+    private static Random random = new Random(System.currentTimeMillis());
+    public static void main(String[] args) {
+        Phaser phaser = new Phaser();
+        //创建5个任务
+        for (int i=0;i<5;i++){
+            new Task(phaser).start();
+        }
+        //动态注册
+        phaser.register();
+        //等待其他线程完成工作
+        phaser.arriveAndAwaitAdvance();
+        System.out.println("All of worker finished the task");
+    }
+
+    private static class Task extends Thread{
+        private Phaser phaser;
+
+        public Task(Phaser phaser) {
+            this.phaser = phaser;
+            //动态注册任务
+            this.phaser.register();
+        }
+
+        @Override
+        public void run() {
+            try {
+                System.out.println("The thread ["+getName()+"] is working");
+                TimeUnit.SECONDS.sleep(random.nextInt(5));
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            System.out.println("The thread ["+getName()+"] work finished");
+            //等待其他线程完成工作
+            phaser.arriveAndAwaitAdvance();
+        }
+    }
+}
+
+```
+
+
+
+```java
+package org.github.demo.juc;
+
+import java.util.Random;
+import java.util.concurrent.Phaser;
+import java.util.concurrent.TimeUnit;
+
+public class PhaserExample2 {
+    private static Random random = new Random(System.currentTimeMillis());
+
+    public static void main(String[] args) {
+        //初始化5个parties
+        Phaser phaser = new Phaser(5);
+        for (int i = 1; i < 6; i++) {
+            new Athlete(phaser, i).start();
+        }
+    }
+
+    //创建运动员类
+    private static class Athlete extends Thread {
+        private Phaser phaser;
+        private int no;//运动员编号
+
+        public Athlete(Phaser phaser, int no) {
+            this.phaser = phaser;
+            this.no = no;
+        }
+
+        @Override
+        public void run() {
+            try {
+                System.out.println(no + ": 当前处于第：" + phaser.getPhase() + "阶段");
+                System.out.println(no + ": start running");
+                TimeUnit.SECONDS.sleep(random.nextInt(5));
+                System.out.println(no + ": end running");
+                //等待其他运动员完成跑步
+                phaser.arriveAndAwaitAdvance();
+
+                System.out.println(no + ": 当前处于第：" + phaser.getPhase() + "阶段");
+                phaser.arriveAndAwaitAdvance();
+                System.out.println(no + ": 当前处于第：" + phaser.getPhase() + "阶段");
+                phaser.arriveAndAwaitAdvance();
+
+                System.out.println(no + ": 当前处于第：" + phaser.getPhase() + "阶段");
+                System.out.println(no + ": start bicycle");
+                TimeUnit.SECONDS.sleep(random.nextInt(5));
+                System.out.println(no + ": end bicycle");
+                //等待其他运动员完成骑行
+                phaser.arriveAndAwaitAdvance();
+
+                System.out.println(no + ": 当前处于第：" + phaser.getPhase() + "阶段");
+                System.out.println(no + ": start long jump");
+                TimeUnit.SECONDS.sleep(random.nextInt(5));
+                System.out.println(no + ": end long jump");
+                //等待其他运动员完成跳远
+                phaser.arriveAndAwaitAdvance();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
+
+```
+
+
+
+```java
+package org.github.demo.juc;
+
+import java.util.Random;
+import java.util.concurrent.Phaser;
+import java.util.concurrent.TimeUnit;
+
+public class PhaserExample3 {
+    private static Random random = new Random(System.currentTimeMillis());
+    public static void main(String[] args) throws InterruptedException {
+        //初始化5个parties
+        Phaser phaser = new Phaser(5);
+
+        //只有当全部线程通过时才会进入下一阶段，从0开始
+        System.out.println("当前阶段数："+phaser.getPhase());
+
+        //添加一个parties
+        phaser.register();
+        System.out.println("当前Parties数："+phaser.getRegisteredParties());
+        //添加多个parties
+        phaser.bulkRegister(4);
+        System.out.println("当前Parties数："+phaser.getRegisteredParties());
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                //到达并等待其他线程到达
+                phaser.arriveAndAwaitAdvance();
+            }
+        }).start();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                //到达后注销该parties，不等待其他线程
+                phaser.arriveAndDeregister();
+                System.out.println("go on");
+            }
+        }).start();
+        TimeUnit.MILLISECONDS.sleep(100);
+        System.out.println("当前Parties数："+phaser.getRegisteredParties());
+        System.out.println("当前到达数："+phaser.getArrivedParties());
+        System.out.println("当前未达数："+phaser.getUnarrivedParties());
+
+        //何时会停止，只有当parties中的数量为0时或者调用forceTermination方法就会停止了，我们也可以重写phaser中的onAdvance，给他返回true就会使这个phaser停止了
+        System.out.println("phaser是否结束："+phaser.isTerminated());
+        phaser.forceTermination();
+        System.out.println("phaser是否结束："+phaser.isTerminated());
+    }
+
+}
+```
+
 
 
 # 9. 读写锁

@@ -1875,7 +1875,40 @@ jdk7之前字符串常量池是在永久代中的， jdk8之后是存在堆中�
 
 Optional
 
+
+
+# Guava
+
+guava之multimap
+
+Multimap的特点其实就是可以包含有几个重复Key的value，你可以put进入多个不同value但是相同的key，但是又不是让后面覆盖前面的内容。
+
+它的业务场景：当你需要构造像Map<K, List<V>>或者Map<K, Set<V>>这样比较复杂的集合类型的数据结构，来做相应的业务逻辑处理。那Multimap在合适不过。
+
+```
+Multimap提供了丰富的实现，所以你可以用它来替代程序里的Map<K, Collection<V>>，具体的实现如下：
+
+　　Implementation            Keys 的行为类似       　　　Values的行为类似
+　　ArrayListMultimap         HashMap                   　　ArrayList
+
+　　HashMultimap               HashMap                  　　 HashSet
+
+　　LinkedListMultimap        LinkedHashMap*              LinkedList*
+
+　　LinkedHashMultimap      LinkedHashMap                LinkedHashSet
+
+　　TreeMultimap                TreeMap                    TreeSet
+
+　　ImmutableListMultimap    ImmutableMap                 ImmutableList
+
+　　ImmutableSetMultimap    ImmutableMap                    ImmutableSet　　
+```
+
+
+
 # Guice
+
+
 
 其他依赖注入框架: spring， dagger
 
@@ -2583,7 +2616,9 @@ json序列化
 
 fastjson2
 
-jackson
+## jackson
+
+
 
 
 
@@ -2592,6 +2627,8 @@ Jackson(1)之ObjectMapper配置详解
 https://blog.csdn.net/Seky_fei/article/details/109960178
 
 
+
+https://xie.infoq.cn/article/3c9e95c3bc40342a3cb29b714
 
 # 编码
 

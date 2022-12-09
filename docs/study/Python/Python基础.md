@@ -453,6 +453,8 @@ https://stackoverflow.com/questions/21530577/fatal-error-python-h-no-such-file-o
 
 
 
+# 类型定义 提示
+
 
 
 # 工具类
@@ -551,6 +553,14 @@ traceback.format_exc()
 ...待补充
 
 
+
+base64
+
+```python
+import base64
+base64.b64decode(b"YTEyMw==") # a123
+base64.b64encode(b"a123") # YTEyMw==
+```
 
 
 
