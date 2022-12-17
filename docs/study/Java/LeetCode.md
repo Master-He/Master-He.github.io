@@ -2836,6 +2836,99 @@ public class spiralOrderSolution {
 
 
 
+# 其他
+
+
+
+### 剑指 Offer 06. 从尾到头打印链表
+
+输入一个链表的头节点，从尾到头反过来返回每个节点的值（用数组返回）。
+
+ 
+
+示例 1：
+
+输入：head = [1,3,2]
+输出：[2,3,1]
+
+
+限制：
+
+0 <= 链表长度 <= 10000
+
+
+
+自己的解法1
+
+```java
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     int val;
+ *     ListNode next;
+ *     ListNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    private final List<Integer> list = new ArrayList<>();
+
+    public int[] reversePrint(ListNode head) {
+        if (head == null) {
+            return new int[0];
+        }
+        list.add(head.val);
+        while (head.next != null) {
+            head = head.next;
+            list.add(head.val);
+        }
+        int[] result = new int[list.size()];
+        for (int i = 0; i < list.size(); i++) {
+            result[i] = list.get(list.size() - 1 - i);
+        }
+        return result;
+    }
+}
+```
+
+可以改进的地方： 别人用的是LinkedList！
+
+
+
+自己的解法2
+
+```java
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     int val;
+ *     ListNode next;
+ *     ListNode(int x) { val = x; }
+ * }
+ */
+class Solution {
+    public int[] reversePrint(ListNode head) {
+        List<Integer> list = recur(head);
+        int[] result = new int[list.size()];
+        for (int i = 0; i < list.size(); i++) {
+            result[i] = list.get(i);
+        }
+        return result;
+    }
+
+    private List<Integer> recur(ListNode head) {
+        // 终止条件
+        if (head == null) {
+            return new ArrayList<>();
+        }
+        // 递归调用
+        List<Integer> list = recur(head.next);
+        // 回溯
+        list.add(head.val);
+
+        return list;
+    }
+}
+```
 
 
 
@@ -2845,12 +2938,184 @@ public class spiralOrderSolution {
 
 
 
+### 剑指 Offer 20. 表示数值的字符串
+
+请实现一个函数用来判断字符串是否表示数值（包括整数和小数）。
+
+数值（按顺序）可以分成以下几个部分：
+
+若干空格
+一个 小数 或者 整数
+（可选）一个 'e' 或 'E' ，后面跟着一个 整数
+若干空格
+小数（按顺序）可以分成以下几个部分：
+
+（可选）一个符号字符（'+' 或 '-'）
+下述格式之一：
+至少一位数字，后面跟着一个点 '.'
+至少一位数字，后面跟着一个点 '.' ，后面再跟着至少一位数字
+一个点 '.' ，后面跟着至少一位数字
+整数（按顺序）可以分成以下几个部分：
+
+（可选）一个符号字符（'+' 或 '-'）
+至少一位数字
+部分数值列举如下：
+
+["+100", "5e2", "-123", "3.1416", "-1E-16", "0123"]
+部分非数值列举如下：
+
+["12e", "1a3.14", "1.2.3", "+-5", "12e+5.4"]
+
+
+示例 1：
+
+输入：s = "0"
+输出：true
+示例 2：
+
+输入：s = "e"
+输出：false
+示例 3：
+
+输入：s = "."
+输出：false
+示例 4：
+
+输入：s = "    .1  "
+输出：true
+
+
+提示：
+
+1 <= s.length <= 20
+s 仅含英文字母（大写和小写），数字（0-9），加号 '+' ，减号 '-' ，空格 ' ' 或者点 '.' 。
+
+作者：Krahets
+链接：https://leetcode.cn/leetbook/read/illustration-of-algorithm/5d6vi6/
+来源：力扣（LeetCode）
+著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
 
 
 
+这题写了半天没写出完整的结果。后面看答案是有限状态机， 得先根据字符类型和合法数值的特点，先定义状态，然后画出状态转移图，最后才写代码，不是一上头就开始写代码！！！
 
 
 
+解题思路：
+本题使用有限状态自动机。根据字符类型和合法数值的特点，先定义状态，再画出状态转移图，最后编写代码即可。
+
+字符类型：
+
+空格 「 」、数字「 0—90—9 」 、正负号 「 ++, -− 」 、小数点 「 .. 」 、幂符号 「 ee, EE 」 。
+
+状态定义：
+
+按照字符串从左到右的顺序，定义以下 9 种状态。
+
+开始的空格
+幂符号前的正负号
+小数点前的数字
+小数点、小数点后的数字
+当小数点前为空格时，小数点、小数点后的数字
+幂符号
+幂符号后的正负号
+幂符号后的数字
+结尾的空格
+结束状态：
+
+合法的结束状态有 2, 3, 7, 8 。
+
+![Picture1.png](LeetCode.assets/1599283151-YmPMis-Picture1.png)
+
+看着这个图，又有点吃力，然后看官方的状态机图
+
+![img](LeetCode.assets/jianzhi_20_fig1.png)
+
+然后官方的图我个人感觉不对劲，改成这样
+
+![image-20221217230448289](LeetCode.assets/image-20221217230448289.png)
+
+理解完上面这个图之后再看第一张图顿时开朗起来。。。
+
+但是具体怎么写代码又不陷入了迷茫
+
+然后：
+
+算法流程：
+
+1. 初始化：
+     1. 状态转移表 states ： 设 states[i] ，其中 i 为所处状态， states[i] 使用哈希表存储可转移至的状态。键值对 (key, value) 含义：输入字符 key ，则从状态 i 转移至状态 value 。
+     2. 当前状态 p ： 起始状态初始化为 p = 0 。
+ 2. 状态转移循环： 遍历字符串 s 的每个字符 c 。
+     1. 记录字符类型 t ： 分为四种情况。
+         1. 当 c 为正负号时，执行 t = 's' ;
+         2. 当 c 为数字时，执行 t = 'd' ;
+         3. 当 c 为 e 或 E 时，执行 t = 'e' ;
+         4. 当 c 为 . 或 空格 时，执行 t = c （即用字符本身表示字符类型）;
+         5. 否则，执行 t = '?' ，代表为不属于判断范围的非法字符，后续直接返回 false 。
+     2. 终止条件： 若字符类型 t 不在哈希表 states[p] 中，说明无法转移至下一状态，因此直接返回 false 。
+     3. 状态转移： 状态 p 转移至 states\[p][t]。
+ 3. 返回值： 跳出循环后，若状态 p∈2,3,7,8 ，说明结尾合法，返回 true ，否则返回 false 。
+
+复杂度分析：
+时间复杂度 O(N) ： 其中 N 为字符串 s 的长度，判断需遍历字符串，每轮状态转移的使用 O(1) 时间。
+空间复杂度 O(1) ： states 和 p 使用常数大小的额外空间。
+
+```java
+class Solution {
+    public boolean isNumber(String s) {
+        Map[] states = {
+            new HashMap<>() {{ put(' ', 0); put('s', 1); put('d', 2); put('.', 4); }}, // 0.
+            new HashMap<>() {{ put('d', 2); put('.', 4); }},                           // 1.
+            new HashMap<>() {{ put('d', 2); put('.', 3); put('e', 5); put(' ', 8); }}, // 2.
+            new HashMap<>() {{ put('d', 3); put('e', 5); put(' ', 8); }},              // 3.
+            new HashMap<>() {{ put('d', 3); }},                                        // 4.
+            new HashMap<>() {{ put('s', 6); put('d', 7); }},                           // 5.
+            new HashMap<>() {{ put('d', 7); }},                                        // 6.
+            new HashMap<>() {{ put('d', 7); put(' ', 8); }},                           // 7.
+            new HashMap<>() {{ put(' ', 8); }}                                         // 8.
+        };
+        int p = 0;
+        char t;
+        for(char c : s.toCharArray()) {
+            if(c >= '0' && c <= '9') t = 'd';
+            else if(c == '+' || c == '-') t = 's';
+            else if(c == 'e' || c == 'E') t = 'e';
+            else if(c == '.' || c == ' ') t = c;
+            else t = '?';
+            if(!states[p].containsKey(t)) return false;
+            p = (int)states[p].get(t);
+        }
+        return p == 2 || p == 3 || p == 7 || p == 8;
+    }
+}
+```
+
+```python
+class Solution:
+    def isNumber(self, s: str) -> bool:
+        states = [
+            { ' ': 0, 's': 1, 'd': 2, '.': 4 }, # 0. start with 'blank'
+            { 'd': 2, '.': 4 } ,                # 1. 'sign' before 'e'
+            { 'd': 2, '.': 3, 'e': 5, ' ': 8 }, # 2. 'digit' before 'dot'
+            { 'd': 3, 'e': 5, ' ': 8 },         # 3. 'digit' after 'dot'
+            { 'd': 3 },                         # 4. 'digit' after 'dot' (‘blank’ before 'dot')
+            { 's': 6, 'd': 7 },                 # 5. 'e'
+            { 'd': 7 },                         # 6. 'sign' after 'e'
+            { 'd': 7, ' ': 8 },                 # 7. 'digit' after 'e'
+            { ' ': 8 }                          # 8. end with 'blank'
+        ]
+        p = 0                           # start with state 0
+        for c in s:
+            if '0' <= c <= '9': t = 'd' # digit
+            elif c in "+-": t = 's'     # sign
+            elif c in "eE": t = 'e'     # e or E
+            elif c in ". ": t = c       # dot, blank
+            else: t = '?'               # unknown
+            if t not in states[p]: return False
+            p = states[p][t]
+        return p in (2, 3, 7, 8)
+```
 
 
 
