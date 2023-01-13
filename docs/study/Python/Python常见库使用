@@ -253,3 +253,78 @@ pyarmor 库
 
 https://pyarmor.readthedocs.io/en/latest/
 
+
+
+
+
+# collections包
+
+## 基于OrderedDict的LRU
+
+```python
+from collections import OrderedDict
+
+class LRU(object):
+    """Limit size, evicting the least recently looked-up key when full"""
+
+    __slots__ = ['move_to_end', 'maxsize', 'cache']
+
+    def __init__(self, maxsize=2000):
+        self.maxsize = maxsize
+        self.cache = OrderedDict()
+
+    def move_to_end(self, key):
+        value = self.cache.pop(key)
+        self.cache[key] = value
+
+    def __getitem__(self, key):
+        value = self.cache[key]
+        self.move_to_end(key)
+        return value
+
+    def __setitem__(self, key, value=None):
+        if key in self.cache:
+            self.move_to_end(key)
+        self.cache[key] = value
+        while len(self.cache) > self.maxsize:
+            self.cache.popitem(last=False)
+
+    def __str__(self):
+        return self.cache.__str__()
+
+    def __contains__(self, item):
+        if item in self.cache:
+            self.move_to_end(item)
+            return True
+        return False
+
+    def __iter__(self):
+        return self.cache.__iter__()
+
+    def __len__(self):
+        return self.cache.__len__()
+
+    def __delitem__(self, key):
+        return self.cache.__delitem__(key)
+
+    def setdefault(self, key, value=None):
+        if key not in self.cache:
+            self[key] = value
+            return value
+        return self.cache[key]
+
+    def clear(self):
+        self.cache.clear()
+
+    def items(self):
+        return self.cache.items()
+
+    def iteritems(self):
+        return self.cache.iteritems()
+
+    def pop(self, key):
+        return self.cache.pop(key)
+```
+
+
+

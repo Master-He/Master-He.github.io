@@ -4,7 +4,7 @@
 
 
 
-###  魔法方法总结
+##  魔法方法总结
 
 with 上下文管理器相关的魔法方法
 
@@ -44,7 +44,7 @@ with 出去了
 
 
 
-`__repr__`
+### `__repr__`
 
 ```python
 python中，repr是一个特殊的方法，用于将类（class）的一个实例表示为字符串。repr即represent，简言之，就是对象的字符串表示。
@@ -92,10 +92,33 @@ __repr__的字符串所包含的信息更加丰富（对机友好）。
 
 
 
+### `__slots__`
+
+如果我们想要限制实例的属性怎么办？比如，只允许对Student实例添加`name`和`age`属性。
+
+为了达到限制的目的，Python允许在定义class的时候，定义一个特殊的`__slots__`变量，来限制该class实例能添加的属性：
+
+```
+class Student(object):
+    __slots__ = ('name', 'age') # 用tuple定义允许绑定的属性名称
+```
+
+然后，我们试试：
+
+```
+>>> s = Student() # 创建新的实例
+>>> s.name = 'Michael' # 绑定属性'name'
+>>> s.age = 25 # 绑定属性'age'
+>>> s.score = 99 # 绑定属性'score'
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+AttributeError: 'Student' object has no attribute 'score'
+```
 
 
 
-### 常见排序算法
+
+## 常见排序算法
 
 ```python
 def bubble_sort(lst):
@@ -225,23 +248,23 @@ print("merge sort", merge_sort(a_list))
 
 
 
-### 多线程
+## 多线程
 
 https://www.runoob.com/python/python-multithreading.html
 
-#### 用类的方式实现多线程
+### 用类的方式实现多线程
 
 pass...
 
 
 
-#### 用函数的方式实现多线程
+### 用函数的方式实现多线程
 
 pass...
 
 
 
-### 字符问题
+## 字符问题
 
 报错： UnicodeDecodeError: 'utf8' codec can't decode byte 0x82 in position 35
 
@@ -257,7 +280,7 @@ https://stackoverflow.com/questions/51674222/how-to-make-json-dumps-in-python-ig
 
 
 
-### 死锁问题
+## 死锁问题
 
 工作中遇到： python常驻进程CPU占用100%-->无法调试（因为不知道是哪里报错）--> 然后用strace命令发现是进程在不断获取锁卡死了， 然后修改了代码后， CPU的占用100%的问题就解决了。
 
@@ -449,7 +472,7 @@ https://stackoverflow.com/questions/21530577/fatal-error-python-h-no-such-file-o
 
 
 
-# collections包
+
 
 
 

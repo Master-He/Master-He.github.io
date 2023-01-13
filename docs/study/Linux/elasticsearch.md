@@ -770,7 +770,45 @@ GET index1/_search
 
 
 
+### 类似 sql 中 in 查询
 
+在SQL中可以使用 `in`关键字选择多个条件之一。例如：
+
+```javascript
+select * from test where id in (1, 2, 3)
+```
+
+相当于：
+
+```javascript
+select * from test where id=1 or id=2 or id=3
+```
+
+在ES中，也可以实现类似的功能。不过关键字为 `terms`:
+
+```javascript
+{"query":
+  {"bool":
+    {"must":[{"match": {"age": 28}},
+             {"terms": {"work": ["engineer", "office lady", "teacher"]}}
+             ]} 
+  }
+}
+```
+
+这一段查询的意思是，查询所有年龄为28，并且工作为 `engineer`、 `office lady` 或者 `teacher`之一的人的信息。
+
+这个查询语句中的
+
+```javascript
+{"terms": {"work": ["engineer", "office lady", "teacher"]}}
+```
+
+就实现了类似于:
+
+```javascript
+work in ('engineer', 'office lady', 'teacher')
+```
 
 
 
