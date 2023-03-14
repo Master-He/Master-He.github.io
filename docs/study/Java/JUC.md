@@ -438,12 +438,12 @@ class Data1 {
 
 **对比**
 
-| synchronized       | ReentrantLock                                         |
-| ------------------ | ----------------------------------------------------- |
-| synchronized关键字 | new ReentrantLock().lock()                            |
-| wait()             | new ReentrantLock().lock().newCondition().await()     |
-| notify()           | new ReentrantLock().lock().newCondition().signal()    |
-| notifyAll()        | new ReentrantLock().lock().newCondition().signalAll() |
+| synchronized       | ReentrantLock                                  |
+| ------------------ | ---------------------------------------------- |
+| synchronized关键字 | new ReentrantLock().lock()                     |
+| wait()             | new ReentrantLock().newCondition().await()     |
+| notify()           | new ReentrantLock().newCondition().signal()    |
+| notifyAll()        | new ReentrantLock().newCondition().signalAll() |
 
  **注意，lock是await() 和 signal()**
 
@@ -600,9 +600,14 @@ public class ListTest {
 > CopyOnWriteArrayList和Collections.synchronizedList是实现线程安全的列表的两种方式。
 > 两种实现方式分别针对不同情况有不同的性能表现，其中CopyOnWriteArrayList的写操作性能较差，而多线程的读操作性能较好。而Collections.synchronizedList的写操作性能比CopyOnWriteArrayList在多线程操作的情况下要好很多，而读操作因为是采用了synchronized关键字的方式，其读操作性能并不如CopyOnWriteArrayList。
 > 因此在不同的应用场景下，应该选择不同的多线程安全实现类。
+>
+> CopyOnWriteArrayList，发生修改时候做copy，新老版本分离，保证读的高性能，适用于以读为主，读操作远远大于写操作的场景中使用，比如缓存。而Collections.synchronizedList则可以用在CopyOnWriteArrayList不适用，但是有需要同步列表的地方， 读写操作都比较均匀的地方。
+>
 > ————————————————
 > 版权声明：本文为CSDN博主「Snowball」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。
 > 原文链接：https://blog.csdn.net/yangzl2008/article/details/39456817
+
+
 
 
 
@@ -703,13 +708,13 @@ public class MapTest {
 
 ## 6.4. HashMap数据结构及2的整数次幂探究
 
-![在这里插入图片描述](https://img-blog.csdnimg.cn/20200918155145922.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center)
-![在这里插入图片描述](https://img-blog.csdnimg.cn/20200918155207651.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center)
-![在这里插入图片描述](https://img-blog.csdnimg.cn/20200918155454255.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center)
-![在这里插入图片描述](https://img-blog.csdnimg.cn/20200918155553534.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center)
-![在这里插入图片描述](https://img-blog.csdnimg.cn/20200918155624151.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center)
-![在这里插入图片描述](https://img-blog.csdnimg.cn/20200918155700313.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center)
-![在这里插入图片描述](https://img-blog.csdnimg.cn/2020091815592995.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center)
+<img src="https://img-blog.csdnimg.cn/20200918155145922.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center" alt="在这里插入图片描述" style="zoom:150%;" />
+<img src="https://img-blog.csdnimg.cn/20200918155207651.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center" alt="在这里插入图片描述" style="zoom:150%;" />
+<img src="https://img-blog.csdnimg.cn/20200918155454255.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center" alt="在这里插入图片描述" style="zoom:150%;" />
+<img src="https://img-blog.csdnimg.cn/20200918155553534.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center" alt="在这里插入图片描述" style="zoom:150%;" />
+<img src="https://img-blog.csdnimg.cn/20200918155624151.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center" alt="在这里插入图片描述" style="zoom:150%;" />
+<img src="https://img-blog.csdnimg.cn/20200918155700313.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center" alt="在这里插入图片描述" style="zoom:150%;" />
+<img src="https://img-blog.csdnimg.cn/2020091815592995.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center" alt="在这里插入图片描述" style="zoom:150%;" />
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20200918160021486.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center)
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/2020091816011075.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center)
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/2020091816015935.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center)
@@ -733,7 +738,7 @@ public class MapTest {
 
 ## 6.6. ConcurrentHashMap的原理
 
-
+ConcurrentHashMap 中则是一次锁住一个桶。ConcurrentHashMap 默认将hash 表分为 16 个桶，诸如 get,put,remove 等常用操作只锁当前需要用到的桶。这样，原来只能一个线程进入，现在却能同时有 16 个写线程执行，并发性能的提升是显而易见的。
 
 # 7. Callable（简单）
 

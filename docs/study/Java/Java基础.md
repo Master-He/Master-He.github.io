@@ -197,6 +197,10 @@ PECS（Producer Extends Consumer Super）
 
 
 
+### 泛型擦除
+
+
+
 
 
 ## 注解
@@ -3438,6 +3442,8 @@ Jedis 对 Redis Cluster 提供了 JedisCluster 客户端，但是没有 Pipeline
 **刚刚提到，JedisCluster 会持有 Redis Cluster 所有节点的连接**。那么，如果我们可以获取到所有节点的连接，对每个节点的连接都开启 Pipeline。首先计算出每个 Key 所在的 Slot，再找到 Slot 对应节点，就可以将 Key 放到对应节点连接的 Pipeline 上，这样不就实现了集群版的 Pipeline 了么！
 
 我们要做的工作就是找到对应关系，**将每个 Key 分配到对应的节点连接中**。
+
+
 
 
 
