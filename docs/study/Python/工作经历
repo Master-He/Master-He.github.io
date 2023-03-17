@@ -1,4 +1,4 @@
-2020年下半年
+# 2020年下半年
 
 ```
 蓝军xhack工具（背景是为了验证深信服下一代防火墙AF的作用）
@@ -24,11 +24,13 @@ web实况攻击
 sql注入攻击
 XSS攻击
 暴力破解攻击（输入密码本）
+
+前端用vue，后端用python3
 ```
 
 
 
-2021年上半年
+# 2021年上半年
 
 ```
 1.SIP58版本SIEM模块重构，减少大量冗余操作
@@ -126,24 +128,18 @@ apps.sec_netdetect.bin.mail_detect.main.main # 5分钟执行一次！ 读取多�
 			self.domain_result_handler.deal_detect_result(domain_result)
 			
 钓鱼邮件
-	含有恶意url
+	正则提取恶意url，url进行云查，调用威胁情报接口，判断是否是恶意url
 垃圾邮件
 	关键字识别,就简单的遍历关键词是否在文本中出现了
 ```
 
-摄像头检测
-
-```
-
-```
 
 
 
 
 
 
-
-2021年下半年
+# 2021年下半年
 
 ```
 增加日志分流，减少IO压力
@@ -166,9 +162,13 @@ apps.sec_netdetect.bin.mail_detect.main.main # 5分钟执行一次！ 读取多�
 	
 ```
 
+![image-20230317150211590](工作经历.assets/image-20230317150211590.png)
+
+火焰图分析耗时， memory_profiler分析内存
 
 
-2022年上半年
+
+# 2022年上半年
 
 ```
 将SIP的检测app迁移到中台的算子
@@ -186,6 +186,8 @@ apps.sec_netdetect.bin.mail_detect.main.main # 5分钟执行一次！ 读取多�
 	作为sip问题接口人，验收负责人。为中台同事提供迁移问题协助，确认安全日志的字段问题，app检测逻辑问题，推动了迁移进度
 	写自动化测试进行功能验证，安全日志字段验证（包含十几种协议的80多个规则），保证了中台数据结果的正确性
 	构建性能测试，稳定测试环境， 并排查问题，并提供了解决问题的方案，保证了中台运行的稳定性和性能
+	
+	使用jprofiler分析内存占用，减少不必要的内存占用
 	
 负责XDR日志消减模块功能，优化日志消减和告警转换模块性能， 协助二次检测模块的开发
 	优化了日志消减模块的性能，使日志消减模块eps提升了20倍
@@ -306,7 +308,75 @@ tf.train.write_graph(frozen_graph, "./", "model.pb", as_text=False)
 
 
 
-2022年下半年
+## convert模块
+
+```java
+ConfigLoader configLoader = ConfigLoader.getConfigLoader(); // 单例获取loader
+ConvertConfig convertConfig = configLoader.getConvertConfig(); //jackson
+ConvertEngine engine = new ConvertEngine(convertConfig);
+	ObjectMapper objectMapper = ObjectMapperHelper.getFlinkObjectMapper();
+	JsonFileReader jsonFileReader = new JsonFileReader(objectMapper);
+	this.environment = FlinkEnvironment.getFlinkEnvironment(convertConfig, jsonFileReader);
+		env = StreamExecutionEnvironment.getExecutionEnvironment();
+engine.init();
+	DataStream<XdrAlertState> oneDetectStream = initOneDetect();
+		PulsarConfig oneDetectPulsarConfig = getOneDetectPulsarConfig();
+		DataStream<byte[]> sourceStream = loadSource(oneDetectPulsarConfig);
+			env.fromSource(....)
+		PulsarConfig samplePulsarConfig = getSamplePulsarConfig();
+		DataStream<XdrAlertState> mapStream = loadMap(sourceStream, samplePulsarConfig); // 重点
+			SingleOutputStreamOperator<N_alert_tmg> nAlertTmgStream = sourceStream.map(new ByteToNAlertTmgMapFunction())
+                .process(new ExtractLogTraceToSideOutputFunction(logTraceTag));
+			SingleOutputStreamOperator<N_alert_tmg_reduced> LogTraceStream = nAlertTmgStream.getSideOutput(logTraceTag)
+					.map(new LogTraceMapFunction()) // 准备消减
+					.uid("log-trace");
+
+			int windowTime = convertConfig.getApplication().getApplicationFlink().getLogReduceWindowSize();
+			SingleOutputStreamOperator<N_alert_tmg_reduced> nAlertTmgReduceStream = nAlertTmgStream
+					.keyBy(new FirstAggregateKeySelector())
+					.window(TumblingProcessingTimeWindows.of(Time.seconds(windowTime)))
+					.aggregate(new FirstAggregateFunction(samplePulsarConfig, convertConfig))
+					.uid("log-reduce");  // 消减
+
+			ConvertConfig.SecondaryDetect secondaryConfig = convertConfig.getApplication().getSecondaryDetect();
+			if (secondaryConfig == null || secondaryConfig.getSecondaryDetectEnable()) {
+				nAlertTmgReduceStream.filter(new SecdetectMainFunctionFilter()).setParallelism(1);
+			}  // 日志追踪的不消减
+
+			DataStream<N_alert_tmg_reduced> logReduceStream = nAlertTmgReduceStream.union(LogTraceStream);
+
+			return logReduceStream
+					.map((MapFunction<N_alert_tmg_reduced, XdrAlertState>) XdrAlertState::new)
+					/*.filter(new CommonFilterFunction(rulePath, jsonFileReader, convertConfig.getCommon().getTenants(),
+							samplePulsarConfig, convertConfig))*/
+					.uid("once-detect-filter");  // 给下面的流
+	DataStream<XdrAlertState> secDetectStream = initSecondaryDetect(); // 和一次检测类似
+	DataStream<XdrAlertState> unionStream = oneDetectStream.union(secDetectStream);
+	DataStream<Tuple2<String, String>> resultStream = initCommonProcess(unionStream);  // 聚合一天的告警，传给下游， 中间状态用rockdb存起来
+		PulsarConfig samplePulsarConfig = getSamplePulsarConfig();
+        return unionStream
+                .filter(
+                        new CommonFilterFunction(rulePath,
+                                jsonFileReader,
+                                convertConfig.getCommon().getTenants(),
+                                samplePulsarConfig,
+                                convertConfig)
+                )
+                .keyBy(new AlertRichKeySelector())
+                .process(new CommonKeyedProcessFunction(convertConfig, rulePath, jsonFileReader,
+                        convertConfig.getLogtrace(), samplePulsarConfig))
+                .uid("convert-alert");
+	loadSink(resultStream);
+engine.start();	
+	environment.execute();
+		env.execute("convert_and_sec_detect");
+```
+
+
+
+
+
+# 2022年下半年
 
 ```
 提高NDR引擎性能，增加NDR引擎的稳定性，可靠性。
@@ -326,5 +396,29 @@ tf.train.write_graph(frozen_graph, "./", "model.pb", as_text=False)
 	合入57版本的视频网app的检测能力，适配58及以上版本，并同时提高其性能， 共6个告警
 	合入57版本的物联网ueba（医疗设备相关）的检测， 并支持sig物联网数据的输入。共198个告警
 	解决ueba客户问题，提高客户满意度。
+	
+
 ```
+
+
+
+摄像头检测逻辑（都是业务，好像没有什么技术价值）
+
+```
+设备已经掉线n个小时及以上(离线时间在资产中心--配置--高级配置中的离线规则中设置)，表明已经处于离线状态\n 
+	定时查资产表，最新在线时间离当前时间是否超过n小时
+设备的MAC地址发生了改变，说明设备信息发生变更
+	查资产表和终端状态表，查看修改是否合法
+源地址和目的地址都是视频设备地址，说明视频设备相互访问
+	查看tcp审计日志流量。就是查看源目的是否是摄像头
+视频设备的IP地址发起netbios、smb、telnet、ftp、http、https、ssh、mongo、mysql、sqlserver、db2等协议，说明视频设备使用违规协议
+	查看tcp审计日志流量
+不同的设备MAC地址相同
+	查资产表和终端状态表
+设备的厂商发生了改变，说明设备信息发生变更
+```
+
+
+
+
 
