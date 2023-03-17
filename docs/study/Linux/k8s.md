@@ -1,5 +1,20 @@
 
 
+工作中用到的
+
+```shell
+# 查看configmap
+kubectl get configmaps convert-20715 -n sec -o yaml
+kubectl get configmaps detect-20715 -n sec -o yaml
+
+# 查看版本号
+helm ls -A|grep convert
+```
+
+
+
+
+
 
 
 # 装k8s遇到的问题

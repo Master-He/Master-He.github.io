@@ -4,7 +4,38 @@
 
 
 
+未整理
 
+```
+# docker 进入pulsar容器
+# 1. 租户，命名空间，主题创建
+./pulsar-admin tenants create 20715
+./pulsar-admin namespaces create 20715/default
+./pulsar-admin topics create-partitioned-topic -p 1 persistent://20715/default/network_log
+# 2. 查看topic信息 web api
+http://10.60.62.123:9090/admin/v2/persistent/20715/default/log/partitioned-stats
+http://10.60.62.123:9090/admin/v2/persistent/20715/default/reduced/partitioned-stats
+http://10.60.62.123:9090/admin/v2/persistent/20715/default/alert/partitioned-stats
+# 3. 删除schema
+/pulsar/bin/pulsar-admin schemas delete persistent://20715/default/network_security_log
+# 4. 列出topic
+./pulsar-admin topics list 20715/default
+
+# 功能测试(shell命令)
+./pulsar-client --url pulsar://10.60.62.123:6650 consume persistent://20715/default/reduced -n 0 -s "hwj730"
+```
+
+
+
+游标回退
+
+```shell
+# 查看订阅者
+./pulsar-admin topics subscriptions 20715/default/log
+
+# 游标回退
+./pulsar-admin topics reset-cursor --subscription alpha_app_test_5 --time 30m persistent://20715/default/log
+```
 
 # 一、pulsar简介
 

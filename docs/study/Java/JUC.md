@@ -748,7 +748,7 @@ ConcurrentHashMap 中则是一次锁住一个桶。ConcurrentHashMap 默认将ha
 
 - 可以有返回值
 - 可以抛出异常
-- 方法不容，run() / call()
+- 方法不同，run() / call()
 
 ```java
 package com.xiaofan.callable;
@@ -926,6 +926,37 @@ public class SemaphoreDemo {
 
 ## 8.4 Phaser
 
+功能和CountDownLatch，CyclicBarrier类似，但phaser支持的场景更加灵活
+
+phaser灵活性主要体现在构造函数不强制指定有多少参与协作的线程。 参与协作的线程个数可以在运行时动态改变。
+
+参考： https://cloud.tencent.com/developer/article/1350849
+
+https://blog.csdn.net/liuyu973971883/article/details/107917079
+
+```java
+register()//添加一个新的注册者
+bulkRegister(int parties)//添加指定数量的多个注册者
+arrive()// 到达栅栏点直接执行，无须等待其他的线程
+arriveAndAwaitAdvance()//到达栅栏点，必须等待其他所有注册者到达
+arriveAndDeregister()//到达栅栏点，注销自己无须等待其他的注册者到达
+onAdvance(int phase, int registeredParties)//多个线程达到注册点之后，会调用该方法。
+
+int awaitAdvance(int phase) // 等待前行，可阻塞也可不阻塞，判断条件为传入的phase是否为当前phaser的phase。如果相等则阻塞，反之不进行阻塞
+int getRegisteredParties()  // 获取当前的parties数
+int getArrivedParties()  // 获取当前到达的parties数
+int getUnarrivedParties()    // 获取当前未到达的parties数
+int getPhase() // 获取当前属于第几阶段，默认从0开始，最大为integer的最大值
+boolean isTerminated()  //判断当前phaser是否关闭
+void forceTermination()    // 强制关闭当前phaser
+```
+
+
+
+### 8.4.1 动态注册
+
+使用Phaser动态注册parties
+
 ```java
 package org.github.demo.juc;
 
@@ -974,7 +1005,29 @@ public class PhaserExample {
 
 ```
 
+运行结果
 
+```
+The thread [Thread-0] is working
+The thread [Thread-1] is working
+The thread [Thread-2] is working
+The thread [Thread-3] is working
+The thread [Thread-4] is working
+The thread [Thread-2] work finished
+The thread [Thread-4] work finished
+The thread [Thread-0] work finished
+The thread [Thread-1] work finished
+The thread [Thread-3] work finished
+All of worker finished the task
+
+Process finished with exit code 0
+```
+
+
+
+### 8.4.2 设置阶段
+
+使用Phaser设置多个阶段,  这边使用的案例是运动员，模拟多个运动员参加多个项目。每个项目结束才能开始下一个项目
 
 ```java
 package org.github.demo.juc;
@@ -1041,7 +1094,7 @@ public class PhaserExample2 {
 
 ```
 
-
+### 8.4.3 常用方法演示
 
 ```java
 package org.github.demo.juc;
@@ -1093,6 +1146,103 @@ public class PhaserExample3 {
     }
 
 }
+```
+
+### 8.4.4 利用arrive
+
+利用arrive只监听线程完成第一部分任务
+
+```java
+import java.util.Random;
+import java.util.concurrent.Phaser;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
+
+public class PhaserExample4 {
+    private static Random random = new Random(System.currentTimeMillis());
+    public static void main(String[] args) throws InterruptedException {
+        //初始化6个parties
+        Phaser phaser = new Phaser(6);
+        //创建5个任务
+        IntStream.rangeClosed(1,5).forEach(i->new ArrayTask(i,phaser).start());
+        //等待5个任务的第一部分完成
+        phaser.arriveAndAwaitAdvance();
+        System.out.println("all work finished");
+    }
+
+    private static class ArrayTask extends Thread{
+        private Phaser phaser;
+
+        public ArrayTask(int name,Phaser phaser) {
+            super(String.valueOf(name));
+            this.phaser = phaser;
+        }
+
+        @Override
+        public void run() {
+            try {
+                //模拟第一部分工作
+                System.out.println(getName()+" start working");
+                TimeUnit.SECONDS.sleep(random.nextInt(3));
+                System.out.println(getName()+" end working");
+                //该方法表示到达但不会使线程阻塞
+                phaser.arrive();
+                //模拟第二部分工作
+                TimeUnit.SECONDS.sleep(random.nextInt(3));
+                System.out.println(getName()+" do other thing");
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
+```
+
+
+
+### 8.4.5 awaitAdvance演示
+
+```java
+import java.util.Random;
+import java.util.concurrent.Phaser;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
+
+public class PhaserExample5 {
+    private static Random random = new Random(System.currentTimeMillis());
+
+    public static void main(String[] args) {
+        //初始化6个parties
+        Phaser phaser = new Phaser(5);
+        //创建5个任务
+        IntStream.rangeClosed(1, 5).forEach(i -> new ArrayTask(i, phaser).start());
+        //当phaser中的当前阶段等于传入的阶段则该方法会阻塞，反之不会
+        phaser.awaitAdvance(phaser.getPhase());   // 传入的phase和当前的phase相同，则阻塞，直到不相等为止
+        System.out.println("all work finished");
+    }
+
+    private static class ArrayTask extends Thread {
+        private Phaser phaser;
+
+        public ArrayTask(int name, Phaser phaser) {
+            super(String.valueOf(name));
+            this.phaser = phaser;
+        }
+
+        @Override
+        public void run() {
+            try {
+                System.out.println(getName() + " start working");
+                TimeUnit.SECONDS.sleep(random.nextInt(3));
+                System.out.println(getName() + " end working");
+                phaser.arriveAndAwaitAdvance();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
+
 ```
 
 
@@ -1385,7 +1535,7 @@ public class SynchronousQueueDemo {
 
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20200920111534311.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center)
 
-- 线程池3大方法
+## 线程池3大方法
 
 ```java
 package com.xiaofan.pool;
@@ -1417,7 +1567,28 @@ public class Demo01 {
 }
 ```
 
-- 7大参数
+参考：java开发手册（嵩山版）
+
+【强制】线程池不允许使用 Executors 去创建，而是通过 ThreadPoolExecutor 的方式，这
+样的处理方式让写的同学更加明确线程池的运行规则，规避资源耗尽的风险。
+说明：Executors 返回的线程池对象的弊端如下：
+1） FixedThreadPool 和 SingleThreadPool：
+允许的请求队列长度为 Integer.MAX_VALUE，可能会堆积大量的请求，从而导致 OOM。
+2） CachedThreadPool：
+允许的创建线程数量为 Integer.MAX_VALUE，可能会创建大量的线程，从而导致 OOM。
+
+
+
+## 7大参数
+
+keepAliveTime的概念：
+keepAliveTime的单位是纳秒，即1s=1000000000ns，1秒等于10亿纳秒。
+keepAliveTime是线程池中空闲线程等待工作的超时时间。
+当线程池中线程数量大于corePoolSize（核心线程数量）或设置了allowCoreThreadTimeOut（是否允许空闲核心线程超时）时，线程会根据keepAliveTime的值进行活性检查，一旦超时便销毁线程。
+否则，线程会永远等待新的工作。
+————————————————
+版权声明：本文为CSDN博主「Helloworld先生」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/u010841296/article/details/89419115
 
 ```java
 public static ExecutorService newSingleThreadExecutor() {
@@ -1442,7 +1613,7 @@ public static ExecutorService newCachedThreadPool() {
 // 本质调用了ThreadPool
 public ThreadPoolExecutor(int corePoolSize,		// 核心线程池大小
                           int maximumPoolSize,	// 最大线程的数量
-                          long keepAliveTime,	// 超时了没有人调用就会释放
+                          long keepAliveTime,	// 超时了没有人调用就会释放（线程池中空闲线程等待了keepAliveTime后还是空闲的话，就销毁线程）
                           TimeUnit unit,		// 超时单位
                           BlockingQueue<Runnable> workQueue,	// 阻塞队列
                           ThreadFactory threadFactory,		// 线程工厂，创建线程的，一般不用动
@@ -1464,6 +1635,7 @@ public ThreadPoolExecutor(int corePoolSize,		// 核心线程池大小
     this.threadFactory = threadFactory;
     this.handler = handler;
 }
+
 ```
 
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20200920114623693.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center)
@@ -1481,7 +1653,7 @@ import java.util.concurrent.*;
  * 自定义线程池
  * 没有线程可用的时候（阻塞队列也没有了，就启动拒绝策略）
  * 1.new ThreadPoolExecutor.AbortPolicy()   线程池不够用了，还有任务，就抛出异常
- * 2.new ThreadPoolExecutor.CallerRunsPolicy()  哪来的哪去
+ * 2.new ThreadPoolExecutor.CallerRunsPolicy()  哪来的哪去，比如main线程交给线程池运行，线程池满了，就交回给main线程执行
  * 3.new ThreadPoolExecutor.DiscardPolicy()   队列满了，丢掉任务，不会抛出异常
  * 4.new ThreadPoolExecutor.DiscardOldestPolicy()   队列满了，尝试和最早的竞争，也不会抛出异常
  */
@@ -1555,11 +1727,36 @@ class MyTask implements Runnable {
 
 
 
-- 4种拒绝策略
+### 4种拒绝策略
 
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20200920115802445.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center)
 
-- 线程池的大小如何去设置！
+参考： https://cloud.tencent.com/developer/article/1520860    参考文章里面还提及第三方的拒绝策略
+
+```java
+CallerRunsPolicy（调用者运行策略）
+功能：当触发拒绝策略时，只要线程池没有关闭，就由提交任务的当前线程处理。
+使用场景：一般在不允许失败的、对性能要求不高、并发量较小的场景下使用，因为线程池一般情况下不会关闭，也就是提交的任务一定会被运行，但是由于是调用者线程自己执行的，当多次提交任务时，就会阻塞后续任务执行，性能和效率自然就慢了。
+    
+AbortPolicy（中止策略）
+功能：当触发拒绝策略时，直接抛出拒绝执行的异常，中止策略的意思也就是打断当前执行流程
+使用场景：这个就没有特殊的场景了，但是一点要正确处理抛出的异常。
+ThreadPoolExecutor中默认的策略就是AbortPolicy，ExecutorService接口的系列ThreadPoolExecutor因为都没有显示的设置拒绝策略，所以默认的都是这个。但是请注意，ExecutorService中的线程池实例队列都是无界的，也就是说把内存撑爆了都不会触发拒绝策略。当自己自定义线程池实例时，使用这个策略一定要处理好触发策略时抛的异常，因为他会打断当前的执行流程。
+    
+DiscardPolicy（丢弃策略）
+功能：直接静悄悄的丢弃这个任务，不触发任何动作
+使用场景：如果你提交的任务无关紧要，你就可以使用它 。因为它就是个空实现，会悄无声息的吞噬你的的任务。所以这个策略基本上不用了
+    
+DiscardOldestPolicy（弃老策略）
+功能：如果线程池未关闭，就弹出队列头部的元素，然后尝试执行
+使用场景：这个策略还是会丢弃任务，丢弃时也是毫无声息，但是特点是丢弃的是老的未执行的任务，而且是待执行优先级较高的任务。基于这个特性，我能想到的场景就是，发布消息，和修改消息，当消息发布出去后，还未执行，此时更新的消息又来了，这个时候未执行的消息的版本比现在提交的消息版本要低就可以被丢弃了。因为队列中还有可能存在消息版本更低的消息会排队执行，所以在真正处理消息的时候一定要做好消息的版本比较。
+```
+
+
+
+
+
+### 线程池的大小如何去设置！
 
 ```java
 package com.xiaofan.pool;
@@ -1599,6 +1796,52 @@ public class Demo03 {
     }
 }
 ```
+
+
+
+补充相关知识： SynchronousQueueDemo
+
+```java
+package com.concurrent;
+
+import java.util.concurrent.SynchronousQueue;
+
+public class SynchronousQueueDemo {
+    public static void main(String[] args) throws InterruptedException {
+        final SynchronousQueue<Integer> queue = new SynchronousQueue<Integer>();
+
+        Thread putThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                System.out.println("put thread start");
+                try {
+                    queue.put(1);
+                } catch (InterruptedException e) {
+                }
+                System.out.println("put thread end");
+            }
+        });
+
+        Thread takeThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                System.out.println("take thread start");
+                try {
+                    System.out.println("take from putThread: " + queue.take());
+                } catch (InterruptedException e) {
+                }
+                System.out.println("take thread end");
+            }
+        });
+
+        putThread.start();
+        Thread.sleep(1000);
+        takeThread.start();
+    }
+}
+```
+
+
 
 # 12. 四大函数式接口（必须掌握）
 
@@ -1897,7 +2140,7 @@ public class Test {
 
 # 15. 异步回调
 
-
+## runAsync
 
 - 没有返回值的runAsync
 
@@ -1936,7 +2179,7 @@ public class Demo01 {
 }
 ```
 
-
+## supplyAsync
 
 - 有返回值的 supplyAsync
 
@@ -2181,11 +2424,11 @@ public class HungryMan {
     private byte[] data3 = new byte[1024*1024];
     private byte[] data4 = new byte[1024*1024];
 
-    private HungryMan() {}
+    private HungryMan() {} // 私有化构造器
 
-    private final static HungryMan HUNGRY = new HungryMan();
+    private final static HungryMan HUNGRY = new HungryMan();  // 初始化对象，并私有化
 
-    public static HungryMan getInstance() {
+    public static HungryMan getInstance() {  // 获取实例的静态方法
         return HUNGRY;
     }
 }

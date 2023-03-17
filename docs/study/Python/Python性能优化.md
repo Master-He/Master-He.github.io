@@ -114,6 +114,71 @@ SUBCOMMANDS:
 
 
 
+# psutils
+
+```python
+import os
+import psutil
+res = psutil.Process(os.getpid()).memory_info().rss
+with open('/tmp/mail_memory_info.txt', 'w') as f:
+    f.write("res: {}B\n".format(res))
+    
+    
+import os
+import psutil
+res = psutil.Process(os.getpid()).memory_info().rss
+dbg.warn("before read file_info mem: {}B".format(res))
+
+res = psutil.Process(os.getpid()).memory_info().rss
+dbg.warn("after read file_info mem: {}B".format(res))
+```
+
+# memory_profiler
+
+python2的需要用0.57.0的才兼容
+
+```shell
+pip install memory-profiler==0.57.0
+```
+
+```python
+from memory_profiler import profile
+import time
+
+@profile
+def my_func():
+    a = [1] * (10 ** 6)
+    b = [2] * (2 * 10 ** 7)
+    del b
+    return a
+
+if __name__ == '__main__':
+    my_func()
+    while True:
+        time.sleep(1)
+```
+
+```shell
+import time
+from memory_profiler import profile
+
+class Dog:
+    def __init__(self):
+        self.friends = list()
+
+    @profile
+    def bark(self):
+        a = [1] * (10 ** 6)
+        self.friends.append(a)
+
+
+if __name__ == '__main__':
+    dog = Dog()
+    while True:
+        dog.bark()
+        time.sleep(1)
+```
+
 # IO
 
 linux 下的
