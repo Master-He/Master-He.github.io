@@ -16,9 +16,14 @@ py-spy dump --pid 115930
 https://stackoverflow.com/questions/3378953/is-there-a-visual-profiler-for-python
 
 ```py
-  python -m cProfile -o profile.dat my_program.py
-  gprof2dot.py -f pstats profile.dat | dot -Tpng -o profile.png
+# 安装gprof2dot pip install gprof2dot
+# 生成dat
+python -m cProfile -o profile.dat my_program.py
+# 生成svg图
+python -m gprof2dot -f pstats profile.dat | dot -Tsvg -o profile.svg
 ```
+
+
 
 
 
@@ -82,6 +87,24 @@ top -c -d 0.5 | grep dnsdetect
 https://blog.csdn.net/qq_16681169/article/details/113804000
 
 
+
+python进程内存分析
+
+```shell
+# 13831是pid
+pmap -x 13831
+# 确定内存具体的开始和结束的地址
+cat /proc/13831/maps | grep 0x7ff00627d000
+# pmap可以看出是哪块内存大，然后用gdb打印出来
+gdb python 13831
+dump binary memory /home/hwj/my2.bin 0x7ff00627d000 0x7ff009b7e000
+
+```
+
+https://wiki.python.org/moin/DebuggingWithGdb
+https://drmingdrmer.github.io/tech/programming/2017/05/06/python-mem.html
+http://ponder.work/2020/12/29/debug-python-with-gdb/
+https://blog.csdn.net/lanyang123456/article/details/100860904
 
 
 
