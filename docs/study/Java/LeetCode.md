@@ -3065,27 +3065,67 @@ s 仅含英文字母（大写和小写），数字（0-9），加号 '+' ，减�
 class Solution {
     public boolean isNumber(String s) {
         Map[] states = {
-            new HashMap<>() {{ put(' ', 0); put('s', 1); put('d', 2); put('.', 4); }}, // 0.
-            new HashMap<>() {{ put('d', 2); put('.', 4); }},                           // 1.
-            new HashMap<>() {{ put('d', 2); put('.', 3); put('e', 5); put(' ', 8); }}, // 2.
-            new HashMap<>() {{ put('d', 3); put('e', 5); put(' ', 8); }},              // 3.
-            new HashMap<>() {{ put('d', 3); }},                                        // 4.
-            new HashMap<>() {{ put('s', 6); put('d', 7); }},                           // 5.
-            new HashMap<>() {{ put('d', 7); }},                                        // 6.
-            new HashMap<>() {{ put('d', 7); put(' ', 8); }},                           // 7.
-            new HashMap<>() {{ put(' ', 8); }}                                         // 8.
+            new HashMap<Character, Integer>() {{
+                put(' ', 0);
+                put('s', 1);
+                put('d', 2);
+                put('.', 4);
+            }},
+            new HashMap<Character, Integer>() {{
+                put('d', 2);
+                put('.', 4);
+
+            }},
+            new HashMap<Character, Integer>() {{
+                put('d', 2);
+                put('.', 3);
+                put('e', 5);
+                put(' ', 8);
+            }},
+            new HashMap<Character, Integer>() {{
+                put('d', 3);
+                put('e', 5);
+                put(' ', 8);
+            }},
+            new HashMap<Character, Integer>() {{
+                put('d', 3);
+            }},
+            new HashMap<Character, Integer>() {{
+                put('s', 6);
+                put('d', 7);
+            }},
+            new HashMap<Character, Integer>() {{
+                put('d', 7);
+            }},
+            new HashMap<Character, Integer>() {{
+                put('d', 7);
+                put(' ', 8);
+            }},
+            new HashMap<Character, Integer>() {{
+                put(' ', 8);
+            }}
         };
+
         int p = 0;
         char t;
-        for(char c : s.toCharArray()) {
-            if(c >= '0' && c <= '9') t = 'd';
-            else if(c == '+' || c == '-') t = 's';
-            else if(c == 'e' || c == 'E') t = 'e';
-            else if(c == '.' || c == ' ') t = c;
-            else t = '?';
-            if(!states[p].containsKey(t)) return false;
-            p = (int)states[p].get(t);
+        for (char c : s.toCharArray()) {
+            if (c >= '0' && c <= '9') {
+                t = 'd';
+            } else if (c == '+' || c == '-') {
+                t = 's';
+            } else if (c == 'e' || c == 'E') {
+                t = 'e';
+            } else if (c == '.' || c == ' ') {
+                t = c;
+            } else {
+                t = '?';
+            }
+            if (!states[p].containsKey(t)) {
+                return false;
+            }
+            p = (int) states[p].get(t);
         }
+
         return p == 2 || p == 3 || p == 7 || p == 8;
     }
 }
@@ -3123,7 +3163,40 @@ class Solution:
 
 
 
+### 剑指 Offer 59 - I. 滑动窗口的最大值
 
+给定一个数组 nums 和滑动窗口的大小 k，请找出所有滑动窗口里的最大值。
+
+示例:
+
+```
+输入: nums = [1,3,-1,-3,5,3,6,7], 和 k = 3
+输出: [3,3,5,5,6,7] 
+解释: 
+
+  滑动窗口的位置                最大值
+---------------               -----
+[1  3  -1] -3  5  3  6  7       3
+ 1 [3  -1  -3] 5  3  6  7       3
+ 1  3 [-1  -3  5] 3  6  7       5
+ 1  3  -1 [-3  5  3] 6  7       5
+ 1  3  -1  -3 [5  3  6] 7       6
+ 1  3  -1  -3  5 [3  6  7]      7
+
+作者：Krahets
+链接：https://leetcode.cn/leetbook/read/illustration-of-algorithm/58o46i/
+来源：力扣（LeetCode）
+著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
+```
+
+
+
+
+提示：
+
+你可以假设 k 总是有效的，在输入数组 不为空 的情况下，1 ≤ k ≤ nums.length。
+
+注意：本题与主站 239 题相同：https://leetcode-cn.com/problems/sliding-window-maximum/
 
 
 
