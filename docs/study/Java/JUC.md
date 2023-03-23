@@ -1247,6 +1247,75 @@ public class PhaserExample5 {
 
 
 
+### 8.4.6 重写onAdvance()
+
+```java
+import java.util.Date;
+import java.util.concurrent.Phaser;
+import java.util.concurrent.TimeUnit;
+
+import static java.lang.Thread.currentThread;
+import static java.util.concurrent.ThreadLocalRandom.current;
+
+/**
+
+ * @desc 重写Phaser 中的 onAdvance() 方法
+
+ **/
+public class PhaserExample2
+{
+   public static void main(String[] args)
+   {
+      // 使用我们自定义的 Phaser ， 并且在构造时传入回调函数
+      final Phaser phaser = new MyPhaser(()->
+      {
+         System.out.println(new Date( ) + " :all of sub task completed work.");
+      });
+
+      for (int i = 0; i < 10; i++)
+      {
+         new Thread(()->
+         {
+            phaser.register();
+            try
+            {
+               TimeUnit.SECONDS.sleep(current().nextInt(20));
+               phaser.arriveAndAwaitAdvance();
+               System.out.println(new Date() + ":" + currentThread() + " completed the work.");
+            }
+            catch (InterruptedException e)
+            {
+               e.printStackTrace();
+            }
+         },"T-"+i).start();
+      }
+
+   }
+
+   // 继承 Phaser
+   private static class MyPhaser extends Phaser
+   {
+      private final Runnable runnable;
+      private MyPhaser(Runnable runnable)
+      {
+         super();
+         this.runnable = runnable;
+      }
+      // 重写 onAdvance() 方法，当 parties 个任务都到达某个 phase 时该方法将被调用执行
+      @Override
+      protected boolean onAdvance(int phase, int registeredParties) {
+         this.runnable.run();
+         return super.onAdvance(phase,registeredParties);
+      }
+   }
+}
+————————————————
+版权声明：本文为CSDN博主「小达人Fighting」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/lierming__/article/details/113483798
+```
+
+
+
 # 9. 读写锁
 
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20200918190315346.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center)

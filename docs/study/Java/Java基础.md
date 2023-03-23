@@ -3283,39 +3283,6 @@ CLASSPATH .;%JAVA_HOME%\lib\dt.jar;%JAVA_HOME%\lib\tools.jar
 
 
 
-yara
-
-```
-因为yara (https://yara.readthedocs.io/en/stable/index.html) 官方没有提供java的api，只有C和Python的api. 所以java代码中使用yara只能引入第三方的api
-使用第三方的api（https://github.com/p8a/yara-java/tree/master）需要进行编译， 下面记录编译步骤和遇到的一些问题（环境是centos7）
-
-1.下载yara-java和yara的代码， 并解压到/opt/yara目录
-下载zip包， 下载地址是 https://github.com/p8a/yara-java/tree/master   ， https://github.com/virustotal/yara/tree/v3.10.0
-注意： 先解压yara-3.10.0， 然后再将yara-java-master解压并放入yara-3.10.0目录中
-
-2.编译yara
-编译yara步骤如下
-
-cd /opt/yara/yara-3.10.0
-./bootstrap.sh
-./configure --without-crypto --disable-shared CFLAGS=-fPIC
-make
-
-说明：--without-crypto参数表示不依赖OpenSSL library。 如果不加这个参数，使用yara-java的时候可能会报这样的错（在centos8环境下使用时，提示libcrypto.so.10缺失错误）
-
-
-3. 打包yara-java
-cd /opt/yara/yara-3.10.0/yara-java-master
-mvn clean install
-# 打出包： libyara-3.10.0-SNAPSHOT.jar， libyara-3.10.0-SNAPSHOT-linux64.jar
-libyara-3.10.0-SNAPSHOT.jar  提供api接口 （接口的使用参考github项目（https://github.com/p8a/yara-java/tree/master）的单元测试 ）
-libyara-3.10.0-SNAPSHOT-linux64.jar  提供so库
-```
-
-
-
-
-
 
 
 > mac系统
