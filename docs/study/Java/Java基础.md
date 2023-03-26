@@ -597,6 +597,128 @@ https://www.javazhiyin.com/44347.html
 
 
 
+
+
+### 高级类加载机制
+
+
+
+自定义类加载器的示例代码（chatgpt）
+
+```java
+import java.io.*;
+
+public class MyClassLoader extends ClassLoader {
+    private String root;
+
+    public MyClassLoader(String root) {
+        this.root = root;
+    }
+
+    @Override
+    protected Class<?> findClass(String name) throws ClassNotFoundException {
+        byte[] classData = loadClassData(name);
+        if (classData == null) {
+            throw new ClassNotFoundException();
+        } else {
+            return defineClass(name, classData, 0, classData.length);
+        }
+    }
+
+    private byte[] loadClassData(String className) {
+        String fileName = root + File.separatorChar + className.replace('.', File.separatorChar) + ".class";
+        try (InputStream inputStream = new FileInputStream(fileName);
+             ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream()) {
+
+            int len = 0;
+            while ((len = inputStream.read()) != -1) {
+                byteOutputStream.write(len);
+            }
+            return byteOutputStream.toByteArray();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+}
+```
+
+
+
+动态类加载器的代码示例(chatgpt)
+
+```java
+import java.lang.reflect.Method;
+
+public class DynamicClassLoader {
+    public static void main(String[] args) throws Exception {
+        // 1. 创建自定义类加载器（继承自系统类加载器）
+        MyClassLoader loader = new MyClassLoader();
+
+        // 2. 加载指定类，并获取该类的Class对象
+        Class<?> clazz = loader.loadClass("com.example.MyClass");
+
+        // 3. 使用反射创建该类的实例，并调用方法
+        Object obj = clazz.newInstance();
+        Method method = clazz.getDeclaredMethod("myMethod");
+        method.invoke(obj);
+    }
+}
+
+// 自定义类加载器
+class MyClassLoader extends ClassLoader {
+    @Override
+    public Class<?> loadClass(String name) throws ClassNotFoundException {
+        // 4. 根据类名查找类文件，并读取字节码
+        byte[] data = getClassData(name);
+
+        if (data == null) {
+            return super.loadClass(name); // 如果找不到，交给父类加载
+        }
+
+        // 5. 将字节码转换为Class对象并返回
+        return defineClass(name, data, 0, data.length);
+    }
+
+    private byte[] getClassData(String className) {
+        // 6. 通过自定义逻辑查找并读取类文件
+        // 这里简单返回字节数组，实际情况可能需要从网络或文件中读取
+        return new byte[]{0x20, 0x20, 0x20, 0x20};
+    }
+}
+
+// 测试用的类
+class MyClass {
+    public void myMethod() {
+        System.out.println("Hello, dynamic class loading!");
+    }
+}
+
+```
+
+
+
+自定义类加载器和动态类加载器有什么区别？(chatgpt)
+
+```java
+自定义类加载器和动态类加载器都是用于实现Java中高级的类加载机制，但它们之间有以下几个区别：
+
+实现方式不同
+自定义类加载器主要是通过继承ClassLoader类，并重写 findClass() 方法来实现自己的类加载逻辑。而动态类加载器通常是通过 Java反射 机制，在程序运行时动态地加载类。
+
+加载范围不同
+自定义类加载器可以用于加载本地文件系统、网络等不同来源的类文件，从而实现更加灵活和可扩展的类加载机制。而动态类加载器则主要用于在程序运行时动态地加载已知的类，如通过反射调用某个类的方法或创建该类的实例等。
+
+应用场景不同
+自定义类加载器广泛应用于一些特殊的应用场景，如OSGI、Applet、Web容器等，以及一些需要实现 类隔离机制 的框架或组件。而动态类加载器则广泛应用于一些需要在程序运行时根据需要动态加载类的场景，如 插件化系统、代码热替换 等。
+
+总之，自定义类加载器和动态类加载器都是Java中非常重要的高级类加载机制，它们为Java程序的灵活性和可扩展性提供了很好的支持，但其应用场景和使用方式略有不同。
+```
+
+
+
+
+
 ## SPI  
 
 SPI : SPI全称Service Provider Interface 服务提供者接口，是Java提供的一套用来被第三方实现或者扩展的API，它可以用来启用框架扩展和替换组件。
