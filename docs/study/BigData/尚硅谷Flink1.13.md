@@ -11,9 +11,7 @@
 >  四层API
 
 1. SQL
-
 2. Table API
-
 3. DataStream/DataSet API
 
 4. 有状态流处理
@@ -27,6 +25,30 @@ Spark工作中没用过，就是批处理框架，Spark Streaming也可以进行
 Flink是真正的流处理
 
 
+
+讲讲你对flink的理解
+
+```
+flink是一个高性能，分布式，可扩展的流式处理框架，它可用于实时数据处理，批处理等场景，它提供了丰富的API和工具，支持基于事件时间和处理时间的窗口计算，基于状态的迭代计算等一系列复杂的数据处理操作。
+
+flink的核心思想是将数据处理看作一系列函数操作，然后把这一系列的函数操作根据方向，依赖关系组装成一个有向无环图（DAG）。 flink会对数据进行分区，调度和负载均衡，以保证高效的数据处理。
+
+flink提供了精确一次语义（Exactly-one Semantics）的支持，即能够在保证数据处理的正确性的前提下，最大程度地保证数据只被处理一次。
+```
+
+
+
+flink怎么保证精确一次语义？(chatgpt)
+
+```
+在分布式计算系统中，精确一次语义（Exactly-Once Semantics）是指在进行数据处理时，保证每条数据只被处理一次，并且将结果准确地输出到外部存储系统中。Flink 通过以下两种机制来保证精确一次语义：
+
+	1. Checkpointing：Checkpoint 是 Flink 中用于实现容错性的机制之一。Flink 会定期生成 Checkpoint，并将当前状态写入持久化存储中。在出现故障时，Flink 可以从上一个 Checkpoint 中恢复应用程序状态和数据处理进度。通过使用精确一次语义的 Checkpoint，可以确保所有进入应用程序的数据都被完整地处理且仅被处理一次。
+
+	2. 事务性 Sink：Flink 提供了支持事务性输出的 Sink 算子，如 Flink JDBC Sink 和 Flink Elasticsearch Sink。这些 Sink 算子可以通过事务机制来确保数据在输出到外部存储时的一致性和可靠性。在这些 Sink 算子中，每个 Checkpoint 都对应着一个事务，所有在该 Checkpoint 前到达的数据都将被写入该事务。如果出现故障，则会回滚到最近一个成功的 Checkpoint，然后重新处理从该 Checkpoint 开始的数据。
+
+需要注意的是，要想实现精确一次语义，还需要考虑数据源的幂等性问题。幂等性是指对于相同的输入数据，在不同时间和位置上处理的结果应该是相同的。在 Flink 应用程序中，需要保证数据源和算子都满足幂等性要求
+```
 
 
 
@@ -135,27 +157,550 @@ hadoop104
 
 
 
+![image-20230327120251210](尚硅谷Flink1.13.assets/image-20230327120251210.png)
+
+## flink图
+
+说一下flink中数据流图，作业图，执行图的转换过程以及是谁负责作图的？(chatgpt)
+
+```
+在 Flink 中，作业的执行过程可以用三种图来描述：数据流图、作业图和执行图。
+
+数据流图（Dataflow Graph）：表示 Flink 作业中数据流处理的逻辑结构，即数据如何从源头经过各个算子转换最终到达目标。数据流图是静态的，也就是说，它反映的是代码中定义的程序结构，而不考虑实际运行时的情况。在 Flink 中，数据流图通常是由开发者编写的代码自动生成的。
+
+作业图（Job Graph）：表示 Flink 作业中逻辑上需要执行的任务和它们之间的依赖关系，包括数据源、算子、数据分区、数据交换等信息。与数据流图不同，作业图是动态生成的，它根据数据流图和当前集群状态进行优化和调度。作业图的生成是由 Flink 的 JobGraphGenerator 负责完成的。
+
+执行图（Execution Graph）：表示 Flink 作业的实际执行过程，包括每个 Task 在哪个 TaskManager 上执行、Task 之间如何链式调用、数据交换如何进行等信息。执行图是动态生成的，它是根据作业图和当前集群状态生成的。执行图的生成是由 Flink 的 ExecutionGraphBuilder 负责完成的。
+
+总体来说，Flink 的数据流图、作业图和执行图都是由 Flink 运行时系统自动生成的，并且在整个作业的执行过程中都扮演着重要的角色。其中，数据流图主要用于代码开发和调试阶段，作业图
+```
+
+逻辑流图（StreamGraph）→ 作业图（JobGraph）→ 执行图（ExecutionGraph）→ 物理图（Physical Graph）。
+
+物理图就是包含数据存放位置的执行图
+
+
+
+
+
+## flink作业提交流程
+
+讲一讲flink作业提交的流程（chatgpt）
+
+```
+当我们要提交一个 Flink 作业时，一般的流程如下：
+
+编写 Flink 应用程序代码：使用 Flink 提供的 API 编写具体的应用程序代码。
+
+打包应用程序：将应用程序代码打包成 JAR 文件或者其他可执行文件，以便在 Flink 集群上运行。
+
+启动 Flink 集群：启动 Flink 集群，可以通过脚本或命令行等方式启动。
+
+提交应用程序：使用 Flink 提供的客户端工具 flink run 提交应用程序。flink run 命令将会向 JobManager 发送作业提交请求，同时将应用程序 JAR 包上传到指定的集群节点上。
+
+JobManager 接收并处理请求：JobManager 接收到作业提交请求后，会对作业进行解析、生成 ExecutionGraph 并执行任务调度计算，同时将控制权交给 ResourceManager。
+
+ResourceManager 分配资源：ResourceManager 接收到控制权后，根据作业的需求，为该作业分配所需的资源，如 TaskManager 资源、内存等。
+
+TaskManager 运行任务：TaskManager 在接收到 ResourceManager 分配的任务资源后，开始运行相应的任务，并不断向 JobManager 汇报任务状态。
+
+作业执行完毕：当所有任务都执行完毕后，Flink 会自动关闭作业并释放所有资源。
+
+总之，Flink 作业提交的流程是先将应用程序打包成可执行文件，然后通过 flink run 工具提交给 JobManager，在整个过程中 Flink 集群会对作业进行调度、资源分配和任务执行等操作。
+```
+
+
+
+```
+这里首先要说明一下“客户端”。其实客户端并不是处理系统的一部分，它只负责作业的提交。具体来说，就是调用程序的 main 方法，将代码转换成“数据流图”（Dataflow Graph），并最终生成作业图（JobGraph），一并发送给 JobManager。提交之后，任务的执行其实就跟客户端没有关系了
+
+TaskManager 启动之后，JobManager 会与它建立连接，并将作业图（JobGraph）转换成可执行的“执行图”（ExecutionGraph）分发给可用的 TaskManager，然后就由 TaskManager 具体执行任务。
+```
+
+
+
+## JobManger 结构
+
+JobManger 又包含 3 个不同的组件
+
+**JobMaster，ResourceManager， Dispatcher**
+
+```
+jobMaster会将作业图转换成执行图， 还会负责检查点的协调
+resourceManager负责资源的分配和管理， slot就是资源调度的基本单位
+dispatcher 主要负责提供restapi， 用来提交应用， 并且负责为每一个新提交的作业启动一个新的jobMaster. dispatcher还会启动一个WebUI页面，方便展示监控信息
+```
+
+
+
+
+
+## flink程序结构
+
+Flink是流式计算框架。它的程序结构，其实就是定义了一连串的处理操作，每一个数据输入之后都会依次调用每一步计算。在Flink代码中，我们定义的每一个处理转换操作都叫作“算子”（Operator），所以我们的程序可以看作是一串算子构成的管道，数据则像水流一样有序地流过。
+
+
+
+所有的Flink程序都可以归纳为由三部分构成：Source、Transformation和Sink。
+
+​	Source 表示“源算子”，负责读取数据源。
+
+​	Transformation 表示“转换算子”，利用各种算子进行处理加工。
+
+​	Sink 表示“下沉算子”，负责数据的输出。
+
+
+
+## flink分区
+
+讲一下flink的分区（chatgpt）
+
+```
+在 Flink 中，数据流可以被分成多个分区，每一个分区包含了数据流中的一部分数据。Flink 根据分区将数据流切分为多个子任务来并行执行计算。Flink 支持以下几种常见的分区方式：
+
+    1. Round Robin 分区：将数据轮询地均匀地分配到下游算子的不同分区中。
+    2. Hash 分区：根据指定的 Key 值进行哈希操作，将 Key 相同的数据分配到同一个分区中。
+    3. Range 分区：根据 Key 的大小和范围将数据流分割成多个分区，比如按照时间戳或者价格分区等。
+    4. Broadcast 分区：将数据流广播到所有下游算子中，每个下游算子都会接收到完整的数据流。
+    5. Rebalance 分区：将数据流重新平衡，即将数据均匀地分配到不同的分区中，以便更好地实现负载均衡。
+    6. Global 分区：将整个数据流看作是一个分区，将其发送到下游算子的一个并行任务中。
+
+需要根据具体的业务场景和算子特性选择合适的分区方式，以提高应用程序的执行效率和可靠性。同时，在 Flink 应用程序中也可以自定义分区器，通过继承 Partitioner 接口来实现自定义分区逻辑。
+```
+
+
+
+讲一下flink的算子的并行度
+
+```
+在 Flink 中，算子并行度（Parallelism）是指一个算子运行时使用的并发任务数。Flink 通过将一个算子拆分为多个子任务来实现并行计算，每个子任务处理输入数据流中的部分数据。算子并行度通常可以通过 setParallelism() 方法进行设置。
+
+在 Flink 应用程序中，可以在算子级别或者作业级别上设置并行度。如果没有显式设置算子的并行度，则会使用 Flink 的默认并行度。下面是一些常见的设置并行度的方法：
+	1.setParallelism() 方法：该方法可以在算子级别上设置并行度，例如 source、map、filter 等算子。
+	2.setMaxParallelism() 方法：该方法同样是在算子级别上设置，并行度的最大值，对于一些需要后续扩展性的算子比较有用。
+	3.ExecutionConfig.setParallelismDefault() 方法：该方法可以在应用程序级别上设置默认并行度，对所有算子都生效。
+	4.flink-conf.yaml 文件：也可以通过修改 flink-conf.yaml 配置文件来设置默认并行度。
+
+需要注意的是，并行度的设置要基于资源可用性、数据倾斜等因素进行合理调整，以充分利用集群资源并提高应用程序的执行效率。
+```
+
+flink 并行度配置的优先级问题
+
+```
+在 Flink 中，算子的并行度可以在多个级别进行设置，因此存在不同级别配置的优先级。具体来说，Flink 算子的并行度配置的优先级从高到低依次是：
+	1. Operator 实例级别：通过 setParallelism() 方法为算子实例单独设置的并行度，这种设置方式的优先级最高。
+	2.TaskManager 内存的 slot 数量：每个 TaskManager 节点都有一定数量的 Task slot，在应用程序启动时可以通过 TaskManagerOptions.NUM_TASK_SLOTS 参数进行设置。如果算子的并行度大于 Task slot 的数量，则会出现资源不足的情况。
+	3.JobManager 内存的 slot 数量：JobManager 也有一定数量的 Job slot，可以通过 SlotSharingGroup 和 Co-locationGroup 等机制向其中分配 Task slot。如果 JobManager 内存的 slot 数量小于 TaskManager 内存中可供使用的 slot 总数，则会出现无法分配 Task slot 的情况。
+	4.ExecutionConfig 设置的默认并行度：可以通过 ExecutionConfig.setParallelismDefault() 方法设置默认的并行度值，在没有显式设置算子并行度时将使用该值作为默认并行度。
+	5.flink-conf.yaml 配置文件中的默认并行度：在没有任何上述配置时，Flink 会使用 flink-conf.yaml 配置文件中的默认并行度来执行计算任务。
+
+当存在多个级别的并行度设置时，Flink 会按照上述优先级顺序进行并行度配置。
+```
+
+
+
+
+
+## 算子链
+
+算子之前传输数据的方式有哪些？
+
+```
+在 Flink 中，算子之间通常通过数据流进行数据传输。Flink 支持以下几种常见的数据传输方式：
+
+	1. 点对点直接传输：每个算子将数据直接发送给下游算子。这种方式适用于数据量较小、计算复杂度较低的场景。
+
+	2. Shuffle-based 数据传输：将数据根据 Key 值哈希分区，并将同一分区内的数据发送到同一个下游算子中。此种数据传输方式会涉及到网络传输和磁盘 I/O 操作，因此在大规模数据处理和高并发操作场景下需要考虑性能问题。
+
+	3. 广播（Broadcast）传输：将数据广播到所有下游算子中，每个下游算子都可以使用该数据进行计算。这种方式适用于数据量较小且不易被修改的场景。
+
+	4. Forwarding 数据传输：将数据简单地从上游算子直接转发到下游算子中，无需做任何额外的处理。这种方式适用于数据经过多次复杂变换后仍保持稳定的场景。 (1和4好像重合了？)
+
+除了以上几种数据传输方式，Flink 还支持自定义数据传输方式，可以根据具体业务场景和计算特点来选择合适的数据传输方式，以提高应用程序的执行效率和可靠性。
+```
+
+
+
+算子之间的数据传输如果是一对一（one to one）的，那么两个算子可以合并成一个算子链
+
+
+
+可以设置算子链
+
+```
+// 禁用算子链
+.map(word -> Tuple2.of(word, 1L)).disableChaining();
+// 从当前算子开始新链
+.map(word -> Tuple2.of(word, 1L)).startNewChain()
+```
+
+
+
+## slot
+
+slot 目前仅仅用来隔离内存，不会涉及 CPU 的隔离。在具体应用时，可以将 slot 数量配置为机器的 CPU 核心数，尽量避免不同任务之间对 CPU 的竞争。这也是开发环境默认并行度设为机器 CPU 数量的原因。
+
+
+
+slot和并行度的关系
+
+slot必须大于并行度，flink程序才能正常运行
+
+
+
+
+
 # 第 5 章 DataStream API（基础篇）
 
 
 
 ## 执行环境
 
+StreamExecutionEnvironment 类 创建执行环境， 有3个静态方法
+
+```
+getExecutionEnvironment()
+createLocalEnvironment()
+createRemoteEnvironment(JobManager主机名，JobManager进程端口号，提交给JobManager的JAR包路径)
+```
+
+
+
+
+
+## 物理分区
+
+顾名思义，“分区”（partitioning）操作就是要将数据进行重新分布，传递到不同的流分区去进行下一步处理。
+
+keyBy，它就是一种按照键的哈希值来进行重新分区的操作。只不过这种分区操作只能保证把数据按key“分开”，至于分得均不均匀、每个 key 的数据具体会分到哪一区去，这些是完全无从控制的——所以我们有时也说，keyBy 是一种逻辑分区（logical partitioning）操作。
+
+
+
+有些时候，我们还需要手动控制数据分区分配策略。比如当发生数据倾斜的时候，系统无法自动调整，这时就需要我们重新进行负载均衡，将数据流较为平均地发送到下游任务操作分区中去。Flink 对于经过转换操作之后的 DataStream，提供了一系列的底层操作接口，能够帮我们实现数据流的手动重分区。
+
+
+
+为了同 keyBy 相区别，我们把这些操作统称为“物理分区”操作。物理分区与 keyBy 另一大区别在于，keyBy 之后得到的是一个 KeyedStream，而物理分区之后结果仍是 DataStream，且流中元素数据类型保持不变。从这一点也可以看出，分区算子并不对数据进行转换处理，只是定义了数据的传输方式。
+
+
+
+###  1. 随机分区（shuffle）
+
+最简单的重分区方式就是直接“洗牌”。通过调用 DataStream 的.shuffle()方法，将数据随机地分配到下游算子的并行任务中去。
+
+随机分区服从均匀分布（uniform distribution），所以可以把流中的数据随机打乱，均匀地传递到下游任务分区
+
+![image-20230327172402711](尚硅谷Flink1.13.assets/image-20230327172402711.png)
+
+
+
+### 2. 轮询分区（Round-Robin）
+
+轮询也是一种常见的重分区方式。简单来说就是“发牌”，按照先后顺序将数据做依次分发，通过调用 DataStream 的.rebalance()方法，就可以实现轮询重分区。rebalance使用的是 Round-Robin 负载均衡算法，可以将输入流数据平均分配到下游的并行任务中去。
+
+![image-20230327172411130](尚硅谷Flink1.13.assets/image-20230327172411130.png)
+
+### 3. 重缩放分区（rescale）
+
+重缩放分区和轮询分区非常相似。当调用 rescale()方法时，其实底层也是使用 Round-Robin算法进行轮询，但是只会将数据轮询发送到下游并行任务的一部分中
+
+也就是说，“发牌人”如果有多个，那么 rebalance 的方式是每个发牌人都面向所有人发牌；而 rescale的做法是分成小团体，发牌人只给自己团体内的所有人轮流发牌。
+
+![image-20230327172625863](尚硅谷Flink1.13.assets/image-20230327172625863.png)
+
+当下游任务（数据接收方）的数量是上游任务（数据发送方）数量的整数倍时，rescale的效率明显会更高。比如当上游任务数量是 2，下游任务数量是 6 时，上游任务其中一个分区的数据就将会平均分配到下游任务的 3 个分区中。
+
+
+
+由于 rebalance 是所有分区数据的“重新平衡”，当 TaskManager 数据量较多时，这种跨节点的网络传输必然影响效率；而如果我们配置的 task slot 数量合适，用 rescale 的方式进行“局部重缩放”，就可以让数据只在当前 TaskManager 的多个 slot 之间重新分配，从而避免了网络传输带来的损耗。
+
+从底层实现上看，rebalance 和 rescale 的根本区别在于任务之间的连接机制不同。rebalance将会针对所有上游任务（发送数据方）和所有下游任务（接收数据方）之间建立通信通道，这是一个笛卡尔积的关系；而 rescale 仅仅针对每一个任务和下游对应的部分任务之间建立通信通道，节省了很多资源。
+
+
+
+示例代码
+
+```java
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.source.RichParallelSourceFunction;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+
+public class RescaleTest {
+
+    private static final Logger LOG = LogManager.getLogger(RescaleTest.class);
+
+    public static void main(String[] args) throws Exception {
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setParallelism(1);
+        // 这里使用了并行数据源的富函数版本
+        // 这样可以调用 getRuntimeContext 方法来获取运行时上下文的一些信息
+        env.addSource(new RichParallelSourceFunction<Integer>() {
+            @Override
+            public void run(SourceContext<Integer> sourceContext) throws Exception {
+                for (int i = 1; i <= 80; i++) {
+                    // 将奇数发送到索引为 1 的并行子任务
+                    // 将偶数发送到索引为 0 的并行子任务
+                    if (i % 4 == getRuntimeContext().getIndexOfThisSubtask() % 4) {
+                        LOG.warn("子任务索引：" + getRuntimeContext().getIndexOfThisSubtask() + "收集数据：" + i);
+                        sourceContext.collect(i);
+                    }
+                }
+            }
+
+            @Override
+            public void cancel() {
+            }
+        })
+            .setParallelism(4)
+            .rescale()
+            .print().setParallelism(8); // 注意flink task manager slot要大于8
+        env.execute();
+    }
+}
+```
+
+
+
+### 4. 广播（broadcast）
+
+这种方式其实不应该叫做“重分区”，因为经过广播之后，数据会在不同的分区都保留一份，可能进行重复处理。可以通过调用 DataStream 的 broadcast()方法，将输入数据复制并发送到下游算子的所有并行任务中去。
+
+
+
+### 5. 全局分区（global）
+
+全局分区也是一种特殊的分区方式。这种做法非常极端，通过调用.global()方法，会将所有的输入流数据都发送到下游算子的第一个并行子任务中去。这就相当于强行让下游任务并行度变成了 1，所以使用这个操作需要非常谨慎，可能对程序造成很大的压力。
+
+
+
+### 6. 自定义分区（Custom）
+
+当 Flink 提 供 的 所 有 分 区 策 略 都 不 能 满 足 用 户 的 需 求 时 ， 我 们 可 以 通 过 使 用partitionCustom()方法来自定义分区策略。在调用时，方法需要传入两个参数，第一个是自定义分区器（Partitioner）对象，第二个是应用分区器的字段，它的指定方式与 keyBy 指定 key 基本一样：可以通过字段名称指定，也可以通过字段位置索引来指定，还可以实现一个 KeySelector。
+
+例如，我们可以对一组自然数按照奇偶性进行重分区。代码如下：
+
+
+
+
+
 
 
 ## 源算子
 
+### 一般的源算子
+
+```
+DataStream<String> stream = env.addSource(...);
+```
 
 
-### Flink 支持的数据类型
+
+### 从集合中读取数据
+
+```
+ArrayList<Event> clicks = new ArrayList<>();
+DataStream<Event> stream = env.fromCollection(clicks);
+```
+
+
+
+### 从文件中读取数据
+
+```
+DataStream<String> stream = env.readTextFile("clicks.csv");
+```
+
+说明:
+
+- 参数可以是目录，也可以是文件；
+
+- 路径可以是相对路径，也可以是绝对路径；
+
+- 相对路径是从系统属性 user.dir 获取路径: idea 下是 project 的根目录, standalone 模式下是集群节点根目录；
+
+- 也可以从 hdfs 目录下读取, 使用路径 hdfs://..., 由于 Flink 没有提供 hadoop 相关依赖, 
+
+    - 需要 pom 中添加相关依赖
+
+        ```xml
+        <dependency>
+             <groupId>org.apache.hadoop</groupId>
+             <artifactId>hadoop-client</artifactId>
+             <version>2.7.5</version>
+             <scope>provided</scope>
+        </dependency>
+        ```
+
+        
+
+### 从 Socket 读取数据
+
+```
+DataStream<String> stream = env.socketTextStream("localhost", 7777); // linux下命令： nv -l 7777 
+```
+
+
+
+### 从 Kafka 读取数据
+
+引入依赖
+
+```xml
+<dependency>
+     <groupId>org.apache.flink</groupId>
+     <artifactId>flink-connector-kafka_${scala.binary.version}</artifactId>
+     <version>${flink.version}</version>
+</dependency>
+```
+
+示例代码
+
+```java
+import org.apache.flink.api.common.serialization.SimpleStringSchema;
+import org.apache.flink.streaming.api.datastream.DataStreamSource;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
+
+import java.util.Properties;
+
+
+/*
+第一个参数 topic，定义了从哪些主题中读取数据。可以是一个 topic，也可以是 topic列表，还可以是匹配所有想要读取的 topic 的正则表达式。当从多个 topic 中读取数据时，Kafka 连接器将会处理所有 topic 的分区，将这些分区的数据放到一条流中去。
+
+第二个参数是一个 DeserializationSchema 或者 KeyedDeserializationSchema。Kafka 消息被存储为原始的字节数据，所以需要反序列化成 Java 或者 Scala 对象。上面代码中使用的 SimpleStringSchema，是一个内置的 DeserializationSchema，它只是将字节数组简单地反序列化成字符串。DeserializationSchema 和 KeyedDeserializationSchema 是公共接口，所以我们也可以自定义反序列化逻辑。
+
+第三个参数是一个 Properties 对象，设置了 Kafka 客户端的一些属性。
+*/
+public class SourceKafkaTest {
+    public static void main(String[] args) throws Exception {
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setParallelism(1);
+
+        Properties properties = new Properties();
+        properties.setProperty("bootstrap.servers", "hadoop102:9092");
+        properties.setProperty("group.id", "consumer-group");
+        properties.setProperty("key.deserializer",  "org.apache.kafka.common.serialization.StringDeserializer");
+        properties.setProperty("value.deserializer",  "org.apache.kafka.common.serialization.StringDeserializer");
+        properties.setProperty("auto.offset.reset", "latest");
+
+        DataStreamSource<String> stream = env.addSource(
+            new FlinkKafkaConsumer<String>(
+                "clicks",
+                new SimpleStringSchema(),
+                properties
+            ));
+        
+        stream.print("Kafka");
+        env.execute();
+    }
+}
+
+
+```
+
+
+
+### 自定义Source
+
+创建一个自定义的数据源，实现 SourceFunction 接口。主要重写两个关键方法：run()和 cancel()。
+
+- run()方法：使用运行时上下文对象（SourceContext）向下游发送数据；
+- cancel()方法：通过标识位控制退出循环，来达到中断数据源的效果。
+
+```
+import org.apache.flink.streaming.api.functions.source.SourceFunction;
+
+import java.util.Calendar;  // todo这里不是线程安全的，使用时考虑一下用java.time包替换
+import java.util.Random;
+
+public class ClickSource implements SourceFunction<Event> {
+    // 声明一个布尔变量，作为控制数据生成的标识位
+    private Boolean running = true;
+
+    @Override
+    public void run(SourceContext<Event> ctx) throws Exception {
+        Random random = new Random(); // 在指定的数据集中随机选取数据
+        String[] users = {"Mary", "Alice", "Bob", "Cary"};
+        String[] urls = {"./home", "./cart", "./fav", "./prod?id=1", "./prod?id=2"};
+        while (running) {
+            ctx.collect(new Event(
+                users[random.nextInt(users.length)],
+                urls[random.nextInt(urls.length)],
+                Calendar.getInstance().getTimeInMillis()
+            ));
+            // 隔 1 秒生成一个点击事件，方便观测
+            Thread.sleep(1000);
+        }
+    }
+
+    @Override
+    public void cancel() {
+        running = false;
+    }
+}
+```
+
+
+
+要注意的是 SourceFunction 接口定义的数据源，并行度只能设置为 1，如果数据源设置为大于 1 的并行度，则会抛出异常。
+
+想要自定义并行的数据源的话，需要使用 ParallelSourceFunction
+
+示例程序：
+
+```java
+package hwj;
+
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.source.ParallelSourceFunction;
+
+import java.util.Random;
+
+public class ParallelSourceExample {
+    public static void main(String[] args) throws Exception {
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.addSource(new CustomSource()).setParallelism(2).print();
+        env.execute();
+    }
+
+    public static class CustomSource implements ParallelSourceFunction<Integer> {
+        private boolean running = true;
+        private Random random = new Random();
+
+        @Override
+        public void run(SourceContext<Integer> sourceContext) throws Exception {
+            while (running) {
+                sourceContext.collect(random.nextInt());
+            }
+        }
+
+        @Override
+        public void cancel() {
+            running = false;
+        }
+    }
+}
+```
+
+
+
+
+
+
+
+###  Flink 支持的数据类型
+
+Flink 在内部，Flink对支持不同的类型进行了划分，这些类型可以在 **Types 工具类**中找到
 
 1）基本类型
 
-所有 Java 基本类型及其包装类，再加上 Void、String、Date、BigDecimal 和 BigInteger。
+- 所有 Java 基本类型及其包装类，再加上 Void、String、Date、BigDecimal 和 BigInteger。
 
 2）数组类型
 
-包括基本类型数组（PRIMITIVE_ARRAY）和对象数组(OBJECT_ARRAY)
+- 包括基本类型数组（PRIMITIVE_ARRAY）和对象数组(OBJECT_ARRAY)
 
 3）复合数据类型
 
@@ -169,7 +714,7 @@ hadoop104
 
 4）辅助类型
 
-Option、Either、List、Map 等 
+- Option、Either、List、Map 等 
 
 5）泛型类型（GENERIC）
 
@@ -179,9 +724,7 @@ Flink 对 POJO 类型的要求如下：
 
 - 类有一个公共的无参构造方法；
 
-- 类中的所有字段是 public 且非 final 的；或者有一个公共的 getter 和 setter 方法，这些
-
-方法需要符合 Java bean 的命名规范。
+- 类中的所有字段是 public 且非 final 的；或者有一个公共的 getter 和 setter 方法，这些方法需要符合 Java bean 的命名规范。
 
 
 
@@ -202,9 +745,665 @@ returns(new TypeHint<Tuple2<Integer, SomeType>>(){})  // SomeType是泛型
 
 
 
+## 转换算子
+
+### 基本算子
+
+map： 消费一个元素，产生一个元素
+
+filter： 根据情况过滤一个元素
+
+flatmap ： 消费一个元素，可以产生0个或多个元素， 所以 flatMap 方法也可以实现 map 方法和 filter 方法的功能
 
 
 
+### 聚合算子Aggregation
+
+keyBy 和聚合是成对出现的，先分区、后聚合，得到的依然是一个 DataStream。而且经过简单聚合之后的数据流，元素的数据类型保持不变
+
+
+
+一个聚合算子，会为每一个key保存一个聚合的值，在Flink中我们把它叫作“状态”（state）。所以每当有一个新的数据输入，算子就会更新保存的聚合结果，并发送一个带有更新后聚合值的事件到下游算子。
+
+
+
+#### 按键分区（keyBy）
+
+基于不同的 key，流中的数据将被分配到不同的分区中去
+
+keyBy()方法需要传入一个参数，这个参数指定了一个或一组 key
+
+有很多不同的方法来指定 key：
+
+- 对于 Tuple 数据类型，可以指定字段的位置或者多个位置的组合；
+- 对于 POJO 类型，可以指定字段的名称（String）；
+- 可以传入 Lambda 表达式或者实现一个键选择器（KeySelector），用于说明从数据中提取 key 的逻辑。
+
+
+
+keyBy 得到的结果将不再是 DataStream，而是会将 DataStream 转换为KeyedStream。KeyedStream 可以认为是“分区流”或者“键控流”，它是对 DataStream 按照key 的一个逻辑分区，所以泛型有两个类型：除去当前流中的元素类型外，还需要指定 key 的类型。
+
+
+
+#### 简单聚合
+
+sum()
+
+min()
+
+max()
+
+minBy() 
+
+- 在输入流上针对指定字段求最小值。不同的是，min()只计算指定字段的最小值，其他字段会保留最初第一个数据的值；而 minBy()则会返回包含字段最小值的整条数据。
+
+maxBy()
+
+- 两者区别与min()/minBy()完全一致
+
+
+
+min和minBy的却别
+
+```java
+import org.apache.flink.api.java.tuple.Tuple3;
+import org.apache.flink.streaming.api.datastream.DataStreamSource;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+
+public class TransTupleAggregationTest {
+    public static void main(String[] args) throws Exception {
+        StreamExecutionEnvironment env =
+            StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setParallelism(1);
+        DataStreamSource<Tuple3<String, Integer, String>> stream = env.fromElements(
+            Tuple3.of("a", 8, "A"),
+            Tuple3.of("a", 3, "B"),
+            Tuple3.of("b", 9, "C"),
+            Tuple3.of("b", 4, "D")
+        );
+        stream.keyBy(r -> r.f0).min("f1").print();
+//        stream.keyBy(r -> r.f0).minBy("f1").print();
+        env.execute();
+    }
+}
+
+/* min()的结果
+(a,8,A)
+(a,3,A)
+(b,9,C)
+(b,4,C)
+*/
+
+/* minBy()的结果(其他字段也会被替换)
+(a,8,A)
+(a,3,B)
+(b,9,C)
+(b,4,D)
+*/
+```
+
+
+
+#### 归约聚合（reduce）
+
+reduce 同简单聚合算子一样，也要针对每一个 key 保存状态。因为状态不会清空，所以我们需要将 reduce 算子作用在一个有限 key 的流上
+
+
+
+举例
+
+我们将数据流按照用户 id 进行分区，然后用一个 reduce 算子实现 sum 的功能，统计每个用户访问的频次；进而将所有统计结果分到一组，用另一个 reduce 算子实现 maxBy 的功能，记录所有用户中访问频次最高的那个，也就是当前访问量最大的用户是谁。
+
+```java
+import com.github.chapter05.ClickSource;
+import com.github.chapter05.Event;
+import org.apache.flink.api.common.functions.MapFunction;
+import org.apache.flink.api.common.functions.ReduceFunction;
+import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+
+public class TransReduceTest {
+    public static void main(String[] args) throws Exception {
+        StreamExecutionEnvironment env =
+            StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setParallelism(1);
+        // 这里的 ClickSource()使用了之前自定义数据源小节中的 ClickSource()
+        env.addSource(new ClickSource())
+            // 将 Event 数据类型转换成元组类型
+            .map(new MapFunction<Event, Tuple2<String, Long>>() {
+                @Override
+                public Tuple2<String, Long> map(Event e) throws Exception {
+                    return Tuple2.of(e.user, 1L);
+                }
+            })
+            .keyBy(r -> r.f0) // 使用用户名来进行分流
+            .reduce(new ReduceFunction<Tuple2<String, Long>>() {
+                @Override
+                public Tuple2<String, Long> reduce(Tuple2<String, Long> value1,
+                                                   Tuple2<String, Long> value2) throws Exception {
+                    // 每到一条数据，用户 pv 的统计值加 1
+                    return Tuple2.of(value1.f0, value1.f1 + value2.f1);
+                }
+            })
+            .keyBy(r -> true) // 为每一条数据分配同一个 key，将聚合结果发送到一条流中 去
+            .reduce(new ReduceFunction<Tuple2<String, Long>>() {
+                @Override
+                public Tuple2<String, Long> reduce(Tuple2<String, Long> value1,
+                                                   Tuple2<String, Long> value2) throws Exception {
+                    // 将累加器更新为当前最大的 pv 统计值，然后向下游发送累加器的值
+                    return value1.f1 > value2.f1 ? value1 : value2;
+                }
+            })
+            .print();
+        env.execute();
+    }
+
+}
+```
+
+
+
+### 用户自定义函数（UDF）
+
+前面讲到的Source 算子，其实也是需要自定义类实现一个 SourceFunction 接口。
+
+接口有一个共同特点：全部都以算子操作名称 + Function 命名
+
+- map算子需要实现MapFunction接口
+
+- reduce算子需要实现ReduceFunction接口
+
+这就是所谓的用户自定义函数（user-defined function，UDF）。
+
+
+
+**Rich Function Classes**
+
+所有的Flink函数类都有其Rich版本。富函数类一般是以抽象类的形式出现的。例如：RichMapFunction、RichFilterFunction、RichReduceFunction等。
+
+富函数类可以获取**运行环境的上下文**，并拥有一些**生命周期方法**，所以可以实现更复杂的功能。
+
+- 增加了生命周期方法 open()，  close()
+    - open()方法，是 Rich Function 的初始化方法，也就是会开启一个算子的生命周期。当一个算子的实际工作方法例如 map()或者 filter()方法被调用之前，open()会首先被调用。所以像文件 IO 的创建，数据库连接的创建，配置文件的读取等等这样一次性的工作，都适合在 open()方法中完成。
+    - close()方法，是生命周期中的最后一个调用的方法，类似于解构方法。一般用来做一些清理工作。
+- 增加了运行环境的上下文
+
+
+
+## 输出算子
+
+​		在 Flink 中，如果我们希望将数据写入外部系统，其实并不是一件难事。我们知道所有算子都可以通过实现函数类来自定义处理逻辑，所以只要有读写客户端，与外部系统的交互在任何一个处理算子中都可以实现。例如在 MapFunction 中，我们完全可以构建一个到 Redis 的连接，然后将当前处理的结果保存到 Redis 中。如果考虑到只需建立一次连接，我们也可以利用RichMapFunction，在 open() 生命周期中做连接操作。
+
+​		这样看起来很方便，却会带来很多问题。Flink 作为一个快速的分布式实时流处理系统，对稳定性和容错性要求极高。一旦出现故障，我们应该有能力恢复之前的状态，保障处理结果的正确性。这种性质一般被称作“状态一致性”。Flink 内部提供了一致性检查点（checkpoint）来保障我们可以回滚到正确的状态；但如果我们在处理过程中任意读写外部系统，发生故障后就很难回退到从前了
+
+
+
+总结： 在map，filter算子中连接数据库，**“精确一次（exactly once）”的状态一致性不能得到保证**，状态一致性由flink的checkpoint来保证）
+
+
+
+一般情况下 Sink 算子的创建是通过调用 DataStream 的.addSink()方法实现的。
+
+```java
+stream.addSink(new SinkFunction(…));
+```
+
+addSource 的参数需要实现一个 SourceFunction 接口；类似地，addSink 方法同样需要传入一个参数，实现的是 SinkFunction 接口。在这个接口中只需要重写一个方法 invoke(),用来将指定的值写入到外部系统中。这个方法在每条数据记录到来时都会调用：
+
+```java
+default void invoke(IN value, Context context) throws Exception
+```
+
+
+
+SinkFuntion 多数情况下同样并不需要我们自己实现。Flink 官方提供了一部分的框架的 Sink 连接器。
+
+![image-20230327182341478](尚硅谷Flink1.13.assets/image-20230327182341478.png)
+
+
+
+### 输出到文件
+
+Flink 本来也有一些非常简单粗暴的输出到文件的预实现方法：如 writeAsText()、writeAsCsv()
+
+但我们知道，这种方式是不支持同时写入一份文件的；所以我们往往会将最后的 Sink 操作并行度设为 1，这就大大拖慢了系统效率；而且对于故障恢复后的状态一致性，也没有任何保证。所以目前这些简单的方法已经要被弃用。
+
+
+
+Flink 为此专门提供了一个流式文件系统的连接器：**StreamingFileSink**，它继承自抽象类RichSinkFunction，而且集成了 Flink 的检查点（checkpoint）机制，用来保证精确一次（exactly once）的一致性语义。
+
+
+
+怎么理解 StreamingFileSink 的原理(chatgpt)
+
+```
+StreamingFileSink 是 Flink 中的一个 Sink，用于将数据流写入本地或远程文件系统中的文件。其原理是将接收到的数据流按照指定的格式和规则写入文件系统中。当存在多个并行的任务时，StreamingFileSink 会对这些任务进行均衡以保证数据的顺序性和完整性。此外，StreamingFileSink 还支持一些高级功能，如恰好一次语义（exactly-once semantics）和可靠性检查点（reliable checkpoints），以确保数据写入的准确性和容错性。
+```
+
+
+
+StreamingFileSink 支持行编码（Row-encoded）和批量编码（Bulk-encoded，比如 Parquet） 格式。这两种不同的方式都有各自的构建器（builder），调用方法也非常简单，可以直接调用StreamingFileSink 的静态方法
+
+- 行编码：StreamingFileSink.forRowFormat（basePath，rowEncoder）。
+
+- 批量编码：StreamingFileSink.forBulkFormat（basePath，bulkWriterFactory）。
+
+
+
+以行编码为例： 将一些测试数据直接写入文件
+
+```java
+import org.apache.flink.api.common.serialization.SimpleStringEncoder;
+import org.apache.flink.core.fs.Path;
+import org.apache.flink.streaming.api.datastream.DataStreamSource;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink;
+import org.apache.flink.streaming.api.functions.sink.filesystem.rollingpolicies.DefaultRollingPolicy;
+
+import java.util.concurrent.TimeUnit;
+
+public class SinkToFileTest {
+    public static void main(String[] args) throws Exception {
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setParallelism(4);
+
+        DataStreamSource<Event> stream = env.fromElements(
+            new Event("Mary", "./home", 1000L),
+            new Event("Bob", "./cart", 2000L),
+            new Event("Alice", "./prod?id=100", 3000L),
+            new Event("Alice", "./prod?id=200", 3500L),
+            new Event("Bob", "./prod?id=2", 2500L),
+            new Event("Alice", "./prod?id=300", 3600L),
+            new Event("Bob", "./home", 3000L),
+            new Event("Bob", "./prod?id=1", 2300L),
+            new Event("Bob", "./prod?id=3", 3300L)
+        );
+
+
+        StreamingFileSink<String> fileSink = StreamingFileSink
+            .<String>forRowFormat(
+                new Path("/output"),
+                new SimpleStringEncoder<>("UTF-8")
+            )
+            .withRollingPolicy(
+                DefaultRollingPolicy.builder()
+                    .withRolloverInterval(TimeUnit.MINUTES.toMillis(15))
+                    .withInactivityInterval(TimeUnit.MINUTES.toMillis(5))
+                    .withMaxPartSize(1024 * 1024 * 1024)
+                    .build())
+            .build();
+
+        // 将 Event 转换成 String 写入文件
+        stream.map(Event::toString).addSink(fileSink);
+        env.execute();
+    }
+}
+```
+
+这里我们创建了一个简单的文件 Sink，通过.withRollingPolicy()方法指定了一个“滚动策略”。“滚动”的概念在日志文件的写入中经常遇到：因为文件会有内容持续不断地写入，所以我们应该给一个标准，到什么时候就开启新的文件，将之前的内容归档保存。也就是说，上面的代码设置了在以下 3 种情况下，我们就会滚动分区文件：
+- 至少包含 15 分钟的数据
+- 最近 5 分钟没有收到新的数据
+- 文件大小已达到 1 GB
+
+
+
+### 输出到kafka
+
+```java
+package com.github.chapter05;
+
+import org.apache.flink.api.common.serialization.SimpleStringSchema;
+import org.apache.flink.streaming.api.datastream.DataStreamSource;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer;
+
+import java.util.Properties;
+
+public class SinkToKafkaTest {
+    public static void main(String[] args) throws Exception {
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setParallelism(1);
+        Properties properties = new Properties();
+        properties.put("bootstrap.servers", "hadoop102:9092");
+        DataStreamSource<String> stream = env.readTextFile("input/clicks.csv");
+        stream
+            .addSink(new FlinkKafkaProducer<String>(
+                "clicks",
+                new SimpleStringSchema(),
+                properties
+            ));
+        env.execute();
+    }
+}
+```
+
+
+
+这里我们可以看到，addSink 传入的参数是一个 FlinkKafkaProducer。这也很好理解，因为需要向 Kafka 写入数据，自然应该创建一个生产者。FlinkKafkaProducer 继承了抽象类TwoPhaseCommitSinkFunction，这是一个实现了“两阶段提交”的 RichSinkFunction。两阶段提交提供了 Flink 向 Kafka 写入数据的事务性保证，能够真正做到精确一次（exactly once）的状态一致性。
+
+
+
+### 输出到redis
+
+
+
+（1）导入的 Redis 连接器依赖
+
+```xml
+<dependency>
+ <groupId>org.apache.bahir</groupId>
+ <artifactId>flink-connector-redis_2.11</artifactId>
+ <version>1.0</version>
+</dependency>
+```
+
+（2）启动 Redis 集群
+
+这里我们为方便测试，只启动了单节点 Redis。
+
+（3）编写输出到 Redis 的示例代码
+
+连接器为我们提供了一个 RedisSink，它继承了抽象类 RichSinkFunction，这就是已经实现好的向 Redis 写入数据的 SinkFunction。我们可以直接将 Event 数据输出到 Redis：
+
+```java
+package com.github.chapter05;
+
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.connectors.redis.RedisSink;
+import org.apache.flink.streaming.connectors.redis.common.config.FlinkJedisPoolConfig;
+import org.apache.flink.streaming.connectors.redis.common.mapper.RedisCommand;
+import org.apache.flink.streaming.connectors.redis.common.mapper.RedisCommandDescription;
+import org.apache.flink.streaming.connectors.redis.common.mapper.RedisMapper;
+
+/*
+    这里 RedisSink 的构造方法需要传入两个参数：
+    JFlinkJedisConfigBase：Jedis 的连接配置
+    RedisMapper：Redis 映射类接口，说明怎样将数据转换成可以写入 Redis 的类型
+    接下来主要就是定义一个 Redis 的映射类，实现 RedisMapper 接口。
+*/
+public class SinkToRedisTest {
+    public static void main(String[] args) throws Exception {
+        StreamExecutionEnvironment env =
+            StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setParallelism(1);
+        // 创建一个到 redis 连接的配置
+        FlinkJedisPoolConfig conf = new FlinkJedisPoolConfig.Builder().setHost("hadoop102").build();
+        env.addSource(new ClickSource())
+            .addSink(new RedisSink<Event>(conf, new MyRedisMapper()));
+        env.execute();
+    }
+	
+    public static class MyRedisMapper implements RedisMapper<Event> {
+        @Override
+        public String getKeyFromData(Event e) {
+            return e.user;
+        }
+
+        @Override
+        public String getValueFromData(Event e) {
+            return e.url;
+        }
+
+        @Override
+        public RedisCommandDescription getCommandDescription() {
+            return new RedisCommandDescription(RedisCommand.HSET, "clicks");
+        }
+    }
+}
+```
+
+
+
+
+
+### 输出到Elasticsearch
+
+（1）添加 Elasticsearch 连接器依赖
+
+```xml
+<dependency>
+    <groupId>org.apache.flink</groupId>
+    <artifactId>flink-connector-elasticsearch7_${scala.binary.version}</artifactId>
+    <version>${flink.version}</version>
+</dependency>
+```
+
+（2）启动 Elasticsearch 集群
+
+（3）编写输出到 Elasticsearch 的示例代码
+
+```java
+package com.github.chapter05;
+
+import org.apache.flink.api.common.functions.RuntimeContext;
+import org.apache.flink.streaming.api.datastream.DataStreamSource;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.connectors.elasticsearch.ElasticsearchSinkFunction;
+import org.apache.flink.streaming.connectors.elasticsearch.RequestIndexer;
+import org.apache.flink.streaming.connectors.elasticsearch7.ElasticsearchSink;
+import org.apache.http.HttpHost;
+import org.elasticsearch.action.index.IndexRequest;
+import org.elasticsearch.client.Requests;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+
+
+/*
+与 RedisSink类似 ，连接器也为我们实现了写入到Elasticsearch 的SinkFunction——ElasticsearchSink。
+区别在于，这个类的构造方法是私有（private）的，我们需要使用 ElasticsearchSink 的 Builder 内部静态类，
+调用它的 build()方法才能创建出真正的SinkFunction。而 Builder 的构造方法中又有两个参数：
+    - httpHosts：连接到的 Elasticsearch 集群主机列表
+    - elasticsearchSinkFunction：这并不是我们所说的 SinkFunction，而是用来说明具体处理逻辑、
+    准备数据向 Elasticsearch 发送请求的函数
+具体的操作需要重写中 elasticsearchSinkFunction 中的 process 方法，我们可以将要发送的
+数据放在一个 HashMap 中，包装成 IndexRequest 向外部发送 HTTP 请求
+*/
+public class SinkToEsTest {
+    public static void main(String[] args) throws Exception {
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setParallelism(1);
+        DataStreamSource<Event> stream = env.fromElements(
+            new Event("Mary", "./home", 1000L),
+            new Event("Bob", "./cart", 2000L),
+            new Event("Alice", "./prod?id=100", 3000L),
+            new Event("Alice", "./prod?id=200", 3500L),
+            new Event("Bob", "./prod?id=2", 2500L),
+            new Event("Alice", "./prod?id=300", 3600L),
+            new Event("Bob", "./home", 3000L),
+            new Event("Bob", "./prod?id=1", 2300L),
+            new Event("Bob", "./prod?id=3", 3300L)
+        );
+        ArrayList<HttpHost> httpHosts = new ArrayList<>();
+        httpHosts.add(new HttpHost("hadoop102", 9200, "http"));
+        // 创建一个 ElasticsearchSinkFunction
+        ElasticsearchSinkFunction<Event> elasticsearchSinkFunction = new ElasticsearchSinkFunction<Event>() {
+            @Override
+            public void process(Event element, RuntimeContext ctx, RequestIndexer indexer) {
+                HashMap<String, String> data = new HashMap<>();
+                data.put(element.user, element.url);
+                IndexRequest request = Requests.indexRequest()
+                    .index("clicks")
+                    // .type("type") // Es 6 必须定义 type
+                    .source(data);
+                indexer.add(request);
+            }
+        };
+        stream.addSink(new ElasticsearchSink.Builder<Event>(httpHosts, elasticsearchSinkFunction).build());
+        env.execute();
+    }
+}
+```
+
+
+
+
+
+### 输出到MySQL(JDBC)
+
+（1）添加依赖
+
+```xml
+<dependency>
+    <groupId>org.apache.flink</groupId>
+    <artifactId>flink-connector-jdbc_${scala.binary.version}</artifactId>
+    <version>${flink.version}</version>
+</dependency>
+<dependency>
+    <groupId>mysql</groupId>
+    <artifactId>mysql-connector-java</artifactId>
+    <version>5.1.47</version>
+</dependency>
+```
+
+（2）启动 MySQL，在 database 库下建表 clicks
+
+```
+mysql> create table clicks(
+ -> user varchar(20) not null,
+ -> url varchar(100) not null);
+```
+
+（3）编写输出到 MySQL 的示例代码
+
+```java
+package com.github.chapter05;
+
+import org.apache.flink.streaming.api.datastream.DataStreamSource;
+import org.apache.flink.connector.jdbc.JdbcConnectionOptions;
+import org.apache.flink.connector.jdbc.JdbcExecutionOptions;
+import org.apache.flink.connector.jdbc.JdbcSink;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+
+public class SinkToMySQL {
+    public static void main(String[] args) throws Exception {
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setParallelism(1);
+
+        DataStreamSource<Event> stream = env.fromElements(
+            new Event("Mary", "./home", 1000L),
+            new Event("Bob", "./cart", 2000L),
+            new Event("Alice", "./prod?id=100", 3000L),
+            new Event("Alice", "./prod?id=200", 3500L),
+            new Event("Bob", "./prod?id=2", 2500L),
+            new Event("Alice", "./prod?id=300", 3600L),
+            new Event("Bob", "./home", 3000L),
+            new Event("Bob", "./prod?id=1", 2300L),
+            new Event("Bob", "./prod?id=3", 3300L)
+        );
+
+        stream.addSink(JdbcSink.sink(
+            "INSERT INTO clicks (user, url) VALUES (?, ?)",
+            (statement, r) -> {
+                statement.setString(1, r.user);
+                statement.setString(2, r.url);
+            },
+            JdbcExecutionOptions.builder()
+                .withBatchSize(1000)
+                .withBatchIntervalMs(200)
+                .withMaxRetries(5)
+                .build(),
+            new JdbcConnectionOptions.JdbcConnectionOptionsBuilder()
+                .withUrl("jdbc:mysql://localhost:3306/userbehavior")
+                // 对于 MySQL 5.7，用"com.mysql.jdbc.Driver"
+                .withDriverName("com.mysql.cj.jdbc.Driver")
+                .withUsername("username")
+                .withPassword("password")
+                .build()
+            )
+        );
+        env.execute();
+    }
+}
+```
+
+
+
+
+
+### 自定义sink
+
+Flink 并没有提供 HBase 的连接器，所以需要我们自己写
+
+创建 HBase 的连接以及关闭 HBase 的连接需要分别放在 open()方法和 close()方法中。
+
+
+
+（1）导入依赖
+
+```xml
+<dependency>
+    <groupId>org.apache.hbase</groupId>
+    <artifactId>hbase-client</artifactId>
+    <version>${hbase.version}</version>
+</dependency>
+```
+
+（2）编写输出到 HBase 的示例代码
+
+```java
+package com.github.chapter05;
+
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Table;
+
+import java.nio.charset.StandardCharsets;
+
+public class SinkCustomToHBase {
+    public static void main(String[] args) throws Exception {
+        StreamExecutionEnvironment env =
+            StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setParallelism(1);
+        env.fromElements("hello", "world")
+            .addSink(
+                new RichSinkFunction<String>() {
+                    // 管理 Hbase 的配置信息,这里因为 Configuration 的重名问题，将类以完整路径导入
+                    public org.apache.hadoop.conf.Configuration configuration;
+                    public Connection connection; // 管理 Hbase 连接
+
+                    @Override
+                    public void open(Configuration parameters) throws Exception {
+                        super.open(parameters);
+                        configuration = HBaseConfiguration.create();
+                        configuration.set("hbase.zookeeper.quorum", "hadoop102:2181");
+                        connection = ConnectionFactory.createConnection(configuration);
+                    }
+
+                    @Override
+                    public void invoke(String value, Context context) throws Exception {
+                        Table table = connection.getTable(TableName.valueOf("test")); // 表名为 test
+                        Put put = new Put("rowkey".getBytes(StandardCharsets.UTF_8)); // 指定 row key
+                        put.addColumn(
+                            "info".getBytes(StandardCharsets.UTF_8), // 指定列名
+                            value.getBytes(StandardCharsets.UTF_8), // 写入的数据
+                            "1".getBytes(StandardCharsets.UTF_8) // 写入的数据
+                        );
+                        table.put(put); // 执行 put 操作
+                        table.close(); // 将表关闭
+                    }
+
+                    @Override
+                    public void close() throws Exception {
+                        super.close();
+                        connection.close(); // 关闭连接
+                    }
+                }
+            );
+        env.execute();
+    }
+}
+```
+
+
+
+（3）可以在 HBase 查看插入的数据。
 
 # 第 6 章 Flink 中的时间和窗口
 
@@ -212,7 +1411,7 @@ returns(new TypeHint<Tuple2<Integer, SomeType>>(){})  // SomeType是泛型
 
 flink1.12之前默认的是处理时间, flink1.12和flink1.12之后默认的是事件时间
 
-处理时间 
+处理时间
 
 事件时间
 
@@ -236,6 +1435,18 @@ watermark可以理解为把原本的窗口标准稍微放宽了一点。（比�
 每来一个数据记录最大的时间戳，然后周期性的生成watermark，watermark的值为（当前数据流中最大的时间戳 - 延迟时间）
 
 或者每来一个数据记录最大的时间戳，然后遇到某个特定的时间戳后生成watermark
+
+
+
+在 Flink的DataStream API中 ，有一个单独用于生成水位线的方法：.assignTimestampsAndWatermarks() 它主要用来为流中的数据分配时间戳，并生成水位线来指示事件时间
+
+具体使用时，直接用 DataStream 调用该方法即可，与普通的 transform 方法完全一样。
+
+```java
+DataStream<Event> withTimestampsAndWatermarks = stream.assignTimestampsAndWatermarks(<watermark strategy>);
+```
+
+
 
 
 
@@ -278,7 +1489,10 @@ env.getConfig.setAutoWatermarkInterval(100);
 stream.assignTimestampsAndWatermarks(<watermark strategy>); // 水位线生成策略（Watermark Strategies）
 ```
 
-WatermarkStrategy中包含了一个“时间戳分配器”TimestampAssigner 和一个“水位线生成器”WatermarkGenerator。
+WatermarkStrategy中包含了
+
+- 一个“时间戳分配器” TimestampAssigner 
+- 一个“水位线生成器” WatermarkGenerator。
 
 ```java
 public interface WatermarkStrategy<T> extends TimestampAssignerSupplier<T>, WatermarkGeneratorSupplier<T> {
@@ -296,6 +1510,7 @@ public interface WatermarkStrategy<T> extends TimestampAssignerSupplier<T>, Wate
 // onEvent：每个事件（数据）到来都会调用的方法，它的参数有当前事件、时间戳，以及允许发出水位线的一个 WatermarkOutput，可以基于事件做各种操作
 
 // onPeriodicEmit：周期性调用的方法，可以由 WatermarkOutput 发出水位线。周期时间为处理时间，可以调用环境配置的.setAutoWatermarkInterval()方法来设置，默认为200ms。
+
 // env.getConfig().setAutoWatermarkInterval(60 * 1000L);
 ```
 
@@ -360,7 +1575,7 @@ WatermarkStrategy.forBoundedOutOfOrderness(Duration.ofSeconds(0))
 
 
 
-需要注意的是：
+#### 需要注意的是
 
 乱序流中生成的水位线真正的时间戳，其实是 当前最大时间戳 – 延迟时间 – 1，这里的单位是毫秒。为什么要减 1 毫秒呢？我们可以回想一下水位线的特点：时间戳为 t 的水位线，表示时间戳≤t 的数据全部到齐，不会再来了。如果考虑有序流，也就是延迟时间为 0 的情况，那么时间戳为 7 秒的数据到来时，之后其实是还有可能继续来 7 秒的数据的；所以生成的水位线不是 7 秒，而是 6 秒 999 毫秒，7 秒的数据还可以继续来。这一点可以在 BoundedOutOfOrdernessWatermarks 的源码中明显地看到：
 

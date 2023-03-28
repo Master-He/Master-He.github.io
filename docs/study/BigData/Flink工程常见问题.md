@@ -1,4 +1,4 @@
-## 1. flink 远程调试
+# 1. flink 远程调试
 
 https://blog.csdn.net/chenyulancn/article/details/104511292
 
@@ -13,7 +13,7 @@ env.java.opts.taskmanager: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=
 
 
 
-## 2. flink conf
+# 2. flink conf
 
 参考https://nightlies.apache.org/flink/flink-docs-master/docs/deployment/config/#memory-configuration
 
@@ -63,7 +63,7 @@ heartbeat.timeout: 600000
 
 
 
-## 3. flink 单元测试
+# 3. flink 单元测试
 
 https://nightlies.apache.org/flink/flink-docs-master/zh/docs/dev/datastream/testing/#%e6%b5%8b%e8%af%95-flink-%e4%bd%9c%e4%b8%9a
 
@@ -187,7 +187,7 @@ https://nightlies.apache.org/flink/flink-docs-release-1.14/api/java/org/apache/f
 
 
 
-## 4. flink 异步调用
+# 4. flink 异步调用
 
 > flink 异步 + httpasyncclient 异步
 
@@ -386,7 +386,7 @@ python 对应的服务 http://10.60.62.123:5000
 
 
 
-## 5. flink线程安全问题
+# 5. flink线程安全问题
 
 静态变量-线程安全问题
 
