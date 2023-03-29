@@ -29,8 +29,8 @@ Flink是真正的流处理
 讲讲你对flink的理解
 
 ```
-flink是一个高性能，分布式，可扩展的流式处理框架，它可用于实时数据处理，批处理等场景，它提供了丰富的API和工具，支持基于事件时间和处理时间的窗口计算，基于状态的迭代计算等一系列复杂的数据处理操作。
-
+flink是一个高性能，分布式，可扩展， 有状态的流式处理框架，它可用于实时数据处理，批处理等场景，它提供了丰富的API和工具，支持基于事件时间和处理时间的窗口计算，基于状态的迭代计算等一系列复杂的数据处理操作。
+···.
 flink的核心思想是将数据处理看作一系列函数操作，然后把这一系列的函数操作根据方向，依赖关系组装成一个有向无环图（DAG）。 flink会对数据进行分区，调度和负载均衡，以保证高效的数据处理。
 
 flink提供了精确一次语义（Exactly-one Semantics）的支持，即能够在保证数据处理的正确性的前提下，最大程度地保证数据只被处理一次。
@@ -2911,10 +2911,612 @@ CoProcessFunction也同理
 下面是 CoProcessFunction 的一个具体示例：我们可以实现一个实时对账的需求，也就是app 的支付操作和第三方的支付操作的一个双流 Join。App 的支付事件和第三方的支付事件将会互相等待 5 秒钟，如果等不来对应的支付事件，那么就输出报警信息。程序如下：
 
 ```java
+package com.github.chapter08;
 
+import org.apache.flink.api.common.eventtime.SerializableTimestampAssigner;
+import org.apache.flink.api.common.eventtime.WatermarkStrategy;
+import org.apache.flink.api.common.state.ValueState;
+import org.apache.flink.api.common.state.ValueStateDescriptor;
+import org.apache.flink.api.common.typeinfo.Types;
+import org.apache.flink.api.java.tuple.Tuple3;
+import org.apache.flink.api.java.tuple.Tuple4;
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.co.CoProcessFunction;
+
+import org.apache.flink.util.Collector;
+
+// 实时对账
+public class BillCheckExample {
+    public static void main(String[] args) throws Exception {
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setParallelism(1);
+
+        // 来自 app 的支付日志
+        SingleOutputStreamOperator<Tuple3<String, String, Long>> appStream = env.fromElements(
+            Tuple3.of("order-1", "app", 1000L),
+            Tuple3.of("order-2", "app", 2000L)
+        ).assignTimestampsAndWatermarks(WatermarkStrategy.<Tuple3<String, String, Long>>forMonotonousTimestamps()
+            .withTimestampAssigner(new SerializableTimestampAssigner<Tuple3<String, String, Long>>() {
+                @Override
+                public long extractTimestamp(Tuple3<String, String, Long> element, long recordTimestamp) {
+                    return element.f2;
+                }
+            })
+        );
+
+        // 来自第三方支付平台的支付日志
+        SingleOutputStreamOperator<Tuple4<String, String, String, Long>> thirdPartStream = env.fromElements(
+            Tuple4.of("order-1", "third-party", "success", 3000L),
+            Tuple4.of("order-3", "third-party", "success", 4000L)
+        ).assignTimestampsAndWatermarks(WatermarkStrategy.<Tuple4<String, String, String, Long>>forMonotonousTimestamps()
+            .withTimestampAssigner(new SerializableTimestampAssigner<Tuple4<String, String, String, Long>>() {
+                @Override
+                public long extractTimestamp(Tuple4<String, String, String, Long> element, long recordTimestamp) {
+                    return element.f3;
+                }
+            })
+        );
+
+        // 检测同一支付单在两条流中是否匹配，不匹配就报警
+        appStream.connect(thirdPartStream)
+            .keyBy(data -> data.f0, data -> data.f0)
+            .process(new OrderMatchResult())
+            .print();
+        env.execute();
+    }
+
+    // 自定义实现 CoProcessFunction
+    public static class OrderMatchResult extends CoProcessFunction<Tuple3<String, String, Long>,
+        Tuple4<String, String, String, Long>, String> {
+        // 定义状态变量，用来保存已经到达的事件
+        private ValueState<Tuple3<String, String, Long>> appEventState;
+        private ValueState<Tuple4<String, String, String, Long>> thirdPartyEventState;
+
+        @Override
+        public void open(Configuration parameters) throws Exception {
+            appEventState = getRuntimeContext().getState(new ValueStateDescriptor<Tuple3<String, String,
+                    Long>>("app-event", Types.TUPLE(Types.STRING, Types.STRING, Types.LONG))
+            );
+
+            thirdPartyEventState = getRuntimeContext().getState(new ValueStateDescriptor<Tuple4<String, String, String,
+                    Long>>("thirdParty-event", Types.TUPLE(Types.STRING, Types.STRING,
+                    Types.STRING, Types.LONG))
+            );
+        }
+
+        @Override
+        public void processElement1(Tuple3<String, String, Long> value, Context ctx,
+                                    Collector<String> out) throws Exception {
+            // 看另一条流中事件是否来过
+            if (thirdPartyEventState.value() != null) {
+                out.collect(" 对 账 成 功 ： " + value + " " + thirdPartyEventState.value());
+                // 清空状态
+                thirdPartyEventState.clear();
+            } else {
+                // 更新状态
+                appEventState.update(value);
+                // 注册一个 5 秒后的定时器，开始等待另一条流的事件
+                ctx.timerService().registerEventTimeTimer(value.f2 + 5000L);
+            }
+        }
+
+        @Override
+        public void processElement2(Tuple4<String, String, String, Long> value,
+                                    Context ctx, Collector<String> out) throws Exception {
+            if (appEventState.value() != null) {
+                out.collect("对账成功：" + appEventState.value() + " " + value);
+                // 清空状态
+                appEventState.clear();
+            } else {
+                // 更新状态
+                thirdPartyEventState.update(value);
+                // 注册一个 5 秒后的定时器，开始等待另一条流的事件
+                ctx.timerService().registerEventTimeTimer(value.f3 + 5000L);
+            }
+        }
+
+        @Override
+        public void onTimer(long timestamp, OnTimerContext ctx, Collector<String>
+            out) throws Exception {
+            // 定时器触发，判断状态，如果某个状态不为空，说明另一条流中事件没来, 因为另一条流中的事件来了会进行配对后clear掉
+            if (appEventState.value() != null) {
+                out.collect("对账失败：" + appEventState.value() + " " + "第三方支付 平台信息未到");
+            }
+            if (thirdPartyEventState.value() != null) {
+                out.collect("对账失败：" + thirdPartyEventState.value() + " " + "app 信息未到");
+            }
+            appEventState.clear();
+            thirdPartyEventState.clear();
+        }
+    }
+}
+```
+
+​		
+
+​		在程序中，我们声明了两个状态变量分别用来保存 App 的支付信息和第三方的支付信息。App 的支付信息到达以后，会检查对应的第三方支付信息是否已经先到达（先到达会保存在对应的状态变量中），如果已经到达了，那么对账成功，直接输出对账成功的信息，并将保存第三方支付消息的状态变量清空。如果 App 对应的第三方支付信息没有到来，那么我们会注册一个 5 秒钟之后的定时器，也就是说等待第三方支付事件 5 秒钟。当定时器触发时，检查保存app 支付信息的状态变量是否还在，如果还在，说明对应的第三方支付信息没有到来，所以输出报警信息。
+
+
+
+#### 广播连接流（BroadcastConnectedStream）
+
+关于两条流的连接，还有一种比较特殊的用法：DataStream 调用.connect()方法时，传入的参数也可以不是一个 DataStream，而是一个“广播流”（BroadcastStream），这时合并两条流得到的就变成了一个“广播连接流”（BroadcastConnectedStream）
+
+
+
+**这种连接方式往往用在需要动态定义某些规则或配置的场景。**因为规则是实时变动的，所以我们可以用一个单独的流来获取规则数据；而这些规则或配置是对整个应用全局有效的，所以不能只把这数据传递给一个下游并行子任务处理，而是要“广播”（broadcast）给所有的并行子任务。而下游子任务收到广播出来的规则，会把它保存成一个状态，这就是所谓的“广播状态”（broadcast state）。
+
+
+
+广播状态底层是用一个“映射”（map）结构来保存的。在代码实现上，可以直接调用DataStream 的.broadcast()方法，传入一个“映射状态描述器”（MapStateDescriptor）说明状态的名称和类型，就可以得到规则数据的“广播流”（BroadcastStream）：
+
+```java
+MapStateDescriptor<String, Rule> ruleStateDescriptor = new MapStateDescriptor<>(...);
+BroadcastStream<Rule> ruleBroadcastStream = ruleStream.broadcast(ruleStateDescriptor);
+```
+
+接下来我们就可以将要处理的数据流，与这条广播流进行连接（connect），得到的就是所谓的“广播连接流”（BroadcastConnectedStream）。基于 BroadcastConnectedStream 调用.process()方法，就可以同时获取规则和数据，进行动态处理了。
+
+
+
+这里既然调用了.process()方法，当然传入的参数也应该是处理函数大家族中一员——如果对数据流调用过 keyBy 进行了按键分区，那么要传入的就是 KeyedBroadcastProcessFunction；如果没有按键分区，就传入 BroadcastProcessFunction。
+
+```java
+DataStream<String> output = stream
+ .connect(ruleBroadcastStream)
+ .process( new BroadcastProcessFunction<>() {...} );
+```
+
+BroadcastProcessFunction 与 CoProcessFunction 类似，同样是一个抽象类，需要实现两个方法，针对合并的两条流中元素分别定义处理操作。区别在于这里一条流是正常处理数据，而另一条流则是要用新规则来更新广播状态，所以对应的两个方法叫作.processElement()和.processBroadcastElement()。源码中定义如下：
+
+```java
+public abstract class BroadcastProcessFunction<IN1, IN2, OUT> extends BaseBroadcastProcessFunction {
+    
+    ...
+     public abstract void processElement(IN1 value, ReadOnlyContext ctx, 
+    Collector<OUT> out) throws Exception;
+    
+     public abstract void processBroadcastElement(IN2 value, Context ctx, 
+    Collector<OUT> out) throws Exception;
+    ...
+        
+}
 ```
 
 
+
+广播状态和广播连接流 请看第9章
+
+
+
+
+
+## 双流联结（Join）
+
+**基于时间的合流——双流联结（Join）**
+
+为了更方便地实现基于时间的合流操作，Flink 的 DataStrema API 提供了两种内置的 join 算子，以及coGroup 算子。
+
+SQL 中 join 一般会翻译为“连接”；我们这里为了区分不同的算子，一般的合流操作connect 翻译为“连接”，而把 join 翻译为“联结”
+
+
+
+
+
+
+
+### 窗口联结（Window Join）
+
+Flink 提供了一个窗口联结（window join）算子，可以定义时间窗口，并将两条流中共享一个公共键（key）的数据放在窗口中进行配对处理。
+
+首先需要调用 DataStream 的.join()方法来合并两条流，得到一个 JoinedStreams；接着通过.where()和.equalTo()方法指定两条流中联结的 key；然后通过.window()开窗口，并调用.apply()传入联结窗口函数进行处理计算。通用调用形式如下：
+
+```java
+stream1.join(stream2)
+ .where(<KeySelector>)
+ .equalTo(<KeySelector>)
+ .window(<WindowAssigner>)
+ .apply(<JoinFunction>)
+```
+
+上面代码中.where()的参数是键选择器（KeySelector），用来指定第一条流中的 key；而.equalTo()传入的 KeySelector 则指定了第二条流中的 key。两者相同的元素，如果在同一窗口中，就可以匹配起来，并通过一个“联结函数”（JoinFunction）进行处理了。
+
+
+
+这里.window()传入的就是窗口分配器，之前讲到的三种时间窗口都可以用在这里：滚动窗口（tumbling window）、滑动窗口（sliding window）和会话窗口（session window）。
+
+
+
+而后面调用.apply()可以看作实现了一个特殊的窗口函数。**注意这里只能调用.apply()**，没有其他替代的方法.
+
+
+
+当然，既然是窗口计算，在.window()和.apply()之间也可以调用可选 API 去做一些自定义，比如用.trigger()定义触发器，用.allowedLateness()定义允许延迟时间，等等。
+
+
+
+JoinFunction 中的两个参数，分别代表了两条流中的匹配的数据。这里就会有一个问题：什么时候就会匹配好数据，调用.join()方法呢？接下来我们就来介绍一下窗口 join 的具体处理流程。
+
+两条流的数据到来之后，首先会按照 key 分组、进入对应的窗口中存储；当到达窗口结束时间时，算子会先统计出窗口内两条流的数据的所有组合，也就是对两条流中的数据做一个笛卡尔积（相当于表的交叉连接，cross join），然后进行遍历，把每一对匹配的数据，作为参数(first，second)传入 JoinFunction 的.join()方法进行计算处理，得到的结果直接输出如图所示。所以窗口中每有一对数据成功联结匹配，JoinFunction 的.join()方法就会被调用一次，并输出一个结果。
+
+![image-20230329120420835](尚硅谷Flink1.13.assets/image-20230329120420835.png)
+
+除了 JoinFunction，在.apply()方法中还可以传入 FlatJoinFunction，用法非常类似，只是内部需要实现的.join()方法没有返回值。结果的输出是通过收集器（Collector）来实现的，所以对于一对匹配数据可以输出任意条结果。
+
+其实仔细观察可以发现，窗口 join 的调用语法和我们熟悉的 SQL 中表的 join 非常相似：
+
+`SELECT * FROM table1 t1, table2 t2 WHERE t1.id = t2.id; `
+
+这句 SQL 中 where 子句的表达，等价于 inner join ... on,所以本身表示的是两张表基于 id的“内连接”（inner join）。而 Flink 中的 window join，同样类似于 inner join。也就是说，最后处理输出的，只有两条流中数据按 key 配对成功的那些；如果某个窗口中一条流的数据没有任何另一条流的数据匹配，那么就不会调用 JoinFunction 的.join()方法，也就没有任何输出了。
+
+
+
+代码示例： 在电商网站中，往往需要统计用户不同行为之间的转化，这就需要对不同的行为数据流，按照用户 ID 进行分组后再合并，以分析它们之间的关联。如果这些是以固定时间周期（比如1 小时）来统计的，那我们就可以使用窗口 join 来实现这样的需求。
+
+```java
+package com.github.chapter08;
+
+import org.apache.flink.api.common.eventtime.SerializableTimestampAssigner;
+import org.apache.flink.api.common.eventtime.WatermarkStrategy;
+import org.apache.flink.api.common.functions.JoinFunction;
+import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import
+    org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
+import org.apache.flink.streaming.api.windowing.time.Time;
+
+// 基于窗口的 join
+public class WindowJoinExample {
+    public static void main(String[] args) throws Exception {
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setParallelism(1);
+
+        DataStream<Tuple2<String, Long>> stream1 = env
+            .fromElements(
+                Tuple2.of("a", 1000L),
+                Tuple2.of("b", 1000L),
+                Tuple2.of("a", 2000L),
+                Tuple2.of("b", 2000L)
+            )
+            .assignTimestampsAndWatermarks(WatermarkStrategy
+                .<Tuple2<String, Long>>forMonotonousTimestamps()
+                .withTimestampAssigner(
+                    new SerializableTimestampAssigner<Tuple2<String, Long>>() {
+                        @Override
+                        public long extractTimestamp(Tuple2<String, Long> stringLongTuple2, long l) {
+                            return stringLongTuple2.f1;
+                        }
+                    }
+                )
+            );
+        DataStream<Tuple2<String, Long>> stream2 = env
+            .fromElements(
+                Tuple2.of("a", 3000L),
+                Tuple2.of("b", 3000L),
+                Tuple2.of("a", 4000L),
+                Tuple2.of("b", 4000L)
+            )
+            .assignTimestampsAndWatermarks(
+                WatermarkStrategy
+                    .<Tuple2<String, Long>>forMonotonousTimestamps()
+                    .withTimestampAssigner(
+                        new SerializableTimestampAssigner<Tuple2<String, Long>>() {
+                            @Override
+                            public long extractTimestamp(Tuple2<String, Long> stringLongTuple2, long l) {
+                                return stringLongTuple2.f1;
+                            }
+                        }
+                    )
+            );
+
+
+        stream1.join(stream2)
+            .where(r -> r.f0)
+            .equalTo(r -> r.f0)
+            .window(TumblingEventTimeWindows.of(Time.seconds(5)))
+            .apply(new JoinFunction<Tuple2<String, Long>, Tuple2<String, Long>, String>() {
+                @Override
+                public String join(Tuple2<String, Long> left, Tuple2<String, Long> right) throws Exception {
+                    return left + "=>" + right;
+                }
+            })
+            .print();
+
+
+        env.execute();
+    }
+}
+```
+
+输出结果：
+
+```
+(a,1000)=>(a,3000)
+(a,1000)=>(a,4000)
+(a,2000)=>(a,3000)
+(a,2000)=>(a,4000)
+(b,1000)=>(b,3000)
+(b,1000)=>(b,4000)
+(b,2000)=>(b,3000)
+(b,2000)=>(b,4000)
+```
+
+可以看到，窗口的联结是笛卡尔积
+
+什么是笛卡尔积? (chatgpt)
+
+```
+笛卡尔积指的是在数学中，两个集合A和B的笛卡尔积（Cartesian product），表示为A × B，是一个集合，其中的元素是由一个属于A的元素与一个属于B的元素有序组成的二元组。例如，假设A={a, b}，而B={0, 1, 2}，则A × B = {(a,0), (a,1), (a,2), (b,0), (b,1), (b,2)}。
+
+在计算机科学中，笛卡尔积常被用于数据库查询、关系代数、编译器设计等领域。例如，在SQL语言中，通过使用JOIN操作将两个表进行联结时，就需要对它们的笛卡尔积进行计算，以获得所有可能的组合结果。在程序设计中，笛卡尔积也可以用于生成测试用例、遍历多维数组等方面。
+```
+
+
+
+### 间隔联结（Interval Join）
+
+背景
+
+在有些场景下，我们要处理的时间间隔可能并不是固定的。比如，在交易系统中，需要实时地对每一笔交易进行核验，保证两个账户转入转出数额相等，也就是所谓的“实时对账”。两次转账的数据可能写入了不同的日志流，它们的时间戳应该相差不大，所以我们可以考虑只统计一段时间内是否有出账入账的数据匹配。这时显然不应该用滚动窗口或滑动窗口来处理——因为匹配的两个数据有可能刚好“卡在”窗口边缘两侧，于是窗口内就都没有匹配了；会话窗口虽然时间不固定，但也明显不适合这个场景。 基于时间的窗口联结已经无能为力了。
+
+为了应对这样的需求，Flink 提供了一种叫作“间隔联结”（interval join）的合流操作。顾名思义，间隔联结的思路就是针对一条流的每个数据，开辟出其时间戳前后的一段时间间隔，看这期间是否有来自另一条流的数据匹配。
+
+
+
+####  间隔联结的原理
+
+间隔联结具体的定义方式是，我们给定两个时间点，分别叫作间隔的“上界”（upperBound）和“下界”（lowerBound）；于是对于一条流（不妨叫作 A）中的任意一个数据元素 a，就可以开辟一段时间间隔：[a.timestamp + lowerBound, a.timestamp + upperBound],即以 a 的时间戳为中心，下至下界点、上至上界点的一个闭区间：我们就把这段时间作为可以匹配另一条流数据的“窗口”范围。所以对于另一条流（不妨叫 B）中的数据元素 b，如果它的时间戳落在了这个区间范围内，a 和 b 就可以成功配对，进而进行计算输出结果。所以匹配的条件为：a.timestamp + lowerBound <= b.timestamp <= a.timestamp + upperBound这里需要注意，做间隔联结的两条流 A 和 B，也 **必须基于相同的 key**；下界 lowerBound应该小于等于上界 upperBound，两者都可正可负；间隔联结目前只支持 **事件时间** 语义。
+
+
+
+![image-20230329121824267](尚硅谷Flink1.13.assets/image-20230329121824267.png)
+
+下方的流 A 去间隔联结上方的流 B，所以基于 A 的每个数据元素，都可以开辟一个间隔区间。我们这里设置下界为-2 毫秒，上界为 1 毫秒。于是对于时间戳为 2 的 A 中元素，它的可匹配区间就是[0, 3],流 B 中有时间戳为 0、1 的两个元素落在这个范围内，所以就可以得到匹配数据对(2, 0)和(2, 1)。同样地，A 中时间戳为 3 的元素，可匹配区间为[1, 4]，B 中只有时间戳为 1 的一个数据可以匹配，于是得到匹配数据对(3, 1)。
+
+所以我们可以看到，间隔联结同样是一种内连接（inner join）。与窗口联结不同的是，interval join 做匹配的时间段是基于流中数据的，所以并不确定；而且流 B 中的数据可以不只在一个区间内被匹配。
+
+
+
+#### 间隔联结的调用
+
+间隔联结在代码中，是基于 KeyedStream 的联结（join）操作。DataStream 在 keyBy 得到KeyedStream 之后，可以调用.intervalJoin()来合并两条流，传入的参数同样是一个 KeyedStream，两者的 key 类型应该一致；得到的是一个 IntervalJoin 类型。后续的操作同样是完全固定的：先通过.between()方法指定间隔的上下界，再调用.process()方法，定义对匹配数据对的处理操作。调用.process()需要传入一个处理函数，这是处理函数家族的最后一员：“处理联结函数” ProcessJoinFunction。
+
+通用调用形式如下:
+
+```java
+stream1
+ .keyBy(<KeySelector>)
+ .intervalJoin(stream2.keyBy(<KeySelector>))
+ .between(Time.milliseconds(-2), Time.milliseconds(1))
+ .process(new ProcessJoinFunction<Integer, Integer, String(){
+     @Override
+     public void processElement(Integer left, Integer right, Context ctx, Collector<String> out) {
+     	out.collect(left + "," + right);
+ 	}
+ });
+```
+
+可以看到，抽象类 ProcessJoinFunction 就像是 ProcessFunction 和 JoinFunction 的结合，内部同样有一个抽象方法.processElement()。与其他处理函数不同的是，它多了一个参数，这自然是因为有来自两条流的数据。参数中 left 指的就是第一条流中的数据，right 则是第二条流中与它匹配的数据。每当检测到一组匹配，就会调用这里的.processElement()方法，经处理转换之后输出结果。
+
+
+
+#### 间隔联结实例
+
+```java
+package com.github.chapter08;
+
+import com.github.chapter05.Event;
+import org.apache.flink.api.common.eventtime.SerializableTimestampAssigner;
+import org.apache.flink.api.common.eventtime.WatermarkStrategy;
+import org.apache.flink.api.java.tuple.Tuple3;
+import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.co.ProcessJoinFunction;
+import org.apache.flink.streaming.api.windowing.time.Time;
+import org.apache.flink.util.Collector;
+
+// 基于间隔的 join
+public class IntervalJoinExample {
+
+    public static void main(String[] args) throws Exception {
+
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setParallelism(1);
+
+        SingleOutputStreamOperator<Tuple3<String, String, Long>> orderStream =
+            env.fromElements(
+                Tuple3.of("Mary", "order-1", 5000L),
+                Tuple3.of("Alice", "order-2", 5000L),
+                Tuple3.of("Bob", "order-3", 20000L),
+                Tuple3.of("Alice", "order-4", 20000L),
+                Tuple3.of("Cary", "order-5", 51000L)
+            ).assignTimestampsAndWatermarks(WatermarkStrategy.<Tuple3<String,
+                String, Long>>forMonotonousTimestamps()
+                .withTimestampAssigner(new SerializableTimestampAssigner<Tuple3<String, String, Long>>() {
+                                               @Override
+                                               public long extractTimestamp(Tuple3<String, String, Long>
+                                                                                element, long recordTimestamp) {
+                                                   return element.f2;
+                                               }
+                                           })
+            );
+
+        SingleOutputStreamOperator<Event> clickStream = env.fromElements(
+            new Event("Bob", "./cart", 2000L),
+            new Event("Alice", "./prod?id=100", 3000L),
+            new Event("Alice", "./prod?id=200", 3500L),
+            new Event("Bob", "./prod?id=2", 2500L),
+            new Event("Alice", "./prod?id=300", 36000L),
+            new Event("Bob", "./home", 30000L),
+            new Event("Bob", "./prod?id=1", 23000L),
+            new Event("Bob", "./prod?id=3", 33000L)
+        ).assignTimestampsAndWatermarks(WatermarkStrategy.<Event>forMonotonousTimestamps()
+                .withTimestampAssigner(new SerializableTimestampAssigner<Event>() {
+                    @Override
+                    public long extractTimestamp(Event element, long recordTimestamp) {
+                        return element.timestamp;
+                    }
+                })
+        );
+        
+        orderStream.keyBy(data -> data.f0)
+            .intervalJoin(clickStream.keyBy(data -> data.user))
+            .between(Time.seconds(-5), Time.seconds(10))
+            .process(new ProcessJoinFunction<Tuple3<String, String, Long>, Event, String>() {
+                @Override
+                public void processElement(Tuple3<String, String, Long> left,
+                                           Event right, Context ctx, Collector<String> out) throws Exception {
+                    out.collect(right + " => " + left);
+                }
+            })
+            .print();
+        env.execute();
+    }
+}
+```
+
+
+
+### 窗口同组联结
+
+除窗口联结和间隔联结之外，Flink 还提供了一个“窗口同组联结”（window coGroup）操作。它的用法跟 window join 非常类似，也是将两条流合并之后开窗处理匹配的元素，调用时只需要将.join()换为.coGroup()就可以了。
+
+
+
+```
+stream1.coGroup(stream2)
+ .where(<KeySelector>)
+ .equalTo(<KeySelector>)
+ .window(TumblingEventTimeWindows.of(Time.hours(1)))
+ .apply(<CoGroupFunction>)
+```
+
+
+
+与 window join 的区别在于，调用.apply()方法定义具体操作时，传入的是一个CoGroupFunction。这也是一个函数类接口，源码中定义如下
+
+```
+public interface CoGroupFunction<IN1, IN2, O> extends Function, Serializable {
+ 	void coGroup(Iterable<IN1> first, Iterable<IN2> second, Collector<O> out) throws Exception;
+}
+```
+
+
+
+内部的.coGroup()方法，有些类似于 FlatJoinFunction 中.join()的形式，同样有三个参数，分别代表两条流中的数据以及用于输出的收集器（Collector）。不同的是，这里的前两个参数不再是单独的每一组“配对”数据了，而是传入了可遍历的数据集合。也就是说，现在不会再去计算窗口中两条流数据集的笛卡尔积，而是直接把收集到的所有数据一次性传入，至于要怎样配对完全是自定义的。这样.coGroup()方法只会被调用一次，而且即使一条流的数据没有任何另一条流的数据匹配，也可以出现在集合中、当然也可以定义输出结果了。
+
+所以能够看出，coGroup 操作比窗口的 join 更加通用，不仅可以实现类似 SQL 中的“内连接”（inner join），也可以实现左外连接（left outer join）、右外连接（right outer join）和全外连接（full outer join）。事实上，窗口 join 的底层，也是通过 coGroup 来实现的。
+
+
+
+示例代码
+
+```java
+package com.github.chapter08;
+
+import org.apache.flink.api.common.eventtime.SerializableTimestampAssigner;
+import org.apache.flink.api.common.eventtime.WatermarkStrategy;
+import org.apache.flink.api.common.functions.CoGroupFunction;
+import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
+import org.apache.flink.streaming.api.windowing.time.Time;
+import org.apache.flink.util.Collector;
+
+// 基于窗口的 join
+public class CoGroupExample {
+    public static void main(String[] args) throws Exception {
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setParallelism(1);
+        DataStream<Tuple2<String, Long>> stream1 = env
+            .fromElements(
+                Tuple2.of("a", 1000L),
+                Tuple2.of("b", 1000L),
+                Tuple2.of("a", 2000L),
+                Tuple2.of("b", 2000L)
+            )
+            .assignTimestampsAndWatermarks(
+                WatermarkStrategy
+                    .<Tuple2<String, Long>>forMonotonousTimestamps()
+                    .withTimestampAssigner(
+                        new SerializableTimestampAssigner<Tuple2<String, Long>>() {
+                            @Override
+                            public long extractTimestamp(Tuple2<String,
+                                Long> stringLongTuple2, long l) {
+                                return stringLongTuple2.f1;
+                            }
+                        }
+                    )
+            );
+        DataStream<Tuple2<String, Long>> stream2 = env
+            .fromElements(
+                Tuple2.of("a", 3000L),
+                Tuple2.of("b", 3000L),
+                Tuple2.of("a", 4000L),
+                Tuple2.of("b", 4000L)
+            )
+            .assignTimestampsAndWatermarks(
+                WatermarkStrategy
+                    .<Tuple2<String, Long>>forMonotonousTimestamps()
+                    .withTimestampAssigner(
+                        new SerializableTimestampAssigner<Tuple2<String, Long>>() {
+                            @Override
+                            public long extractTimestamp(Tuple2<String,
+                                Long> stringLongTuple2, long l) {
+                                return stringLongTuple2.f1;
+                            }
+                        }
+                    )
+            );
+
+        stream1
+            .coGroup(stream2)
+            .where(r -> r.f0)
+            .equalTo(r -> r.f0)
+            .window(TumblingEventTimeWindows.of(Time.seconds(5)))
+            .apply(new CoGroupFunction<Tuple2<String, Long>, Tuple2<String, Long>, String>() {
+                @Override
+                public void coGroup(Iterable<Tuple2<String, Long>> iter1, Iterable<Tuple2<String, Long>> iter2,
+                                    Collector<String> collector) throws Exception {
+                    collector.collect(iter1 + "=>" + iter2);
+                }
+            })
+            .print();
+        env.execute();
+    }
+}
+```
+
+输出结果
+
+```
+[(a,1000), (a,2000)]=>[(a,3000), (a,4000)]
+[(b,1000), (b,2000)]=>[(b,3000), (b,4000)]
+```
+
+
+
+
+
+## 总结
+
+分流操作可以通过处理函数的侧输出流（side output）实现。
+
+
+
+最基本的合流方式是联合（union）和连接（connect），两者的主要区别在于 union 可以对多条流进行合并，数据类型必须一致；而 connect 只能连接两条流，数据类型可以不同。事实上 connect 提供了最底层的处理函数（process function）接口，可以通过状态和定时器实现任意自定义的合流操作，所以是最为通用的合流方式。
+
+
+
+除此之外，Flink 还提供了内置的几个联结（join）操作，它们都是基于某个时间段的双流合并，是需求特化之后的高层级 API。
+
+主要包括窗口联结（window join）、间隔联结（interval join）和窗口同组联结（window coGroup）。其中 window join 和 coGroup 都是基于时间窗口的操作，
+
+注意，窗口联结和窗口同组联结的窗口函数只能通过apply()调用， 间隔联结则与窗口无关，而是基于每个数据元素截取对应的一个时间段来做联结。最终的处理操作则需要调用process()， 由处理函数 ProcessJoinFunction 实现
 
 
 
@@ -2922,17 +3524,65 @@ CoProcessFunction也同理
 
 
 
-状态的分类
+## Flink中的状态
+
+### 有状态算子
+
+在 Flink 中，算子任务可以分为无状态和有状态两种情况。
+
+无状态的算子： 如 map、filter、flatMap，计算时不依赖其他数据，就都属于无状态的算子
+
+![image-20230329130132923](尚硅谷Flink1.13.assets/image-20230329130132923.png)
+
+
+
+有状态的算子任务，则除当前数据之外，还需要一些其他数据来得到计算结果。这里的“其他数据”，就是所谓的状态（state），最常见的就是之前到达的数据，或者由之前数据计算出的某个结果。比如，做求和（sum）计算时，需要保存之前所有数据的和，这就是状态；窗口算子中会保存已经到达的所有数据，这些也都是它的状态。
+
+聚合算子、窗口算子都属于有状态的算子
+
+![image-20230329130127728](尚硅谷Flink1.13.assets/image-20230329130127728.png)
+
+
+
+### 状态的管理
+
+在传统的事务型处理架构中，这种额外的状态数据是保存在数据库中的。而对于实时流处理来说，这样做需要频繁读写外部数据库，如果数据规模非常大肯定就达不到性能要求了。所以 Flink 的解决方案是，将状态直接保存在内存中来保证性能，并通过分布式扩展来提高吞吐量。
+
+在 Flink 中，每一个算子任务都可以设置并行度，从而可以在不同的 slot 上并行运行多个实例，我们把它们叫作“并行子任务”。而状态既然在内存中，那么就可以认为是子任务实例上的一个**本地变量**，能够被任务的业务逻辑访问和修改。
+
+这样看来状态的管理似乎非常简单，我们直接把它作为一个对象交给 JVM 就可以了。然而大数据的场景下，我们必须使用分布式架构来做扩展，在低延迟、高吞吐的基础上还要保证容错性，一系列复杂的问题就会随之而来了。
+
+- 状态的访问权限。 我们知道 Flink 上的聚合和窗口操作，一般都是基于 KeyedStream的，数据会按照 key 的哈希值进行分区，聚合处理的结果也应该是只对当前 key 有效。然而同一个分区（也就是 slot）上执行的任务实例，可能会包含多个 key 的数据，它们同时访问和更改本地变量，就会导致计算结果错误。所以这时状态并不是单纯的本地变量。
+- 容错性。 也就是故障后的恢复。状态只保存在内存中显然是不够稳定的，我们需要将它持久化保存，做一个备份；在发生故障后可以从这个备份中恢复状态。
+- 状态的重组调整。 我们还应该考虑到分布式应用的横向扩展性。比如处理的数据量增大时，我们应该相应地对计算资源扩容，调大并行度。这时就涉及到了状态的重组调整。
+
+
+
+Flink 作为有状态的大数据流式处理框架已经帮我们搞定了这一切。Flink 有一套完整的状态管理机制，将底层一些核心功能全部封装起来，包括**状态的高效存储和访问**、**持久化保存**和**故障恢复**，以及**资源扩展**时的调整。
+
+
+
+
+
+
+
+
+
+### 状态的分类
 
 托管状态（Managed State）和原始状态（Raw State）
 
-托管状态就是由 Flink 统一管理的，状态的存储访问、故障恢复和重组等一系列问题都由 Flink 实现，我们只要调接口就可以
+托管状态就是由 Flink 统一管理的，状态的存储访问、故障恢复和重组等一系列问题都由 Flink 实现，**我们只要调接口就可以**
 
 原始状态则是自定义的，相当于就是开辟了一块内存，需要我们自己管理，实现状态的序列化和故障恢复。
 
 
 
-## 托管状态
+具体来讲，托管状态是由Flink的运行时（Runtime）来托管的；在配置容错机制后，状态会自动持久化保存，并在发生故障时自动恢复。当应用发生横向扩展时，状态也会自动地重组分配到所有的子任务实例上。对于具体的状态内容，Flink也提供了值状态（ValueState）、列表状态（ListState）、映射状态（MapState）、聚合状态（AggregateState）等多种结构，内部支持各种数据类型。聚合、窗口等算子中内置的状态，就都是托管状态；我们也可以在富函数类（RichFunction）中通过上下文来自定义状态，这些也都是托管状态。
+
+而对比之下，原始状态就全部需要自定义了。Flink不会对状态进行任何自动操作，也不知道状态的具体数据类型，只会把它当作最原始的字节（Byte）数组来存储。我们需要花费大量的精力来处理状态的管理和维护
+
+
 
 我们知道在 Flink 中，一个算子任务会按照并行度分为多个并行子任务执行，而不同的子任务会占据不同的任务槽（task slot）。
 
@@ -2942,23 +3592,43 @@ CoProcessFunction也同理
 
 
 
+#### 算子状态（Operator State）
+
+状态作用范围限定为当前的算子任务实例，也就是只对当前并行子任务实例有效。这就意味着对于一个并行子任务，占据了一个“分区”，它所处理的所有数据都会访问到相同的状态，状态对于同一任务而言是共享的
+
+![image-20230329143107344](尚硅谷Flink1.13.assets/image-20230329143107344.png)
+
+
+
+算子状态可以用在所有算子上，使用的时候其实就跟一个本地变量没什么区别——因为本地变量的作用域也是当前任务实例。在使用时，我们还需进一步实现CheckpointedFunction接口。
+
+
+
+#### 按键分区状态（Keyed State）
+
+状态是根据输入流中定义的键（key）来维护和访问的，所以只能定义在按键分区流（KeyedStream）中，也就 keyBy 之后才可以使用
+
+![image-20220619112542871](尚硅谷Flink1.13.assets/image-20220619112542871.png)
+
+​		按键分区状态应用非常广泛。之前讲到的聚合算子必须在 keyBy 之后才能使用，就是因为聚合的结果是以 Keyed State 的形式保存的。另外，也可以通过富函数类（Rich Function）来自定义 Keyed State。 所以只要提供了富函数类接口的算子，也都可以使用 Keyed State。
+
+​		所以即使是 map、filter 这样无状态的基本转换算子，我们也可以通过富函数类给它们“追加”Keyed State，或者实现 CheckpointedFunction 接口来定义 Operator State；从这个角度讲，Flink 中所有的算子都可以是有状态的，不愧是“有状态的流处理”。
+
+​		无论是 Keyed State 还是 Operator State，它们都是在本地实例上维护的，也就是说每个并行子任务维护着对应的状态，**算子的子任务之间状态不共享**。关于状态的具体使用，我们会在下面继续展开讲解。
+
 
 
 
 
 ## 按键分区状态（Keyed State）
 
-状态是根据输入流中定义的键（key）来维护和访问的，所以只能定义在按键分区流（KeyedStream）中，也就 keyBy 之后才可以使用
+​		在实际应用中，我们一般都需要将数据按照某个key进行分区，然后再进行计算处理；所以最为常见的状态类型就是Keyed State。之前介绍到keyBy之后的聚合、窗口计算，算子所持有的状态，都是Keyed State。
 
-![image-20220619112542871](尚硅谷Flink1.13.assets/image-20220619112542871.png)
-
-​		按键分区状态应用非常广泛。之前讲到的聚合算子必须在 keyBy 之后才能使用，就是因为聚合的结果是以 Keyed State 的形式保存的。另外，也可以通过富函数类（Rich Function）来自定义 Keyed State
-
-​		所以只要提供了富函数类接口的算子，也都可以使用 Keyed State。所以即使是 map、filter 这样无状态的基本转换算子，我们也可以通过富函数类给它们“追加”Keyed State，或者实现 CheckpointedFunction 接口来定义 Operator State；从这个角度讲，Flink 中所有的算子都可以是有状态的，不愧是“有状态的流处理”。
-
-​		无论是 Keyed State 还是 Operator State，它们都是在本地实例上维护的，也就是说每个并行子任务维护着对应的状态，**算子的子任务之间状态不共享**。关于状态的具体使用，我们会在下面继续展开讲解。
+​		另外，我们还可以通过富函数类（Rich Function）对转换算子进行扩展、实现自定义功能，比如RichMapFunction、RichFilterFunction。在富函数中，我们可以调用.getRuntimeContext()获取当前的运行时上下文（RuntimeContext），进而获取到访问状态的句柄；这种富函数中自定义的状态也是Keyed State。
 
 
+
+### 基本特点
 
 ​		按键分区状态（Keyed State）顾名思义，是任务按照键（key）来访问和维护的状态。它的特点非常鲜明，就是以 key 为作用范围进行隔离。
 
@@ -2968,9 +3638,9 @@ CoProcessFunction也同理
 
 ​		因为一个并行子任务可能会处理多个 key 的数据，所以 Flink 需要对 Keyed State 进行一些特殊优化。在底层，Keyed State 类似于一个分布式的映射（map）数据结构，所有的状态会根据 key 保存成键值对（key-value）的形式。这样当一条数据到来时，任务就会自动将状态的访问范围限定为当前数据的 key，从 map 存储中读取出对应的状态值。所以具有相同 key 的所有数据都会到访问相同的状态，而不同 key 的状态之间是彼此隔离的。
 
-​		这种将状态绑定到 key 上的方式，相当于使得状态和流的逻辑分区一一对应了：不会有别的 key 的数据来访问当前状态；而当前状态对应 key 的数据也只会访问这一个状态，不会分发到其他分区去。这就保证了对状态的操作都是本地进行的，对数据流和状态的处理做到了分区一致性。
+​		这种将状态绑定到 key 上的方式，相当于使得**状态和流的逻辑分区一一对应了**：不会有别的 key 的数据来访问当前状态；而当前状态对应 key 的数据也只会访问这一个状态，不会分发到其他分区去。这就保证了对状态的操作都是本地进行的，**对数据流和状态的处理做到了分区一致性。**
 
-​		另外，在应用的并行度改变时，状态也需要随之进行重组。不同 key 对应的 Keyed State可以进一步组成所谓的键组（key groups），每一组都对应着一个并行子任务。键组是 Flink 重新分配 Keyed State 的单元，键组的数量就等于定义的最大并行度。当算子并行度发生改变时，Keyed State 就会按照当前的并行度重新平均分配，保证运行时各个子任务的负载相同。
+​		另外，在应用的并行度改变时，状态也需要随之进行重组。不同 key 对应的 Keyed State可以进一步组成所谓的键组（key groups），每一组都对应着一个并行子任务。键组是 Flink 重新分配 Keyed State 的单元，键组的数量就等于定义的最大并行度。当算子并行度发生改变时，Keyed State 就会按照当前的并行度重新平均分配，保证运行时各个子任务的负载相同。（flink的负载均衡）
 
 ​		需要注意，**使用 Keyed State 必须基于 KeyedStream。没有进行 keyBy 分区的 DataStream，即使转换算子实现了对应的富函数类，也不能通过运行时上下文访问 Keyed State。**
 
@@ -2978,12 +3648,12 @@ CoProcessFunction也同理
 
 ### 支持的结构类型
 
->  值状态（ValueState）
+#### 值状态（ValueState）
 
 ```java
 public interface ValueState<T> extends State {
-    T value() throws IOException;
-    void update(T value) throws IOException;
+    T value() throws IOException; // 获取当前状态的值
+    void update(T value) throws IOException; // 对状态进行更新
 }
 ```
 
@@ -2995,11 +3665,13 @@ public ValueStateDescriptor(String name, Class<T> typeClass) {
 }
 ```
 
-这里需要传入状态的名称和类型——这跟我们声明一个变量时做的事情完全一样。有了这个描述器，运行时环境就可以获取到状态的控制句柄（handler）了。
+这里需要传入状态的名称和类型——这跟我们声明一个变量时做的事情完全一样。
+
+有了这个描述器，运行时环境就可以获取到状态的控制句柄（handler）了。
 
 
 
-> 列表状态（ListState）
+#### 列表状态（ListState）
 
 将需要保存的数据，以列表（List）的形式组织起来。在 ListState<T>接口中同样有一个类型参数 T，表示列表中数据的类型。ListState 也提供了一系列的方法来操作状态，使用方式与一般的 List 非常相似。
 
@@ -3015,7 +3687,7 @@ ListState 的状态描述器就叫作 ListStateDescriptor，用法跟 ValueState
 
 
 
-> 映射状态（MapState）
+#### 映射状态（MapState）
 
 把一些键值对（key-value）作为状态整体保存起来，可以认为就是一组 key-value 映射的列表。对应的 MapState<UK, UV>接口中，就会有 UK、UV 两个泛型，分别表示保存的 key 和 value 的类型。同样，MapState 提供了操作映射状态的方法，与 Map 的使用非常类似。
 
@@ -3041,7 +3713,7 @@ ListState 的状态描述器就叫作 ListStateDescriptor，用法跟 ValueState
 
 
 
-> 归约状态（ReducingState）
+#### 归约状态（ReducingState）
 
 ​		类似于值状态（Value），不过需要对添加进来的所有数据进行归约，将归约聚合之后的值作为状态保存下来。
 
@@ -3056,7 +3728,7 @@ public ReducingStateDescriptor( String name, ReduceFunction<T> reduceFunction, C
 
 
 
->  聚合状态（AggregatingState）
+#### 聚合状态（AggregatingState）
 
 与归约状态非常类似，聚合状态也是一个值，用来保存添加进来的所有数据的聚合结果。与 ReducingState 不同的是，它的聚合逻辑是由在描述器中传入一个更加一般化的聚合函数（AggregateFunction）来定义的
 
@@ -3064,7 +3736,11 @@ public ReducingStateDescriptor( String name, ReduceFunction<T> reduceFunction, C
 
 ### 代码实现
 
-在 Flink 中，状态始终是与特定算子相关联的；算子在使用状态前首先需要“注册”，其实就是告诉 Flink 当前上下文中定义状态的信息，这样运行时的 Flink 才能知道算子有哪些状态。
+这个里只展示ValueState，其他状态类型参考本github仓库的flinik-demo的chapter09
+
+
+
+在 Flink 中，状态始终是与特定算子相关联的；算子在使用状态前 **首先需要“注册”** ，其实就是告诉 Flink 当前上下文中定义状态的信息，这样运行时的 Flink 才能知道算子有哪些状态。
 
 状态的注册，主要是通过“状态描述器”（StateDescriptor）来实现的。状态描述器中最重要的内容，就是状态的名称（name）和类型（type）。
 
@@ -3077,7 +3753,11 @@ ValueStateDescriptor<Long> descriptor = new ValueStateDescriptor<>(
 );
 ```
 
-代码中完整的操作是，首先定义出状态描述器；然后调用.getRuntimeContext()方法获取运行时上下文；继而调用 RuntimeContext 的获取状态的方法，将状态描述器传入，就可以得到对应的状态了。
+代码中完整的操作是:
+
+- 首先定义出状态描述器；
+- 然后调用.getRuntimeContext()方法获取运行时上下文；
+- 继而调用 RuntimeContext 的获取状态的方法，将状态描述器传入，就可以得到对应的状态了。
 
 因为状态的访问需要获取运行时上下文，这只能在富函数类（Rich Function）中获取到，所以自定义的 Keyed State 只能在富函数中使用。当然，底层的处理函数（Process Function）本身继承了 AbstractRichFunction 抽象类，所以也可以使用。
 
@@ -3140,7 +3820,7 @@ public class MyFlatMapFunction extends RichFlatMapFunction<Long, String> {
 
 因为 RichFlatmapFunction 中的.flatmap()是每来一条数据都会调用一次的，所以我们不应该在这里调用运行时上下文的.getState()方法，而是在生命周期方法.open()中获取状态对象。另外还有一个问题，我们获取到的状态对象也需要有一个变量名称 state（注意这里跟状态的名称 my state 不同），但这个变量不应该在 open 中声明——否则在.flatmap()里就访问不到了。所以我们还需要在外面直接把它定义为类的属性，这样就可以在不同的方法中通用了。而在外部又不能直接获取状态，因为编译时是无法拿到运行时上下文的。所以最终的解决方案就变成了：在外部声明状态对象，在 open 生命周期方法中通过运行时上下文获取状态。
 
-这里需要注意，这种方式定义的都是 Keyed State，它对于每个 key 都会保存一份状态实例。所以对状态进行读写操作时，获取到的状态跟当前输入数据的 key 有关；只有相同 key的数据，才会操作同一个状态，不同 key 的数据访问到的状态值是不同的。而且上面提到的.clear()方法，也只会清除当前 key 对应的状态。
+这里需要注意，这种方式定义的都是 Keyed State，**它对于每个 key 都会保存一份状态实例。**所以对状态进行读写操作时，获取到的状态跟当前输入数据的 key 有关；只有相同 key的数据，才会操作同一个状态，不同 key 的数据访问到的状态值是不同的。而且上面提到的.clear()方法，也只会清除当前 key 对应的状态。
 
 另外，状态不一定都存储在内存中，也可以放在磁盘或其他地方，具体的位置是由一个可配置的组件来管理的，这个组件叫作“状态后端”（State Backend）。
 
@@ -3176,11 +3856,15 @@ stateDescriptor.enableTimeToLive(ttlConfig);
 
 .setStateVisibility()
 
-设置状态的可见性。所谓的“状态可见性”，是指因为清除操作并不是实时的，所以当状态过期之后还有可能基于存在，这时如果对它进行访问，能否正常读取到就是一个问题了。这里设置的 NeverReturnExpired 是默认行为，表示从不返回过期值，也就是只要过期就认为它已经被清除了，应用不能继续读取；这在处理会话或者隐私数据时比较重要。对应的另一种配置是 ReturnExpireDefNotCleanedUp，就是如果过期状态还存在，就返回它的值。
+设置状态的可见性。所谓的“状态可见性”，是指因为清除操作并不是实时的，所以当状态过期之后还有可能基于存在，这时如果对它进行访问，能否正常读取到就是一个问题了。**这里设置的 NeverReturnExpired 是默认行为，表示从不返回过期值，也就是只要过期就认为它已经被清除了，应用不能继续读取；**这在处理会话或者隐私数据时比较重要。对应的另一种配置是 ReturnExpireDefNotCleanedUp，就是如果过期状态还存在，就返回它的值。
 
 除此之外，TTL 配置还可以设置在保存检查点（checkpoint）时触发清除操作，或者配置增量的清理（incremental cleanup），还可以针对 RocksDB 状态后端使用压缩过滤器（compaction filter）进行后台清理。
 
 这里需要注意，**目前的 TTL 设置只支持处理时间。**另外，所有集合类型的状态（例如ListState、MapState）在设置 TTL 时，都是针对每一项（per-entry）元素的。也就是说，一个列表状态中的每一个元素，都会以自己的失效时间来进行清理，而不是整个列表一起清理。
+
+
+
+注意：目前TTL设置只支持处理时间
 
 
 
@@ -3198,13 +3882,31 @@ stateDescriptor.enableTimeToLive(ttlConfig);
 
 除按键分区状态（Keyed State）之外，另一大类受控状态就是算子状态（Operator State）。从某种意义上说，算子状态是更底层的状态类型，因为它只针对当前算子并行任务有效，不需要考虑不同 key 的隔离。算子状态功能不如按键分区状态丰富，应用场景较少，它的调用方法也会有一些区别。
 
+比如 Flink 的 Kafka 连接器中，就用到了算子状态。在我们给 Source 算子设置并行度后，Kafka 消费者的每一个并行实例，都会为对应的主题（topic）分区维护一个偏移量， 作为算子状态保存起来。这在保证 Flink 应用“精确一次”（exactly-once）状态一致性时非常有用。关于状态一致性的内容，我们会在第十章详细展开。
+
+
+
+
+
+当算子的并行度发生变化时，算子状态也支持在并行的算子任务实例之间做重组分配。根据状态的类型不同，重组分配的方案也会不同。
+
+并行度改变导致的分区问题，也是导致算子状态只有以下三种结构类型的原因
+
 算子状态也支持不同的结构类型，主要有三种：ListState、UnionListState 和 BroadcastState。 
 
 
 
-> 列表状态（ListState） 
+### 列表状态（ListState） 
+
+与 Keyed State 中的 ListState 一样，将状态表示为一组数据的列表。
+
+与 Keyed State 中的列表状态的区别是：在算子状态的上下文中，不会按键（key）分别处理状态，所以每一个并行子任务上只会保留一个“列表”（list），也就是当前并行子任务上所有状态项的集合。**列表中的状态项就是可以重新分配的最细粒度，彼此之间完全独立。**
+
+
 
 当算子并行度进行缩放调整时，算子的列表状态中的所有元素项会被统一收集起来，相当于把多个分区的列表合并成了一个“大列表”，然后再均匀地分配给所有并行任务。这种“均匀分配”的具体方法就是“轮询”（round-robin），与之前介绍的 rebanlance 数据传输方式类似，是通过逐一“发牌”的方式将状态项平均分配的。这种方式也叫作“平均分割重组”（even-split redistribution）。
+
+
 
 算子状态中不会存在“键组”（key group）这样的结构，所以**为了方便重组分配**，就把它直接定义成了“列表”（list）。这也就解释了，为什么算子状态中没有最简单的值状态（ValueState）。
 
@@ -3217,15 +3919,21 @@ ListState<String> checkpointedState = context.getOperatorStateStore().getListSta
 
 
 
-我们已经知道，状态从本质上来说就是算子并行子任务实例上的一个特殊本地变量。它的特殊之处就在于 Flink 会提供完整的管理机制，来保证它的持久化保存，以便发生故障时进行状态恢复；另外还可以针对不同的 key 保存独立的状态实例。按键分区状态（Keyed State）对这两个功能都要考虑；而算子状态（Operator State）并不考虑 key 的影响，所以主要任务就是要让 Flink 了解状态的信息、将状态数据持久化后保存到外部存储空间。
+我们已经知道，**状态从本质上来说就是算子并行子任务实例上的一个特殊本地变量。**它的特殊之处就在于 Flink 会提供完整的管理机制，来保证它的持久化保存，以便发生故障时进行状态恢复；另外还可以针对不同的 key 保存独立的状态实例。按键分区状态（Keyed State）对这两个功能都要考虑；而算子状态（Operator State）并不考虑 key 的影响，所以主要任务就是要让 Flink 了解状态的信息、将状态数据持久化后保存到外部存储空间。
 
 
 
 看起来算子状态的使用应该更加简单才对。不过仔细思考又会发现一个问题：我们对状态进行持久化保存的目的是为了故障恢复；在发生故障、重启应用后，数据还会被发往之前分配的分区吗？显然不是，因为并行度可能发生了调整，不论是按键（key）的哈希值分区，还是直接轮询（round-robin）分区，数据分配到的分区都会发生变化。这很好理解，当打牌的人数从 3 个增加到 4 个时，即使牌的次序不变，轮流发到每个人手里的牌也会不同。数据分区发生变化，带来的问题就是，怎么保证原先的状态跟故障恢复后数据的对应关系呢？
 
-对于 Keyed State 这个问题很好解决：状态都是跟 key 相关的，而相同 key 的数据不管发往哪个分区，总是会全部进入一个分区的；于是只要将状态也按照 key 的哈希值计算出对应的分区，进行重组分配就可以了。恢复状态后继续处理数据，就总能按照 key 找到对应之前的状态，就保证了结果的一致性。所以 Flink 对 Keyed State 进行了非常完善的包装，我们不需实现任何接口就可以直接使用。
 
-而对于 Operator State 来说就会有所不同。因为不存在 key，所有数据发往哪个分区是不可预测的；也就是说，当发生故障重启之后，我们不能保证某个数据跟之前一样，进入到同一个并行子任务、访问同一个状态。所以 Flink 无法直接判断该怎样保存和恢复状态，而是提供了接口(CheckpointedFunction 接口)，让我们根据业务需求自行设计状态的快照保存（snapshot）和恢复（restore）逻辑。
+
+对于 Keyed State 这个问题很好解决：状态都是跟 key 相关的，而相同 key 的数据不管发往哪个分区，总是会全部进入一个分区的；于是**只要将状态也按照 key 的哈希值计算出对应的分区，进行重组分配就可以了。恢复状态后继续处理数据，就总能按照 key 找到对应之前的状态，就保证了结果的一致性。**所以 Flink 对 Keyed State 进行了非常完善的包装，我们不需实现任何接口就可以直接使用。
+
+
+
+**而对于 Operator State 来说就会有所不同。**因为不存在 key，所有数据发往哪个分区是不可预测的；也就是说，当发生故障重启之后，我们不能保证某个数据跟之前一样，进入到同一个并行子任务、访问同一个状态。**所以 Flink 无法直接判断该怎样保存和恢复状态，而是提供了接口(CheckpointedFunction 接口)，让我们根据业务需求<u>自行设计状态</u>的快照保存（snapshot）和恢复（restore）逻辑。**
+
+(换句话说就是 Keyed State 不要考虑状态恢复的问题，flink已经封装状态恢复的操作)
 
 
 
@@ -3242,7 +3950,24 @@ public interface CheckpointedFunction {
 
 每次应用保存检查点做快照时，都会调用.snapshotState()方法，将状态进行外部持久化。而在算子任务进行初始化时，会调用. initializeState()方法。这又有两种情况：一种是整个应用第一次运行，这时状态会被初始化为一个默认值（default value）；另一种是应用重启时，从检查点（checkpoint）或者保存点（savepoint）中读取之前状态的快照，并赋给本地状态。所以，接口的.snapshotState()方法定义了检查点的快照保存逻辑，而. initializeState()方法不仅定义了初始化逻辑，也定义了恢复逻辑。
 
-这里需要注意，CheckpointedFunction 接口中的两个方法，分别传入了一个上下文（context）作为参数。不同的是，.snapshotState()方法拿到的是快照的上下文 FunctionSnapshotContext，它可以提供检查点的相关信息，不过无法获取状态句柄；而. initializeState()方法拿到的是FunctionInitializationContext，这是函数类进行初始化时的上下文，是真正的“运行时上下文”。FunctionInitializationContext 中提供了“算子状态存储”（OperatorStateStore）和“按键分区状态存储（” KeyedStateStore），在这两个存储对象中可以非常方便地获取当前任务实例中的 OperatorState 和 Keyed State。
+这里需要注意，CheckpointedFunction 接口中的两个方法，分别传入了一个上下文（context）作为参数。不同的是，.snapshotState()方法拿到的是快照的上下文 FunctionSnapshotContext，它可以提供检查点的相关信息，不过无法获取状态句柄；而. initializeState()方法拿到的是FunctionInitializationContext，这是函数类进行初始化时的上下文，是真正的“运行时上下文”。
+
+FunctionInitializationContext 中提供了“算子状态存储”（OperatorStateStore）和“按键分区状态存储（” KeyedStateStore），在这两个存储对象中可以非常方便地获取当前任务实例中的 OperatorState 和 Keyed State。
+
+例如
+
+```java
+ListStateDescriptor<String> descriptor =
+     new ListStateDescriptor<>(
+     "buffered-elements",
+     Types.of(String));
+
+ListState<String> checkpointedState = context.getOperatorStateStore().getListState(descriptor);
+```
+
+算子状态的注册和Keyed State 非常类似， CheckpointedFunction 是 Flink 中非常底层的接口，它为有状态的流处理提供了灵活且丰富的应用。
+
+
 
 例子：
 
@@ -3341,21 +4066,27 @@ public class BufferingSinkExample {
 
 
 
+我们可以通过调用. isRestored()方法判断是否是从故障中恢复。在代码中 BufferingSink 初始化时，恢复出的 ListState 的所有元素会添加到一个局部变量bufferedElements 中，以后进行检查点快照时就可以直接使用了。
+
+在调用.snapshotState()时，直接清空 ListState，然后把当前局部变量中的所有元素写入到检查点中。
 
 
 
+### 联合列表状态（UnionListState） 
 
-> 联合列表状态（UnionListState） 
+与 ListState 类似，联合列表状态也会将状态表示为一个列表。它与常规列表状态的区别在于，算子并行度进行缩放调整时**对于状态的分配方式不同。**
 
-与 ListState 类似，联合列表状态也会将状态表示为一个列表。它与常规列表状态的区别在于，算子并行度进行缩放调整时对于状态的分配方式不同。UnionListState 的重点就在于“联合”（union）。在并行度调整时，常规列表状态是轮询分配状态项，而联合列表状态的算子则会直接广播状态的完整列表。这样，并行度缩放之后的并行子任务就获取到了联合后完整的“大列表”，可以自行选择要使用的状态项和要丢弃的状态项。这种分配也叫作“联合重组”（union redistribution）。如果列表中状态项数量太多，为资源和效率考虑一般不建议使用联合重组的方式。
+UnionListState 的重点就在于“联合”（union）。在并行度调整时，常规列表状态是轮询分配状态项，而联合列表状态的算子则会**直接广播状态的完整列表。**这样，并行度缩放之后的并行子任务就获取到了联合后完整的“大列表”，可以自行选择要使用的状态项和要丢弃的状态项。
+
+这种分配也叫作“联合重组”（union redistribution）。如果列表中状态项数量太多，为资源和效率考虑一般不建议使用联合重组的方式。
 
 
 
->  广播状态（BroadcastState）
+### 广播状态（BroadcastState）
 
 有时我们希望算子并行子任务都保持同一份“全局”状态，用来做统一的配置和规则设定。这时所有分区的所有数据都会访问到同一个状态，状态就像被“广播”到所有分区一样，这种特殊的算子状态，就叫作广播状态（BroadcastState）
 
-
+在底层，广播状态是以类似映射结构（map）的键值对（key-value）来保存的，必须基于一个“广播流”（BroadcastStream）来创建。
 
 在代码上，可以直接调用 DataStream 的.broadcast()方法，传入一个“映射状态描述器”（MapStateDescriptor）说明状态的名称和类型，就可以得到一个“广播流”（BroadcastStream）；进而将要处理的数据流与这条广播流进行连接（connect），就会得到“广播连接流”（BroadcastConnectedStream）。**注意广播状态只能用在广播连接流中**
 
