@@ -4086,9 +4086,25 @@ UnionListState 的重点就在于“联合”（union）。在并行度调整时
 
 有时我们希望算子并行子任务都保持同一份“全局”状态，用来做统一的配置和规则设定。这时所有分区的所有数据都会访问到同一个状态，状态就像被“广播”到所有分区一样，这种特殊的算子状态，就叫作广播状态（BroadcastState）
 
-在底层，广播状态是以类似映射结构（map）的键值对（key-value）来保存的，必须基于一个“广播流”（BroadcastStream）来创建。
+
+
+让所有并行子任务都持有同一份状态，也就意味着一旦状态有变化，所以子任务上的实例都要更新。什么时候会用到这样的广播状态呢？
+
+一个最为普遍的应用，就是“动态配置”或者“动态规则”。我们在处理流数据时，有时会基于一些配置（configuration）或者规则（rule）。简单的配置当然可以直接读取配置文件，一次加载，永久有效；但数据流是连续不断的，如果这配置随着时间推移还会动态变化，那又该怎么办呢？
+
+一个简单的想法是，定期扫描配置文件，发现改变就立即更新。但这样就需要另外启动一个扫描进程，如果扫描周期太长，配置更新不及时就会导致结果错误；如果扫描周期太短，又会耗费大量资源做无用功。
+
+解决的办法，还是流处理的“事件驱动”思路——我们可以将这动态的配置数据看作一条流，将这条流和本身要处理的数据流进行连接（connect），就可以实时地更新配置进行计算了。
+
+
+
+由于配置或者规则数据是全局有效的，我们需要把它广播给所有的并行子任务。而子任务需要把它作为一个算子状态保存起来，以保证故障恢复后处理结果是一致的。这时的状态，就是一个典型的广播状态。我们知道，广播状态与其他算子状态的列表（list）结构不同，底层是以键值对（key-value）形式描述的，所以其实就是一个映射状态（MapState）。
+
+
 
 在代码上，可以直接调用 DataStream 的.broadcast()方法，传入一个“映射状态描述器”（MapStateDescriptor）说明状态的名称和类型，就可以得到一个“广播流”（BroadcastStream）；进而将要处理的数据流与这条广播流进行连接（connect），就会得到“广播连接流”（BroadcastConnectedStream）。**注意广播状态只能用在广播连接流中**
+
+
 
 
 
@@ -4102,7 +4118,9 @@ DataStream<String> output = stream
 	.process( new BroadcastProcessFunction<>() {...} );
 ```
 
-这里我们定义了一个“规则流”ruleStream，里面的数据表示了数据流 stream 处理的规则，规则的数据类型定义为 Rule。于是需要先定义一个 MapStateDescriptor 来描述广播状态，然后传入 ruleStream.broadcast()得到广播流，接着用 stream 和广播流进行连接。这里状态描述器中的 key 类型为 String，就是为了区分不同的状态值而给定的 key 的名称对 于 广 播 连 接 流 调 用 .process() 方 法 ， 可 以 传 入 “ 广 播 处 理 函 数 ”KeyedBroadcastProcessFunction 或者 BroadcastProcessFunction 来进行处理计算。广播处理函数里面有两个方法.processElement()和.processBroadcastElement()，源码中定义如下：
+​		这里我们定义了一个“规则流”ruleStream，里面的数据表示了数据流 stream 处理的规则，规则的数据类型定义为 Rule。于是需要先定义一个 MapStateDescriptor 来描述广播状态，然后传入 ruleStream.broadcast()得到广播流，接着用 stream 和广播流进行连接。这里状态描述器中的 key 类型为 String，就是为了区分不同的状态值而给定的 key 的名称
+
+​		对于广播连接流调用.process()方法 ，可以传 “ 广播处理函数 ”KeyedBroadcastProcessFunction 或者 BroadcastProcessFunction 来进行处理计算。广播处理函数里面有两个方法.processElement()和.processBroadcastElement()，源码中定义如下：
 
 ```java
 public abstract class BroadcastProcessFunction<IN1, IN2, OUT> extends BaseBroadcastProcessFunction {
@@ -4113,7 +4131,7 @@ public abstract class BroadcastProcessFunction<IN1, IN2, OUT> extends BaseBroadc
 }
 ```
 
-这里的.processElement()方法，处理的是正常数据流，第一个参数 value 就是当前到来的流数据；而.processBroadcastElement()方法就相当于是用来处理广播流的，它的第一个参数 value就是广播流中的规则或者配置数据。两个方法第二个参数都是一个上下文 ctx，都可以通过调用.getBroadcastState()方法获取到当前的广播状态；区别在于，.processElement()方法里的上下文 是 “ 只 读 ” 的 （ ReadOnly ）， 因 此 获 取 到 的 广 播 状 态 也 只 能 读 取 不 能 更 改 ；而.processBroadcastElement()方法里的 Context 则没有限制，可以根据当前广播流中的数据更新状态。
+​		这里的.processElement()方法，处理的是正常数据流，第一个参数 value 就是当前到来的流数据；而.processBroadcastElement()方法就相当于是用来处理广播流的，它的第一个参数 value就是广播流中的规则或者配置数据。两个方法第二个参数都是一个上下文 ctx，都可以通过调用.getBroadcastState()方法获取到当前的广播状态；区别在于，.processElement()方法里的上下文 是 “ 只 读 ” 的 （ ReadOnly ）， 因 此 获 取 到 的 广 播 状 态 也 只 能 读 取 不 能 更 改 ；而.processBroadcastElement()方法里的 Context 则没有限制，可以根据当前广播流中的数据更新状态。
 
 ```java
 Rule rule = ctx.getBroadcastState( new MapStateDescriptor<>("rules", Types.String, Types.POJO(Rule.class))).get("my rule");
@@ -4123,15 +4141,164 @@ Rule rule = ctx.getBroadcastState( new MapStateDescriptor<>("rules", Types.Strin
 
 
 
+代码示例：
+
+```java
+package com.github.chapter09.section06;
+
+import org.apache.flink.api.common.state.BroadcastState;
+import org.apache.flink.api.common.state.MapStateDescriptor;
+import org.apache.flink.api.common.state.ValueState;
+import org.apache.flink.api.common.state.ValueStateDescriptor;
+import org.apache.flink.api.common.typeinfo.Types;
+import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.streaming.api.datastream.BroadcastStream;
+import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.datastream.DataStreamSource;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.co.KeyedBroadcastProcessFunction;
+import org.apache.flink.util.Collector;
+
+public class BroadcastStateExample {
+    public static void main(String[] args) throws Exception {
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setParallelism(1);
+        // 读取用户行为事件流
+        DataStreamSource<Action> actionStream = env.fromElements(
+            new Action("Alice", "login"),
+            new Action("Alice", "pay"),
+            new Action("Bob", "login"),
+            new Action("Bob", "buy")
+        );
+        // 定义行为模式流，代表了要检测的标准
+        DataStreamSource<Pattern> patternStream = env.fromElements(
+                new Pattern("login", "pay"),
+                new Pattern("login", "buy")
+            );
+        // 定义广播状态的描述器，创建广播流,  key是void, value是pojo类
+        MapStateDescriptor<Void, Pattern> bcStateDescriptor = new MapStateDescriptor<>(
+            "patterns", Types.VOID, Types.POJO(Pattern.class));
+
+        BroadcastStream<Pattern> bcPatterns = patternStream.broadcast(bcStateDescriptor);
+
+        // 将事件流和广播流连接起来，进行处理
+        DataStream<Tuple2<String, Pattern>> matches = actionStream
+            .keyBy(data -> data.userId)
+            .connect(bcPatterns)
+            .process(new PatternEvaluator());
+        matches.print();
+        env.execute();
+    }
+
+    public static class PatternEvaluator extends KeyedBroadcastProcessFunction<String, Action, Pattern, Tuple2<String, Pattern>> {
+        // 定义一个值状态，保存上一次用户行为
+        ValueState<String> prevActionState;
+
+        @Override
+        public void open(Configuration conf) {
+            prevActionState = getRuntimeContext().getState(new ValueStateDescriptor<>("lastAction", Types.STRING));
+        }
+
+        @Override
+        public void processBroadcastElement(
+            Pattern pattern,
+            Context ctx,
+            Collector<Tuple2<String, Pattern>> out) throws Exception {
+
+            BroadcastState<Void, Pattern> bcState = ctx.getBroadcastState(
+                new MapStateDescriptor<>("patterns", Types.VOID, Types.POJO(Pattern.class))
+            );
+            // 将广播状态更新为当前的 pattern
+            bcState.put(null, pattern);
+
+        }
+
+        @Override
+        public void processElement(Action action, ReadOnlyContext ctx, Collector<Tuple2<String, Pattern>> out) throws Exception {
+
+            Pattern pattern = ctx.getBroadcastState(
+                new MapStateDescriptor<>("patterns", Types.VOID, Types.POJO(Pattern.class))
+            ).get(null);
+
+            String prevAction = prevActionState.value();
+            if (pattern != null && prevAction != null) {
+                // 如果前后两次行为都符合模式定义，输出一组匹配
+                if (pattern.action1.equals(prevAction) && pattern.action2.equals(action.action)) {
+                    out.collect(new Tuple2<>(ctx.getCurrentKey(), pattern));
+                }
+            }
+            // 更新状态
+            prevActionState.update(action.action);
+
+        }
+    }
+
+    // 定义用户行为事件 POJO 类
+    public static class Action {
+        public String userId;
+        public String action;
+
+        public Action() {
+        }
+
+        public Action(String userId, String action) {
+            this.userId = userId;
+            this.action = action;
+        }
+
+        @Override
+        public String toString() {
+            return "Action{" +
+                "userId=" + userId +
+                ", action='" + action + '\'' +
+                '}';
+        }
+    }
+
+    // 定义行为模式 POJO 类，包含先后发生的两个行为
+    public static class Pattern {
+        public String action1;
+        public String action2;
+
+        public Pattern() {
+        }
+
+        public Pattern(String action1, String action2) {
+            this.action1 = action1;
+            this.action2 = action2;
+        }
+
+        @Override
+        public String toString() {
+            return "Pattern{" +
+                "action1='" + action1 + '\'' +
+                ", action2='" + action2 + '\'' +
+                '}';
+        }
+    }
+}
+```
+
+​		这里我们将检测的行为模式定义为POJO类Pattern，里面包含了连续的两个行为。由于广播状态中只保存了一个Pattern，并不关心MapState中的key, 所以也可以将key的类型指定为Void，具体值就是null, 在具体的操作过程中，我们将广播流中的Pattern数据保存为广播变量，
+
+
+
 
 
 ## 状态持久化和状态后端
+
+在 Flink 的状态管理机制中，很重要的一个功能就是对状态进行持久化（persistence）保存，这样就可以在发生故障后进行重启恢复。Flink 对状态进行持久化的方式，就是将当前所有分布式状态进行“快照”保存，写入一个“检查点”（checkpoint）或者保存（savepoint）保存到外部存储系统中。具体的存储介质，一般是分布式文件系统（distributed file system）。
 
 
 
 ### 检查点
 
-在 Flink 的状态管理机制中，很重要的一个功能就是对状态进行持久化（persistence）保存，这样就可以在发生故障后进行重启恢复。Flink 对状态进行持久化的方式，就是将当前所有分布式状态进行“快照”保存，写入一个“检查点”（checkpoint）或者保存（savepoint）保存到外部存储系统中。具体的存储介质，一般是分布式文件系统（distributed file system）。
+​		有状态流应用中的检查点（checkpoint），其实就是所有任务的状态在某个时间点的一个快照（一份拷贝）。简单来讲，就是一次“存盘”，让我们之前处理数据的进度不要丢掉。在一个流应用程序运行时，Flink 会定期保存检查点，在检查点中会记录每个算子的 id 和状态；如果发生故障，Flink 就会用最近一次成功保存的检查点来恢复应用的状态，重新启动处理流程，就如同“读档”一样。
+
+
+
+​		如果保存检查点之后又处理了一些数据，然后发生了故障，那么重启恢复状态之后这些数据带来的状态改变会丢失。为了让最终处理结果正确，我们还需要让源（Source）算子重新读取这些数据，再次处理一遍。这就需要流的数据源具有“数据重放”的能力，一个典型的例子就是 Kafka，我们可以通过保存消费数据的偏移量、故障重启后重新提交来实现数据的重放。这是对“至少一次”（at least once）状态一致性的保证，如果希望实现“精确一次”（exactly once）的一致性，还需要数据写入外部系统时的相关保证。关于这部分内容我们会在第 10 章继续讨论。
 
 
 
@@ -4144,13 +4311,19 @@ env.enableCheckpointing(1000);
 
 
 
-除了检查点之外，Flink 还提供了“保存点”（savepoint）的功能。保存点在原理和形式上跟检查点完全一样，也是状态持久化保存的一个快照；区别在于，保存点是自定义的镜像保存，所以不会由 Flink 自动创建，而需要用户手动触发。这在有计划地停止、重启应用时非常有用。
+​		除了检查点之外，Flink 还提供了“保存点”（savepoint）的功能。保存点在原理和形式上跟检查点完全一样，也是状态持久化保存的一个快照；区别在于，保存点是自定义的镜像保存，所以不会由 Flink 自动创建，而需要用户手动触发。这在有计划地停止、重启应用时非常有用。
 
 
 
 ### 状态后端
 
-检查点的保存离不开 JobManager 和 TaskManager，以及外部存储系统的协调。在应用进行检查点保存时，首先会由 JobManager 向所有 TaskManager 发出触发检查点的命令；TaskManger 收到之后，将当前任务的所有状态进行快照保存，持久化到远程的存储介质中；完成之后向 JobManager 返回确认信息。这个过程是分布式的，当 JobManger 收到所有TaskManager 的返回信息后，就会确认当前检查点成功保存
+检查点的保存离不开 JobManager 和 TaskManager，以及外部存储系统的协调。在应用进行检查点保存时，
+
+​	首先会由 JobManager 向所有 TaskManager 发出触发检查点的命令；
+
+​	TaskManger 收到之后，将当前任务的所有状态进行快照保存，持久化到远程的存储介质中；
+
+完成之后向 JobManager 返回确认信息。这个过程是分布式的，当 JobManger 收到所有TaskManager 的返回信息后，就会确认当前检查点成功保存
 
 
 
@@ -4160,7 +4333,7 @@ env.enableCheckpointing(1000);
 
 
 
-状态后端是一个“开箱即用”的组件，可以在不改变应用程序逻辑的情况下独立配置。Flink 中提供了两类不同的状态后端，一种是“哈希表状态后端”（HashMapStateBackend），另一种是“内嵌 RocksDB 状态后端”（EmbeddedRocksDBStateBackend）。如果没有特别配置，系统默认的状态后端是 HashMapStateBackend。 
+状态后端是一个“开箱即用”的组件，可以在不改变应用程序逻辑的情况下独立配置。Flink 中提供了两类不同的状态后端，一种是“哈希表状态后端”（HashMapStateBackend），另一种是“内嵌 RocksDB 状态后端”（EmbeddedRocksDBStateBackend）。**如果没有特别配置，系统默认的状态后端是 HashMapStateBackend。** 
 
 
 
@@ -4174,17 +4347,29 @@ HashMapStateBackend 是将本地状态全部放入内存的，这样可以获得
 
 
 
-（2）内嵌 RocksDB 状态后端（EmbeddedRocksDBStateBackend）
+（2）内嵌 RocksDB 状态后端（**EmbeddedRocksDBStateBackend**）
 
-RocksDB 是一种内嵌的 key-value 存储介质，可以把数据持久化到本地硬盘。配置EmbeddedRocksDBStateBackend 后，会将处理中的数据全部放入 RocksDB 数据库中，RocksDB默认存储在 TaskManager 的本地数据目录里。
+RocksDB 是一种内嵌的 key-value 存储介质，可以把数据持久化到本地硬盘。配置EmbeddedRocksDBStateBackend 后，会将处理中的数据全部放入 RocksDB 数据库中，**RocksDB默认存储在 TaskManager 的本地数据目录里。**
 
-与 HashMapStateBackend 直接在堆内存中存储对象不同，这种方式下状态主要是放在RocksDB 中的。数据被存储为序列化的字节数组（Byte Arrays），读写操作需要序列化/反序列化，因此状态的访问性能要差一些。另外，因为做了序列化，key 的比较也会按照字节进行，而不是直接调用.hashCode()和.equals()方法
+
+
+在 Flink 中，RocksDB 状态后端通常是在 TaskManager 中运行的，而不是在 JobManager 中。当 Flink 应用程序启用了 RocksDB 状态后端时，每个 TaskMananger 都会创建一个 RocksDB 实例，用于保存该 TaskManager 所负责的所有 Operator 的状态数据。JobManager 不直接参与 RocksDB 状态的读写操作，它只是协调和管理整个作业的生命周期。
+
+
+
+与 HashMapStateBackend 直接在堆内存中存储对象不同，**这种方式下状态主要是放在RocksDB 中的。数据被存储为序列化的字节数组（Byte Arrays），读写操作需要序列化/反序列化，因此状态的访问性能要差一些。**另外，因为做了序列化，key 的比较也会按照字节进行，而不是直接调用.hashCode()和.equals()方法
+
+
 
 对于检查点，同样会写入到远程的持久化文件系统中。
 
-EmbeddedRocksDBStateBackend 始终执行的是异步快照，也就是不会因为保存检查点而阻塞数据的处理；而且它还提供了增量式保存检查点的机制，这在很多情况下可以大大提升保存效率。
+​	EmbeddedRocksDBStateBackend 始终执行的是**异步快照**，也就是不会因为保存检查点而阻塞数据的处理；
+
+​	而且它还提供了**增量式保存检查点**的机制，这在很多情况下可以大大提升保存效率。
 
 由于它会把状态数据落盘，而且支持增量化的检查点，所以在状态非常大、窗口非常长、键/值状态很大的应用场景中是一个好选择，同样对所有高可用性设置有效。
+
+
 
 
 
@@ -4208,7 +4393,9 @@ HashMapStateBackend 是内存计算，读写速度非常快；但是，状态的
 
 （1）在 flink-conf.yaml 中，可以使用 state.backend 来配置默认状态后端。
 
-配置项的可能值为 hashmap，这样配置的就是 HashMapStateBackend；也可以是 rocksdb，这样配置的就是EmbeddedRocksDBStateBackend。另外，也可以是一个实现了状态后端工厂StateBackendFactory 的类的完全限定类名。
+- 配置项的可能值为 hashmap，这样配置的就是 HashMapStateBackend；
+- 也可以是 rocksdb，这样配置的就是EmbeddedRocksDBStateBackend。
+- 另外，也可以是一个实现了状态后端工厂StateBackendFactory 的类的完全限定类名。
 
 下面是一个配置 HashMapStateBackend 的例子：
 
@@ -4249,11 +4436,717 @@ env.setStateBackend(new EmbeddedRocksDBStateBackend());
 
 
 
+>  浅谈Flink基于RocksDB的增量检查点（incremental checkpoint）机制
+
+为什么只有RocksDB状态后端支持增量检查点呢？这是由RocksDB本身的特性决定的。RocksDB是一个基于日志结构合并树（LSM树）的键值式存储引擎，它可以视为HBase等引擎的思想基础，故与HBase肯定有诸多相似之处。
+
+作者：LittleMagic
+链接：https://www.jianshu.com/p/246b25cddc73
+来源：简书
+著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
+
+
+
+
+
+## 使用rockdb的案例
+
+1. 写代码
+
+```java
+package com.github.chapter09.section07rockdb;
+
+import org.apache.flink.api.common.functions.RichMapFunction;
+import org.apache.flink.api.common.state.ValueState;
+import org.apache.flink.api.common.state.ValueStateDescriptor;
+import org.apache.flink.api.common.typeinfo.Types;
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.contrib.streaming.state.EmbeddedRocksDBStateBackend;
+import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.source.SourceFunction;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Random;
+
+/**
+ * @author hewenji
+ * @Date 2023/3/30 18:33
+ * 输入： [a, b, c, a, a] 类似这样的随机序列
+ * 输出： a: 1
+ * 输出： b: 1
+ * 输出： c: 1
+ * 输出： a: 2
+ * 输出： a: 3
+ *
+ * 状态存在RockDB里面，状态存每个字母的的数量
+ */
+public class RockDBDemo extends RichMapFunction<String, String> {
+
+    private transient ValueState<Integer> count;
+
+    @Override
+    public void open(Configuration parameters) throws Exception {
+        ValueStateDescriptor<Integer> descriptor = new ValueStateDescriptor<>("countState", Types.INT);
+        this.count = getRuntimeContext().getState(descriptor);
+    }
+
+    @Override
+    public String map(String value) throws Exception {
+        Integer countState = this.count.value();
+        if (countState == null) {
+            countState = 0;
+        }
+
+        countState += 1;
+
+        count.update(countState);
+
+        return value + ": " + countState;
+
+    }
+
+
+    private static class MySourceFunction implements SourceFunction<String> {
+
+        public boolean isRunning = true;
+
+        @Override
+        public void run(SourceContext<String> ctx) throws Exception {
+            Random random = new Random();
+
+            ArrayList<String> strings = new ArrayList<>(Arrays.asList("a", "b", "c"));
+
+            while (this.isRunning) {
+                ctx.collect(strings.get(random.nextInt(3)));
+                Thread.sleep(2 * 1000);  // 每过两秒发送一个数据
+            }
+        }
+
+        @Override
+        public void cancel() {
+            this.isRunning = false;
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setStateBackend(new EmbeddedRocksDBStateBackend());
+        env.enableCheckpointing(10 * 1000);  // 每隔10秒 jobmanager触发checkpoint检查
+
+        DataStream<String> stream = env.addSource(new MySourceFunction());
+        stream.keyBy(str -> str)
+            .map(new RockDBDemo())
+            .print();
+
+        env.execute();
+
+    }
+
+}
+
+```
+
+
+
+
+
+2. 配置 flink.conf.yaml 后重启
+
+```yaml
+state.backend: rocksdb
+state.backend.incremental: true
+state.backend.rocksdb.localdir: /home/hwj/flink/rockdb
+state.backend.rocksdb.enableIncrementalCheckpointing: true
+state.backend.rocksdb.checkpointCompressionType: lz4
+
+state.checkpoints.dir: file:///home/hwj/flink/checkpoints
+state.savepoints.dir: file:///home/hwj/flink/savepoints
+```
+
+
+
+3. 提交job
+
+后台可以看到checkpoint和rockdb的数据
+
+![image-20230331122436860](尚硅谷Flink1.13.assets/image-20230331122436860.png)
+
+
+
+4. 强制关闭task manager， 制造异常情况
+
+>  使用 jps 查看task manager进程，然后kill掉
+
+![image-20230331122627569](尚硅谷Flink1.13.assets/image-20230331122627569.png)
+
+
+
+> 前台web页面可以看到检查点正常保存快照，此时还没有超时 
+
+![image-20230331122723768](尚硅谷Flink1.13.assets/image-20230331122723768.png)
+
+
+
+> 过了一阵子，检查点检查失败
+
+![image-20230331122932482](尚硅谷Flink1.13.assets/image-20230331122932482.png)
+
+
+
+> 此时查看数据输出是
+
+![image-20230331122808917](尚硅谷Flink1.13.assets/image-20230331122808917.png)
+
+
+
+
+
+5. 恢复taskmanager 
+
+![image-20230331123115518](尚硅谷Flink1.13.assets/image-20230331123115518.png)
+
+检查点恢复正常
+
+![image-20230331123136583](尚硅谷Flink1.13.assets/image-20230331123136583.png)
+
+输出也恢复了正常
+
+![image-20230331123251998](尚硅谷Flink1.13.assets/image-20230331123251998.png)
+
+![image-20230331123553423](尚硅谷Flink1.13.assets/image-20230331123553423.png)
+
+
+
+## savepoint使用案例
+
+flink savepoint命令使用案例(chatgpt)
+
+```shell
+Flink Savepoint是一种用于保存Flink应用程序状态的机制，可以在重新启动Flink应用程序时使用该状态恢复应用程序。
+以下是一些Flink Savepoint命令的使用案例：
+    
+	1. 创建Savepoint：使用bin/flink savepoint <jobID> <savepointDirectory>命令创建一个新的Savepoint。例如：bin/flink savepoint 12345 file:///home/user/savepoints/
+	2. 恢复应用程序：使用bin/flink run -s <savepointPath> <jarFile>命令从指定的Savepoint路径恢复Flink应用程序。例如：bin/flink run -s file:///home/user/savepoints/savepoint-12345 ./target/my-flink-job.jar
+	3. 更新Savepoint：使用bin/flink savepoint <jobID> <savepointDirectory>命令更新现有的Savepoint。例如：bin/flink savepoint 12345 file:///home/user/savepoints/version2/
+	4. 删除Savepoint：使用bin/flink savepoint dispose <savepointPath>命令删除指定的Savepoint。例如：bin/flink savepoint dispose file:///home/user/savepoints/savepoint-12345
+
+这些命令可以帮助您管理和维护Flink应用程序状态，并在需要时方便地恢复应用程序。
+```
+
+
+
+> 使用savepoint前：
+
+![image-20230331133239462](尚硅谷Flink1.13.assets/image-20230331133239462.png)
+
+![image-20230331133220847](尚硅谷Flink1.13.assets/image-20230331133220847.png)
+
+> 暂停掉job后恢复savepoint：
+
+![image-20230331133654906](尚硅谷Flink1.13.assets/image-20230331133654906.png)
+
+
+
+查看结果看起来像是漏了一点东西
+
+![image-20230331133741533](尚硅谷Flink1.13.assets/image-20230331133741533.png)
+
+
+
+然后查看具体的日志， 实际上整体sink达到了 at least once 的状态一致性， a从836重新开始，b从904重新开始， c从887重新开始
+
+![image-20230331134318770](尚硅谷Flink1.13.assets/image-20230331134318770.png)
+
+
+
 
 
 # 第 10 章 容错机制
 
 
+
+## 检查点
+
+​		在分布式架构中，当某个节点出现故障，其他节点基本不受影响。这时只需要重启应用，恢复之前某个时间点的状态继续处理就可以了。这一切看似简单，可是在实时流处理中，我们不仅需要保证故障后能够重启继续运行，还要保证结果的正确性、故障恢复的速度、对处理性能的影响，这就需要在架构上做出更加精巧的设计
+
+​		在 Flink 中，有一套完整的容错机制（fault tolerance）来保证故障后的恢复，其中最重要的就是检查点（checkpoint）。在第九章中，我们已经介绍过检查点的基本概念和用途，接下来我们就深入探讨一下检查点的原理和 Flink 的容错机制。
+
+
+
+​		在流处理中，我们可以用存档读档的思路，把之前的计算结果做个保存，这样重启之后就可以继续处理新数据、而不需要重新计算了。进一步地，我们知道在有状态的流处理中，任务继续处理新数据，并不需要“之前的计算结果”，而是需要任务“之前的状态”。所以我们最终的选择，就是将之前某个时间点所有的状态保存下来，这份“存档”就是所谓的“检查点”（checkpoint）。
+
+
+
+​		检查点是 Flink 容错机制的核心。这里所谓的“检查”，其实是针对故障恢复的结果而言的：故障恢复之后继续处理的结果，应该与发生故障前完全一致，我们需要“检查”结果的正确性。所以，有时又会把 checkpoint 叫作“一致性检查点”。
+
+
+
+检查点的数据是存储在jobmanager的还是taskmanager？ 通过chatgpt了解到，checkpoint检查点的数据存储在JobManger中
+
+```
+在 Apache Flink 中，检查点数据是存储在 JobManager 的高可用文件系统（high-availability storage）中，而不是存储在 TaskManager 上。
+
+具体来说，当 Flink 应用程序执行检查点操作时，JobManager 会协调所有的 TaskManager 将各自的算子状态数据进行快照，并将其存储到高可用文件系统中。因此，检查点数据实际上是由 JobManager 统一收集和管理的。这样做的好处在于，如果某个 TaskManager 发生故障或者任务需要重新分配，那么它可以从 JobManager 中获取最新的检查点数据，并恢复其状态。
+
+需要注意的是，在某些情况下，Flink 可以使用本地文件系统（local filesystem）作为高可用文件系统来存储检查点数据。这种情况下，JobManager 和 TaskManager 都可以访问到检查点数据。但是，这种配置方式不够健壮，建议在生产环境中使用专门的分布式文件系统（如 HDFS 或 S3）来作为高可用文件系统。
+```
+
+
+
+### 检查点的保存
+
+> 1、周期性的触发保存
+
+​		“随时存档”确实恢复起来方便，可是需要我们不停地做存档操作。如果每处理一条数据就进行检查点的保存，当大量数据同时到来时，就会耗费很多资源来频繁做检查点，数据处理的速度就会受到影响。所以更好的方式是，每隔一段时间去做一次存档，这样既不会影响数据的正常处理，也不会有太大的延迟
+
+​		
+
+> 2、保存的时间点
+
+​		这里有一个关键问题：当检查点的保存被触发时，任务有可能正在处理某个数据，这时该怎么办呢？
+
+办法： **当所有任务都恰好处理完一个相同的输入数据的时候，将它们的状态保存下来。**首先，这样避免了除状态之外其他额外信息的存储，提高了检查点保存的效率。其次，一个数据要么就是被所有任务完整地处理完，状态得到了保存；要么就是没处理完，状态全部没保存：这就相当于构建了一个“事务”（transaction）。如果出现故障，我们恢复到之前保存的状态，故障时正在处理的所有数据都需要重新处理；所以我们只需要让源（source）任务向数据源重新提交偏移量、请求重放数据就可以了。**这需要源任务可以把偏移量作为算子状态保存下来，而且外部数据源能够重置偏移量；Kafka 就是满足这些要求的一个最好的例子**
+
+
+
+> 3、保存的具体流程
+
+检查点的保存，**最关键的就是要等所有任务将“同一个数据”处理完毕。**
+
+下面我们通过一个具体的例子，来详细描述一下检查点具体的保存过程。
+
+```java
+SingleOutputStreamOperator<Tuple2<String, Long>> wordCountStream = 
+env.addSource(...)
+ .map(word -> Tuple2.of(word, 1L))
+ .returns(Types.TUPLE(Types.STRING, Types.LONG));
+ .keyBy(t -> t.f0);
+ .sum(1);
+```
+
+源（Source）任务从外部数据源读取数据，并记录当前的偏移量，作为算子状态（Operator State）保存下来。然后将数据发给下游的 Map 任务，它会将一个单词转换成(word, count)二元组，初始 count 都是 1，也就是(“hello”, 1)、(“world”, 1)这样的形式；这是一个无状态的算子任务。进而以 word 作为键（key）进行分区，调用.sum()方法就可以对 count 值进行求和统计了；Sum 算子会把当前求和的结果作为按键分区状态（Keyed State）保存下来。最后得到的就是当前单词的频次统计(word, count)
+
+![image-20230330160238386](尚硅谷Flink1.13.assets/image-20230330160238386.png)
+
+​		当我们需要保存检查点（checkpoint）时，就是在所有任务处理完同一条数据后，对状态做个快照保存下来。例如上图中，已经处理了 3 条数据：“hello”“world”“hello”，所以我们会看到 Source 算子的偏移量为 3；后面的 Sum 算子处理完第三条数据“hello”之后，此时已经有 2 个“hello”和 1 个“world”，所以对应的状态为“hello”-> 2，“world”-> 1（这里 KeyedState底层会以 key-value 形式存储）。此时所有任务都已经处理完了前三个数据，所以我们可以把当前的状态保存成一个检查点，写入外部存储中。至于具体保存到哪里，这是由状态后端的配置项 “ 检 查 点 存 储 ”（ CheckpointStorage ）来决定的，可以有作业管理器的堆内存（JobManagerCheckpointStorage）和文件系统（FileSystemCheckpointStorage）两种选择。一般情况下，我们会将检查点写入持久化的分布式文件系统。
+
+
+
+### 从检查点恢复状态
+
+接着上面的过程继续说
+
+假如处理第五个数据的时候没有保存检查点，此时又发生了故障
+
+![image-20230330160834897](尚硅谷Flink1.13.assets/image-20230330160834897.png)
+
+检查点来恢复状态了。具体的步骤为：
+
+（1）重启应用
+
+（2）读取检查点，重置状态
+
+（3）重放数据
+
+​			从检查点恢复状态后还有一个问题， 之前读的第4,5个数据相当于丢掉了。 为了不丢数据，我们应该从检查点开始重新读数据，这可以通过Source任务向外部数据源重新提交偏移量（offset）来实现
+
+​	![image-20230330161245743](尚硅谷Flink1.13.assets/image-20230330161245743.png)
+
+（4）继续处理数据
+
+​		当处理到第 5 个数据时，就已经追上了发生故障时的系统状态。之后继续处理，就好像没有发生过故障一样；我们既没有丢掉数据也没有重复计算数据，这就保证了计算结果的正确性。在分布式系统中，这叫作实现了“精确一次”（exactly-once）的状态一致性保证。
+
+​		想要正确地从检查点中读取并恢复状态，必须知道每个算子任务状态的类型和它们的先后顺序（拓扑结构）；因此为了可以从之前的检查点中恢复状态，我们在改动程序、修复 bug 时要保证状态的拓扑顺序和类型不变。状态的拓扑结构在 JobManager 上可以由 JobGraph 分析得到，而检查点保存的定期触发也是由 JobManager 控制的；所以故障恢复的过程需要 JobManager 的参与。
+
+
+
+### 检查点算法
+
+​		我们已经知道，Flink 保存检查点的时间点，是所有任务都处理完同一个输入数据的时候。但是不同的任务处理数据的速度不同，当第一个 Source 任务处理到某个数据时，后面的 Sum任务可能还在处理之前的数据；而且数据经过任务处理之后类型和值都会发生变化，面对着“面目全非”的数据，不同的任务怎么知道处理的是“同一个”呢？
+
+​		一个简单的想法是，当接到 JobManager 发出的保存检查点的指令后，Source 算子任务处理完当前数据就暂停等待，不再读取新的数据了。这样我们就可以保证在流中只有需要保存到检查点的数据，只要把它们全部处理完，就可以保证所有任务刚好处理完最后一个数据；**这时把所有状态保存起来，合并之后就是一个检查点了**。这就好比我们想要保存所有同学刚好毕业时的状态，那就在所有人答辩完成之后，集合起来拍一张毕业合照。这样做最大的问题，就是每个人的进度可能不同；先答辩完的人为了保证状态一致不能进行其他工作，只能等待。当先保存完状态的任务需要等待其他任务时，就导致了资源的闲置和性能的降低。
+
+​		所以更好的做法是，在不暂停整体流处理的前提下，将状态备份保存到检查点。在 Flink中，采用了基于 Chandy-Lamport 算法的分布式快照，下面我们就来详细了解一下。
+
+​	
+
+> 1. 检查点分界线（Barrier）
+
+​		我们现在的目标是，在不暂停流处理的前提下，让每个任务“认出”触发检查点保存的那个数据。
+
+​		自然想到，如果给数据添加一个特殊标识，任务就可以准确识别并开始保存状态了。这需要在 Source 任务收到触发检查点保存的指令后，立即在当前处理的数据中插入一个标识字段，然后再向下游任务发出。但是假如 Source 任务此时并没有正在处理的数据，这个操作**就无法实现了**。
+
+​		所以我们可以借鉴水位线（watermark）的设计，在数据流中插入一个特殊的数据结构，专门用来表示触发检查点保存的时间点。收到保存检查点的指令后，Source 任务可以在当前数据流中插入这个结构；之后的所有任务只要遇到它就开始对状态做持久化快照保存。由于数据流是保持顺序依次处理的，因此遇到这个标识就代表之前的数据都处理完了，可以保存一个检查点；而在它之后的数据，引起的状态改变就不会体现在这个检查点中，而需要保存到下一个检查点。
+
+
+
+​		**这种特殊的数据形式，把一条流上的数据按照不同的检查点分隔开，所以就叫作检查点的“分界线”（Checkpoint Barrier）。**
+
+与水位线很类似，检查点分界线也是一条特殊的数据，由 Source 算子注入到常规的数据流中，它的位置是限定好的，不能超过其他数据，也不能被后面的数据超过。检查点分界线中带有一个检查点 ID，这是当前要保存的检查点的唯一标识
+
+
+
+![image-20230330163220039](尚硅谷Flink1.13.assets/image-20230330163220039.png)
+
+​		分界线就将一条流逻辑上分成了两部分：分界线之前到来的数据导致的状态更改，都会被包含在当前分界线所表示的检查点中；而基于分界线之后的数据导致的状态更改，则会被包含在之后的检查点中。
+
+​		在 JobManager 中有一个“检查点协调器”（checkpoint coordinator），专门用来协调处理检查点的相关工作。检查点协调器会定期向 TaskManager 发出指令，要求保存检查点（带着检查点 ID）；TaskManager 会让所有的 Source 任务把自己的偏移量（算子状态）保存起来，并将带有检查点 ID 的分界线（barrier）插入到当前的数据流中，然后像正常的数据一样像下游传递；之后 Source 任务就可以继续读入新的数据了。
+
+​		每个算子任务只要处理到这个 barrier，就把当前的状态进行快照；在收到 barrier 之前，还是正常地处理之前的数据，完全不受影响。比如上图中，Source 任务收到 1 号检查点保存指令时，读取完了三个数据，所以将偏移量 3 保存到外部存储中；而后将 ID 为 1 的 barrier 注入数据流；与此同时，Map 任务刚刚收到上一条数据“hello”，而 Sum 任务则还在处理之前的第二条数据(world, 1)。下游任务不会在这时就立刻保存状态，而是等收到 barrier 时才去做快照，这时可以保证前三个数据都已经处理完了。同样地，下游任务做状态快照时，也不会影响上游任务的处理，每个任务的快照保存并行不悖，不会有暂停等待的时间。
+
+​		如果还是拿拍毕业照来类比的话，现在就不需要大家答辩完之后聚在一起排队摆 pose 了——每个人完成答辩之后只要单独照张相，就可以继续做自己的事情去了；最后由班主任老师发挥 P 图技能合成合照，这样无疑就省去了大家集合等待的时间。
+
+
+
+> 2.分布式快照算法
+
+​		通过在流中插入分界线（barrier），我们可以明确地指示触发检查点保存的时间。在一条单一的流上，数据依次进行处理，顺序保持不变；不过对于**<u>分布式流处理</u>**来说，想要一直保持数据的顺序就不是那么容易了。
+
+​		我们先回忆一下水位线（watermark）的处理：上游任务向多个并行下游任务传递时，需要广播出去；而多个上游任务向同一个下游任务传递时，则需要下游任务为每个上游并行任务维护一个“分区水位线”，取其中最小的那个作为当前任务的事件时钟。
+
+​		那 barier 在并行数据流中的传递，是不是也有类似的规则呢？
+
+​		watermark 指示的是“之前的数据全部到齐了”，而 barrier 指示的是“之前所有数据的状态更改保存入当前检查点”：它们都是一个“截止时间”的标志。所以在处理多个分区的传递时，也要以是否还会有数据到来作为一个判断标准。
+
+​		具体实现上，Flink 使用了 Chandy-Lamport 算法的一种变体，被称为**“异步分界线快照”（asynchronous barrier snapshotting）算法。**算法的核心就是两个原则：
+
+​		1. 当上游任务向多个并行下游任务发送 barrier 时，需要广播出去；
+
+​		2. 而当多个上游任务向同一个下游任务传递 barrier 时，需要在下游任务执行“分界线对齐”（barrier alignment）操作，也就是需要等到所有并行分区的 barrier 都到齐，才可以开始状态的保存。
+
+
+
+​		具体过程有点复杂，这里不在赘述， 另外加一个说明
+
+​		由于分界线对齐要求先到达的分区做缓存等待，一定程度上会影响处理的速度；当出现背压（backpressure）时，下游任务会堆积大量的缓冲数据，检查点可能需要很久才可以保存完毕。为了应对这种场景，Flink 1.11 之后提供了不对齐的检查点保存方式，可以将未处理的缓冲数据（in-flight data）也保存进检查点。这样，当我们遇到一个分区 barrier 时就不需等待对齐，而是可以直接启动状态的保存了。
+
+
+
+### 检查点配置
+
+#### 启用检查点
+
+默认情况下，Flink 程序是禁用检查点的。如果想要为 Flink 应用开启自动保存快照的功能
+
+需要在代码中显式地调用执行环境的.enableCheckpointing()方法
+
+```
+StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+// 每隔 1 秒启动一次检查点保存
+env.enableCheckpointing(1000);
+```
+
+
+
+#### 检查点存储
+
+​		检查点具体的持久化存储位置，取决于“检查点存储”（CheckpointStorage）的设置。**<u>默认情况下</u>，检查点存储在 JobManager 的堆（heap）内存中。**而对于大状态的持久化保存，Flink也提供了在其他存储位置进行保存的接口，这就是 CheckpointStorage。
+
+​		具体可以通过调用检查点配置的 .setCheckpointStorage() 来配置 ，需要传入一个CheckpointStorage 的实现类。Flink 主要提供了两种 CheckpointStorage：
+
+- 作业管理器的堆内存（JobManagerCheckpointStorage）
+- 文件系统（FileSystemCheckpointStorage）。
+
+```java
+// 配置存储检查点到 JobManager 堆内存
+env.getCheckpointConfig().setCheckpointStorage(new JobManagerCheckpointStorage());
+
+// 配置存储检查点到文件系统
+env.getCheckpointConfig().setCheckpointStorage(new FileSystemCheckpointStorage("hdfs://namenode:40010/flink/checkpoints"));
+```
+
+
+
+ #### 其他高级配置
+
+```java
+StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+// 启用检查点，间隔时间 1 秒
+env.enableCheckpointing(1000);
+CheckpointConfig checkpointConfig = env.getCheckpointConfig();
+// 设置精确一次模式
+checkpointConfig.setCheckpointingMode(CheckpointingMode.EXACTLY_ONCE);
+// 最小间隔时间 500 毫秒
+checkpointConfig.setMinPauseBetweenCheckpoints(500);
+// 超时时间 1 分钟
+checkpointConfig.setCheckpointTimeout(60000);
+// 同时只能有一个检查点
+checkpointConfig.setMaxConcurrentCheckpoints(1);
+// 开启检查点的外部持久化保存，作业取消后依然保留
+checkpointConfig.enableExternalizedCheckpoints(ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION);
+// 启用不对齐的检查点保存方式
+checkpointConfig.enableUnalignedCheckpoints();
+// 设置检查点存储，可以直接传入一个 String，指定文件系统的路径
+checkpointConfig.setCheckpointStorage("hdfs://my/checkpoint/dir")
+```
+
+（1）检查点模式（CheckpointingMode）
+设置检查点一致性的保证级别，有“精确一次”（exactly-once）和“至少一次”（at-least-once）两个选项。默认级别为 exactly-once，而对于大多数低延迟的流处理程序，at-least-once 就够用了，而且处理效率会更高。
+
+（2）超时时间（checkpointTimeout）
+用于指定检查点保存的超时时间，超时没完成就会被丢弃掉。传入一个长整型毫秒数作为参数，表示超时时间
+
+（3）最小间隔时间（minPauseBetweenCheckpoints）
+用于指定在上一个检查点完成之后，检查点协调器（checkpoint coordinator）最快等多久可以出发保存下一个检查点的指令。这就意味着即使已经达到了周期触发的时间点，只要距离上一个检查点完成的间隔不够，就依然不能开启下一次检查点的保存。这就为正常处理数据留下了充足的间隙。当指定这个参数时，maxConcurrentCheckpoints 的值强制为 1。
+
+（4）最大并发检查点数量（maxConcurrentCheckpoints）
+用于指定运行中的检查点最多可以有多少个。由于每个任务的处理进度不同，完全可能出现后面的任务还没完成前一个检查点的保存、前面任务已经开始保存下一个检查点了。这个参数就是限制同时进行的最大数量。
+
+（5）开启外部持久化存储（enableExternalizedCheckpoints）
+用于开启检查点的外部持久化，而且默认在作业失败的时候不会自动清理，如果想释放空间需要自己手工清理。里面传入的参数 ExternalizedCheckpointCleanup 指定了当作业取消的时候外部的检查点该如何清理。
+
+- DELETE_ON_CANCELLATION：在作业取消的时候会自动删除外部检查点，但是如
+    果是作业失败退出，则会保留检查点。
+-  RETAIN_ON_CANCELLATION：作业取消的时候也会保留外部检查点。
+
+（6）检查点异常时是否让整个任务失败（failOnCheckpointingErrors）用于指定在检查点发生异常的时候，是否应该让任务直接失败退出。默认为 true，如果设置为 false，则任务会丢弃掉检查点然后继续运行。
+
+（7）不对齐检查点（enableUnalignedCheckpoints）不再执行检查点的分界线对齐操作，启用之后可以大大减少产生背压时的检查点保存时间。这个设置要求检查点模式（CheckpointingMode）必须为 exctly-once，并且并发的检查点个数为 1。
+
+
+
+### 保存点
+
+​		除了检查点（checkpoint）外，Flink 还提供了另一个非常独特的镜像保存功能——保存点（Savepoint）。从名称就可以看出，这也是一个存盘的备份，它的原理和算法与检查点完全相同，只是多了一些额外的元数据。事实上，保存点就是通过检查点的机制来创建流式作业状态的一致性镜像（consistent image）的。保存点中的状态快照，是以算子 ID 和状态名称组织起来的，相当于一个键值对。从保存点启动应用程序时，Flink 会将保存点的状态数据重新分配给相应的算子任务。
+
+> 保存点用途
+
+​		保存点与检查点最大的区别，就是触发的时机。检查点是由 Flink 自动管理的，定期创建，发生故障之后自动读取进行恢复，这是一个“自动存盘”的功能；而保存点不会自动创建，必须由用户明确地手动触发保存操作，所以就是“手动存盘”。因此两者尽管原理一致，但用途就有所差别了：检查点主要用来做故障恢复，是容错机制的核心；保存点则更加灵活，可以用来做有计划的手动备份和恢复。保存点可以当作一个强大的运维工具来使用。我们可以在需要的时候创建一个保存点，然后停止应用，做一些处理调整之后再从保存点重启。它适用的具体场景有：
+
+- 版本管理和归档存储
+
+对重要的节点进行手动备份，设置为某一版本，归档（archive）存储应用程序的状态。
+
+- 更新 Flink 版本
+
+目前 Flink 的底层架构已经非常稳定，所以当 Flink 版本升级时，程序本身一般是兼容的。这时不需要重新执行所有的计算，只要创建一个保存点，停掉应用、升级 Flink 后，从保存点重启就可以继续处理了。
+
+- 更新应用程序
+
+我们不仅可以在应用程序不变的时候，更新 Flink 版本；还可以直接更新应用程序。前提是程序必须是兼容的，也就是说更改之后的程序，状态的拓扑结构和数据类型都是不变的，这样才能正常从之前的保存点去加载。这个功能非常有用。我们可以及时修复应用程序中的逻辑 bug，更新之后接着继续处理；也可以用于有不同业务逻辑的场景，比如 A/B 测试等等。
+
+- 调整并行度
+
+如果应用运行的过程中，发现需要的资源不足或已经有了大量剩余，也可以通过从保存点重启的方式，将应用程序的并行度增大或减小。
+
+- 暂停应用程序
+
+有时候我们不需要调整集群或者更新程序，只是单纯地希望把应用暂停、释放一些资源来处理更重要的应用程序。使用保存点就可以灵活实现应用的暂停和重启，可以对有限的集群资源做最好的优化配置。需要注意的是，保存点能够在程序更改的时候依然兼容，前提是状态的拓扑结构和数据类型不变。我们知道保存点中状态都是以算子 ID-状态名称这样的 key-value 组织起来的，算子ID 可以在代码中直接调用 SingleOutputStreamOperator 的.uid()方法来进行指定：
+
+```Java
+DataStream<String> stream = env
+ .addSource(new StatefulSource())
+ .uid("source-id")
+ .map(new StatefulMapper())
+ .uid("mapper-id")
+ .print();
+```
+
+对于没有设置 ID 的算子，Flink 默认会自动进行设置，所以在重新启动应用后可能会导致ID 不同而无法兼容以前的状态。所以为了方便后续的维护，强烈建议在程序中为每一个算子手动指定 ID
+
+
+
+> 使用保存点
+
+保存点的使用非常简单，我们可以使用命令行工具来创建保存点，也可以从保存点恢复作业。
+
+（1）创建保存点
+要在命令行中为运行的作业创建一个保存点镜像，只需要执行：
+`bin/flink savepoint :jobId [:targetDirectory]`
+
+这里 jobId 需要填充要做镜像保存的作业 ID，目标路径 targetDirectory 可选，表示保存点存储的路径。
+对于保存点的默认路径，可以通过配置文件 flink-conf.yaml 中的 state.savepoints.dir 项来设定：
+`state.savepoints.dir: hdfs:///flink/savepoints`
+
+当然对于单独的作业，我们也可以在程序代码中通过执行环境来设置：
+`env.setDefaultSavepointDir("hdfs:///flink/savepoints");`
+
+由于创建保存点一般都是希望更改环境之后重启，所以创建之后往往紧接着就是停掉作业的操作。除了对运行的作业创建保存点，我们也可以在停掉一个作业时直接创建保存点：
+`bin/flink stop --savepointPath [:targetDirectory] :jobId`
+
+
+
+（2）从保存点重启应用
+我们已经知道，提交启动一个 Flink 作业，使用的命令是 flink run；现在要从保存点重启一个应用，其实本质是一样的：
+`bin/flink run -s :savepointPath [:runArgs]`
+
+这里只要增加一个-s 参数，指定保存点的路径就可以了，其他启动时的参数还是完全一样的。细心的读者可能还记得我们在第三章使用 web UI 进行作业提交时，可以填入的参数除了入口类、并行度和运行参数，还有一个“Savepoint Path”，这就是从保存点启动应用的配置。
+
+
+
+## 状态一致性
+
+状态一致性有三种级别
+
+- 最多一次（AT-MOST-ONCE）
+
+- 至少一次（AT-LEAST-ONCE）
+
+- 精确一次（EXACTLY-ONCE）
+
+
+
+### 最多一次（AT-MOST-ONCE）
+
+当任务发生故障时，最简单的做法就是直接重启，别的什么都不干；既不恢复丢失的状态，也不重放丢失的数据。每个数据在正常情况下会被处理一次，遇到故障时就会丢掉，所以就是“最多处理一次”。我们发现，如果数据可以直接被丢掉，那其实就是没有任何操作来保证结果的准确性；所以这种类型的保证也叫“没有保证”。尽管看起来比较糟糕，不过如果我们的主要诉求是“快”，而对近似正确的结果也能接受，那这也不失为一种很好的解决方案。
+
+
+
+### 至少一次（AT-LEAST-ONCE）
+
+在实际应用中，我们一般会希望至少不要丢掉数据。这种一致性级别就叫作“至少一次”（at-least-once），就是说是所有数据都不会丢，肯定被处理了；不过不能保证只处理一次，有些数据会被重复处理。
+
+
+
+### 精确一次（EXACTLY-ONCE）
+
+最严格的一致性保证，就是所谓的“精确一次”（exactly-once，有时也译作“恰好一次”）。这也是最难实现的状态一致性语义。exactly-once 意味着所有数据不仅不会丢失，而且只被处理一次，不会重复处理。也就是说对于每一个数据，最终体现在状态和输出结果上，只能有一次统计
+
+Flink 中使用的是一种轻量级快照机制——检查点（checkpoint）来保证 exactly-once 语义。
+
+
+
+
+
+## 端到端的状态一致性
+
+​		完整的流处理应用，应该包括了数据源、流处理器和外部存储系统三个部分。这个完整应用的一致性，就叫作“端到端（end-to-end）的状态一致性”， 上面说了的是flink内部状态的一致性（由checkpoint保证）
+
+​		实际应用中，最难做到、也最希望做到的一致性语义，无疑就是端到端（end-to-end）的“精确一次”（exactly-once）。我们知道，对于 Flink 内部来说，检查点机制可以保证故障恢复后数据不丢（在能够重放的前提下），并且只处理一次，所以已经可以做到 exactly-once 的一致性语义了。
+
+​		端到端一致性的关键点，就在于输入的数据源端和输出的外部存储端。
+
+
+
+>  输入端保证
+
+输入端主要指的就是 Flink 读取的外部数据源。对于一些数据源来说，并不提供数据的缓冲或是持久化保存，数据被消费之后就彻底不存在了。例如 socket 文本流就是这样， socket服务器是不负责存储数据的，发送一条数据之后，我们只能消费一次，是“一锤子买卖”。对于这样的数据源，故障后我们即使通过检查点恢复之前的状态，可保存检查点之后到发生故障期间的数据已经不能重发了，这就会导致数据丢失。所以就只能保证 at-most-once 的一致性语义，相当于没有保证。
+
+
+
+
+
+> 输出端保证
+
+数据有可能重复写入外部系统。
+
+​		想要实现 exactly-once 却有更大的困难：数据有可能重复写入外部系统。因为检查点保存之后，继续到来的数据也会一一处理，任务的状态也会更新，最终通过Sink 任务将计算结果输出到外部系统；只是状态改变还没有存到下一个检查点中。这时如果出现故障，这些数据都会重新来一遍，就计算了两次。我们知道对 Flink 内部状态来说，重复计算的动作是没有影响的，因为状态已经回滚，最终改变只会发生一次；但对于外部系统来说，已经写入的结果就是泼出去的水，已经无法收回了，再次执行写入就会把同一个数据写入两次。
+
+​		所以这时，我们只保证了端到端的 at-least-once 语义。
+
+为了实现端到端 exactly-once，我们还需要对外部存储系统、以及 Sink 连接器有额外的要求。能够保证 exactly-once 一致性的写入方式有两种：
+
+- 幂等写入
+
+- 事务写入
+
+我们需要外部存储系统对这两种写入方式的支持，而 Flink 也为提供了一些 Sink 连接器接口。接下来我们进行展开讲解。
+
+1. 幂等（idempotent）写入
+
+    1. 略
+
+2. 事务（transactional）写入
+
+    1. 我们都知道，事务（transaction）是应用程序中一系列严密的操作，所有操作必须成功完成，否则在每个操作中所做的所有更改都会被撤消。事务有四个基本特性：原子性(Atomicity)、一致性(Correspondence)、隔离性(Isolation)和持久性(Durability)，这就是著名的 ACID。
+
+    2. 在 Flink 流处理的结果写入外部系统时，如果能够构建一个事务，让写入操作可以随着检查点来提交和回滚，那么自然就可以解决重复写入的问题了。所以事务写入的基本思想就是：用一个事务来进行数据向外部系统的写入，**这个事务是与检查点绑定在一起的。**当 Sink 任务遇到 barrier 时，开始保存状态的同时就开启一个事务，接下来所有数据的写入都在这个事务中；待到当前检查点保存完毕时，将事务提交，所有写入的数据就真正可用了。如果中间过程出现故障，状态会回退到上一个检查点，而当前事务没有正常关闭（因为当前检查点没有保存完），所以也会回滚，写入到外部的数据就被撤销了
+
+    3. 具体来说，又有两种实现方式：预写日志（WAL）和两阶段提交（2PC）
+
+        1. （1）预写日志（write-ahead-log，WAL）
+        2. （2）两阶段提交（two-phase-commit，2PC）
+
+        
+
+
+
+## Flink 和 Kafka
+
+
+
+ 我们就来具体讨论一下 Flink 和 Kafka 连接时，怎样保证端到端的 exactly-once 状态一致性。
+
+
+
+### 整体介绍
+
+​	既然是端到端的 exactly-once，我们依然可以从三个组件的角度来进行分析：
+
+（1）Flink 内部
+
+​		Flink 内部可以通过检查点机制保证状态和处理结果的 exactly-once 语义。
+
+（2）输入端
+
+​		输入数据源端的 Kafka 可以对数据进行持久化保存，并可以重置偏移量（offset）。所以我们可以在 Source 任务（FlinkKafkaConsumer）中将当前读取的偏移量保存为算子状态，写入到检查点中；当发生故障时，从检查点中读取恢复状态，并由连接器 FlinkKafkaConsumer 向 Kafka重新提交偏移量，就可以重新消费数据、保证结果的一致性了。
+
+（3）输出端
+
+​		输出端保证 exactly-once 的最佳实现，当然就是**两阶段提交（2PC）**。作为与 Flink 天生一对的 Kafka，自然需要用最强有力的一致性保证来证明自己。Flink 官方实现的 Kafka 连接器中，提供了写入到 Kafka 的 FlinkKafkaProducer，它就实现了 TwoPhaseCommitSinkFunction 接口：
+
+```java
+public class FlinkKafkaProducer<IN> extends TwoPhaseCommitSinkFunction<IN, 
+FlinkKafkaProducer.KafkaTransactionState, FlinkKafkaProducer.KafkaTransactionContext> {
+	...
+}
+```
+
+​		也就是说，我们写入 Kafka 的过程实际上是一个两段式的提交：处理完毕得到结果，写入Kafka 时是基于事务的“预提交”；等到检查点保存完毕，才会提交事务进行“正式提交”。如果中间出现故障，事务进行回滚，预提交就会被放弃；恢复状态之后，也只能恢复所有已经确认提交的操作。
+
+
+
+实现端到端exactly-once的具体过程可以分解如下：
+
+（1）启动检查点保存
+
+检查点保存的启动，标志着我们进入了两阶段提交协议的“预提交”阶段。当然，现在还没有具体提交的数据。
+
+![image-20230330181835822](尚硅谷Flink1.13.assets/image-20230330181835822.png)
+
+（2）算子任务对状态做快照
+
+分界线（barrier）会在算子间传递下去。每个算子收到 barrier 时，会将当前的状态做个快照，保存到状态后端。
+
+![image-20230330181938368](尚硅谷Flink1.13.assets/image-20230330181938368.png)
+
+​		如上图： Source 任务将 barrier 插入数据流后，也会将当前读取数据的偏移量作为状态写入检查点，存入状态后端；然后把 barrier 向下游传递，自己就可以继续读取数据了。接下来 barrier 传递到了内部的 Window 算子，它同样会对自己的状态进行快照保存，写入远程的持久化存储。
+
+（3）Sink 任务开启事务，进行预提交
+
+![image-20230330182110958](尚硅谷Flink1.13.assets/image-20230330182110958.png)
+
+​		如上图： 分界线（barrier）终于传到了 Sink 任务，这时 Sink 任务会开启一个事务。接下来到来的所有数据，Sink 任务都会通过这个事务来写入 Kafka。这里 barrier 是检查点的分界线，也是事务的分界线。由于之前的检查点可能尚未完成，因此上一个事务也可能尚未提交；此时 barrier 的到来开启了新的事务，上一个事务尽管可能没有被提交，但也不再接收新的数据了。对于 Kafka 而言，提交的数据会被标记为“未确认”（uncommitted）。这个过程就是所谓的“预提交”（pre-commit）。
+
+
+
+（4）检查点保存完成，提交事务
+
+当所有算子的快照都完成，也就是这次的检查点保存最终完成时，JobManager 会向所有任务发确认通知，告诉大家当前检查点已成功保存
+
+![image-20230330182232937](尚硅谷Flink1.13.assets/image-20230330182232937.png)
+
+当 Sink 任务收到确认通知后，就会正式提交之前的事务，把之前“未确认”的数据标为“已确认”，接下来就可以正常消费了。在任务运行中的任何阶段失败，都会从上一次的状态恢复，所有没有正式提交的数据也会回滚。这样，Flink 和 Kafka 连接构成的流处理系统，就实现了端到端的 exactly-once 状态一致性
+
+
+
+### 需要的配置
+
+在具体应用中，实现真正的端到端 exactly-once，还需要有一些额外的配置：
+
+（1）必须启用检查点；
+
+（2）在 FlinkKafkaProducer 的构造函数中传入参数 Semantic.EXACTLY_ONCE；
+
+（3）配置 Kafka 读取数据的消费者的隔离级别
+		  这里所说的 Kafka，是写入的外部系统。预提交阶段数据已经写入，只是被标记为“未提
+交”（uncommitted），而 Kafka 中默认的隔离级别 isolation.level 是 read_uncommitted，也就是可以读取未提交的数据。这样一来，外部应用就可以直接消费未提交的数据，对于事务性的保证就失效了。所以应该将隔离级别配置为 read_committed，表示消费者遇到未提交的消息时，会停止从分区中消费数据，直到消息被标记为已提交才会再次恢复消费。当然，这样做的话，外部应用消费数据就会有显著的延迟。
+
+（4）事务超时配置
+		  Flink 的 Kafka连接器中配置的事务超时时间 transaction.timeout.ms 默认是 1小时，而Kafka
+集群配置的事务最大超时时间 transaction.max.timeout.ms 默认是 15 分钟。所以在检查点保存时间很长时，有可能出现 Kafka 已经认为事务超时了，丢弃了预提交的数据；而 Sink 任务认为还可以继续等待。如果接下来检查点保存成功，发生故障后回滚到这个检查点的状态，这部分数据就被真正丢掉了。所以这两个超时时间，前者应该小于等于后者。
 
 
 
