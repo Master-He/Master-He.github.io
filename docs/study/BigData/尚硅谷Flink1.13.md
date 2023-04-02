@@ -5156,6 +5156,459 @@ FlinkKafkaProducer.KafkaTransactionState, FlinkKafkaProducer.KafkaTransactionCon
 
 
 
-# 第 12 章 Flink CEP
+## 基本API
 
+### 表和流的转换
+
+> 将表（Table）转换成流（DataStream）
+
+- 调用 toDataStream()方法
+- 调用 toChangelogStream()方法  （对于有更新操作的表，就用这个方法）
+
+> 将流（DataStream）转换成表（Table） 
+
+- 调用 fromDataStream()方法
+
+	- 我们还可以在 fromDataStream()方法中增加参数，用来指定提取哪些属性作为表中的字段名，并可以任意指定位置
+
+	- ```java
+		// 提取 Event 中的 timestamp 和 url 作为表中的列
+		Table eventTable2 = tableEnv.fromDataStream(eventStream, $("timestamp"), $("url"));
+		```
+
+	- 需要注意的是，timestamp 本身是 SQL 中的关键字，所以我们在定义表名、列名时要尽量避免。这时可以通过表达式的 as()方法对字段进行重命名
+
+	- ```java
+		// 将 timestamp 字段重命名为 ts
+		Table eventTable2 = tableEnv.fromDataStream(eventStream, $("timestamp").as("ts"), $("url"));
+		```
+
+- 调用 createTemporaryView()方法
+
+- 调用 fromChangelogStream ()方法
+
+	- 可以将一个更新日志流转换成表。
+	- 这个方法要求流中的数据类型只能是 Row，而且每一个数据都需要指定当前行的更新类型（RowKind）所以一般是由连接器帮我们实现的，直接应用比较少见
+
+> 支持的数据类型
+
+- 原子类型
+
+	- 基础数据类型（Integer、Double、String）和通用数据类型（也就是不可再拆分的数据类型）统一称作“原子类型”。原
+
+- Tuple 类型
+
+	- 当原子类型不做重命名时，默认的字段名就是“f0”，容易想到，这其实就是将原子类型看作了一元组 Tuple1 的处理结果。
+
+	- Table 支持 Flink 中定义的元组类型 Tuple，对应在表中字段名默认就是元组中元素的属性名 f0、f1、f2...。所有字段都可以被重新排序，也可以提取其中的一部分字段。字段还可以通过调用表达式的 as()方法来进行重命名。
+
+	- ```java
+		StreamTableEnvironment tableEnv = ...;
+		DataStream<Tuple2<Long, Integer>> stream = ...;
+		// 将数据流转换成只包含 f1 字段的表
+		Table table = tableEnv.fromDataStream(stream, $("f1"));
+		// 将数据流转换成包含 f0 和 f1 字段的表，在表中 f0 和 f1 位置交换
+		Table table = tableEnv.fromDataStream(stream, $("f1"), $("f0"));
+		// 将 f1 字段命名为 myInt，f0 命名为 myLong
+		Table table = tableEnv.fromDataStream(stream, $("f1").as("myInt"), $("f0").as("myLong"));
+		```
+
+- POJO 类型
+
+	- 将 POJO 类型的 DataStream 转换成 Table，如果不指定字段名称，就会直接使用原始 POJO 类型中的字段名称。
+
+- Row 类型
+
+	- 在更新日志流中，元素的类型必须是 Row，而且需要调用 ofKind()方法来指定更新类型。
+
+	- ```java
+		DataStream<Row> dataStream =
+		env.fromElements(
+		  Row.ofKind(RowKind.INSERT, "Alice", 12),
+		  Row.ofKind(RowKind.INSERT, "Bob", 5),
+		  Row.ofKind(RowKind.UPDATE_BEFORE, "Alice", 12),
+		  Row.ofKind(RowKind.UPDATE_AFTER, "Alice", 100)
+		);
+		// 将更新日志流转换为表
+		Table table = tableEnv.fromChangelogStream(dataStream);
+		```
+
+
+
+
+
+## 时间属性和窗口
+
+### 事件时间
+
+```sql
+CREATE TABLE EventTable(
+user STRING,
+url STRING,
+ts TIMESTAMP(3), -- 这里的3表示精度，也就是精确到毫秒
+WATERMARK FOR ts AS ts - INTERVAL '5' SECOND
+) WITH (
+...
+);
+```
+
+而如果原始的时间戳就是一个长整型的毫秒数，这时就需要另外定义一个字段来表示事件时间属性，类型定义为 TIMESTAMP_LTZ 会更方便, TIMESTAMP_LTZ 是指带有本地时区信息的时间戳（TIMESTAMP WITH LOCAL TIME ZONE）；一般情况下如果数据中的时间戳是“年-月-日-时-分-秒”的形式，那就是不带时区信息的，可以将事件时间属性定义为 TIMESTAMP 类型。
+
+```sql
+CREATE TABLE events (
+user STRING,
+url STRING,
+ts BIGINT,
+ts_ltz AS TO_TIMESTAMP_LTZ(ts, 3),
+WATERMARK FOR ts_ltz AS time_ltz - INTERVAL '5' SECOND
+) WITH (
+...
+);
+```
+
+
+
+
+
+事件时间属性也可以在将 DataStream 转换为表的时候来定义。我们调用 fromDataStream()方法创建表时，可以追加参数来定义表中的字段结构；这时可以给某个字段加上.rowtime() 后 缀，就表示将当前字段指定为事件时间属性。这个字段可以是数据中本不存在、额外追加上去的“逻辑字段”，就像之前 DDL 中定义的第二种情况；也可以是本身固有的字段，那么这个字段就会被事件时间属性所覆盖，类型也会被转换为 TIMESTAMP。不论那种方式，时间属性字段中保存的都是事件的时间戳（TIMESTAMP 类型）。
+
+
+
+```java
+// 方法一:
+// 流中数据类型为二元组 Tuple2，包含两个字段；需要自定义提取时间戳并生成水位线
+DataStream<Tuple2<String, String>> stream = 
+inputStream.assignTimestampsAndWatermarks(...);
+// 声明一个额外的逻辑字段作为事件时间属性
+Table table = tEnv.fromDataStream(stream, $("user"), $("url"), 
+$("ts").rowtime());
+```
+
+
+
+```java
+// 方法二:
+// 流中数据类型为三元组 Tuple3，最后一个字段就是事件时间戳
+DataStream<Tuple3<String, String, Long>> stream = 
+inputStream.assignTimestampsAndWatermarks(...);
+// 不再声明额外字段，直接用最后一个字段作为事件时间属性
+Table table = tEnv.fromDataStream(stream, $("user"), $("url"), 
+$("ts").rowtime());
+```
+
+
+
+### 处理时间
+
+处 理 时 间 属 性 同 样 可 以 在 将 DataStream 转 换 为 表 的 时 候 来 定 义 。 我 们 调 用fromDataStream()方法创建表时，可以用.proctime()后缀来指定处理时间属性字段。由于处理间是系统时间，原始数据中并没有这个字段，所以处理时间属性一定不能定义在一个已有字段上，只能定义在表结构所有字段的最后，作为额外的逻辑字段出现。
+
+```java
+DataStream<Tuple2<String, String>> stream = ...;
+// 声明一个额外的字段作为处理时间属性字段
+Table table = tEnv.fromDataStream(stream, $("user"), $("url"), 
+$("ts").proctime());
+```
+
+
+
+
+
+### 窗口
+
+有了时间属性，接下来就可以定义窗口进行计算了。我们知道，窗口可以将无界流切割成大小有限的“桶”（bucket）来做计算，通过截取有限数据集来处理无限的流数据。在 DataStream API 中提供了对不同类型的窗口进行定义和处理的接口，而在 Table API 和 SQL 中，类似的功能也都可以实现。
+
+
+
+#### 分组窗口（Group Window，老版本）
+
+在 Flink 1.12 之前的版本中，Table API 和 SQL 提供了一组“分组窗口”（Group Window）函数，常用的时间窗口如滚动窗口、滑动窗口、会话窗口都有对应的实现；具体在 SQL 中就是调用 TUMBLE()、HOP()、SESSION()，传入时间属性字段、窗口大小等参数就可以了。以滚动窗口为例： TUMBLE(ts, INTERVAL '1' HOUR)
+
+这里的 ts 是定义好的时间属性字段，窗口大小用“时间间隔”INTERVAL 来定义。
+
+
+
+#### 窗口表值函数（Windowing TVFs，新版本）
+
+从 1.13 版本开始，Flink 开始使用窗口表值函数（Windowing table-valued functions，Windowing TVFs）来定义窗口。窗口表值函数是 Flink 定义的多态表函数（PTF），可以将表进行扩展后返回。表函数（table function）可以看作是返回一个表的函数，关于这部分内容
+
+目前 Flink 提供了以下几个窗口 TVF： 
+
+⚫ 滚动窗口（Tumbling Windows）；
+
+⚫ 滑动窗口（Hop Windows，跳跃窗口）；
+
+⚫ 累积窗口（Cumulate Windows）；
+
+⚫ 会话窗口（Session Windows，目前尚未完全支持）。
+
+
+
+窗口表值函数可以完全替代传统的分组窗口函数。窗口 TVF 更符合 SQL 标准，性能得到了优化，拥有更强大的功能；可以支持基于窗口的复杂计算，例如窗口 Top-N、窗口联结（window join）等等。当然，目前窗口 TVF 的功能还不完善，会话窗口和很多高级功能还不支持，不过正在快速地更新完善。可以预见在未来的版本中，窗口 TVF 将越来越强大，将会是窗口处理的唯一入口。
+
+
+
+在窗口 TVF 的返回值中，除去原始表中的所有列，还增加了用来描述窗口的额外 3 个列：“窗口起始点”（window_start）、“窗口结束点”（window_end）、“窗口时间”（window_time）。起始点和结束点比较好理解，这里的“窗口时间”指的是窗口中的时间属性，它的值等于window_end - 1ms，所以相当于是窗口中能够包含数据的最大时间戳。
+
+
+
+## 滚动窗口（TUMBLE）
+
+在 SQL 中的声明方式，与以前的分组窗口是类似的，直接调用 TUMBLE()、HOP()、CUMULATE()就可以实现滚动、滑动和累积窗口，不过传入的参数会有所不同。
+
+TUMBLE(TABLE EventTable, DESCRIPTOR(ts), INTERVAL '1' HOUR)
+
+这里基于时间字段 ts，对表 EventTable 中的数据开了大小为 1 小时的滚动窗口。窗口会将表中的每一行数据，按照它们 ts 的值分配到一个指定的窗口中。
+
+
+
+## 滑动窗口（HOP）
+
+滑动窗口的使用与滚动窗口类似，可以通过设置滑动步长来控制统计输出的频率。在 SQL中通过调用 HOP()来声明滑动窗口；除了也要传入表名、时间属性外，还需要传入窗口大小（size）和滑动步长（slide）两个参数。
+
+```
+HOP(TABLE EventTable, DESCRIPTOR(ts), INTERVAL '5' MINUTES, INTERVAL '1' HOURS));
+```
+
+这里我们基于时间属性 ts，在表 EventTable 上创建了大小为 1 小时的滑动窗口，每 5 分钟滑动一次。需要注意的是，紧跟在时间属性字段后面的第三个参数是步长（slide），第四个参数才是窗口大小（size）。
+
+
+
+## 累积窗口（CUMULATE）
+
+滚动窗口和滑动窗口，可以用来计算大多数周期性的统计指标。不过在实际应用中还会遇到这样一类需求：我们的统计周期可能较长，因此希望中间每隔一段时间就输出一次当前的统计值；与滑动窗口不同的是，在一个统计周期内，我们会多次输出统计值，它们应该是不断叠加累积的。
+
+例如，我们按天来统计网站的 PV（Page View，页面浏览量），如果用 1 天的滚动窗口，那需要到每天 24 点才会计算一次，输出频率太低；如果用滑动窗口，计算频率可以更高，但统计的就变成了“过去 24 小时的 PV”。所以我们真正希望的是，还是按照自然日统计每天的PV，不过需要每隔 1 小时就输出一次当天到目前为止的 PV 值。这种特殊的窗口就叫作“累积窗口”（Cumulate Window）。
+
+
+
+## 聚合（Aggregation）查询
+
+### 分组聚合
+
+SQL 中一般所说的聚合我们都很熟悉，主要是通过内置的一些聚合函数来实现的，比如SUM()、MAX()、MIN()、AVG()以及 COUNT()。它们的特点是对多条输入数据进行计算，得到一个唯一的值，属于“多对一”的转换。比如我们可以通过下面的代码计算输入数据的个数：Table eventCountTable = tableEnv.sqlQuery("select COUNT(*) from EventTable");
+
+
+
+在持续查询的过程中，由于用于分组的 key 可能会不断增加，因此计算结果所需要维护的状态也会持续增长。为了防止状态无限增长耗尽资源，Flink Table API 和 SQL 可以在表环境中配置状态的生存时间（TTL）
+
+```
+TableEnvironment tableEnv = ...
+// 获取表环境的配置
+TableConfig tableConfig = tableEnv.getConfig();
+// 配置状态保持时间
+tableConfig.setIdleStateRetention(Duration.ofMinutes(60));
+```
+
+或者也可以直接设置配置项 table.exec.state.ttl：
+
+```java
+TableEnvironment tableEnv = ...
+Configuration configuration = tableEnv.getConfig().getConfiguration();
+configuration.setString("table.exec.state.ttl", "60 min");
+
+```
+
+这两种方式是等效的。需要注意，配置 TTL 有可能会导致统计结果不准确，这其实是以牺牲正确性为代价换取了资源的释放。此外，在 Flink SQL 的分组聚合中同样可以使用 DISTINCT 进行去重的聚合处理；可以使用 HAVING 对聚合结果进行条件筛选；还可以使用 GROUPING SETS（分组集）设置多个分组情况分别统计。这些语法跟标准 SQL 中的用法一致，这里就不再详细展开了。可以看到，分组聚合既是 SQL 原生的聚合查询，也是流处理中的聚合操作，这是实际应用中最常见的聚合方式。当然，使用的聚合函数一般都是系统内置的，如果希望实现特殊需求也可以进行自定义。
+
+
+
+### 窗口聚合
+
+与分组聚合类似，窗口聚合也需要调用 SUM()、MAX()、MIN()、COUNT()一类的聚合函数，通过 GROUP BY 子句来指定分组的字段。只不过窗口聚合时，需要将窗口信息作为分组 key 的一部分定义出来。
+
+在 Flink 1.12 版本之前，是直接把窗口自身作为分组 key 放在GROUP BY 之后的，所以也叫“分组窗口聚合
+而 1.13 版本开始使用了“窗口表值函数”（Windowing TVF），窗口本身返回的是就是一个表，所以窗口会出现在 FROM 后面，GROUP BY 后面的则是窗口新增的字段 window_start 和 window_end。
+
+```sql
+Table result = tableEnv.sqlQuery(
+"SELECT " +
+"user, " +
+"window_end AS endT, " +
+"COUNT(url) AS cnt " +
+"FROM TABLE( " +
+"TUMBLE( TABLE EventTable, " +
+"DESCRIPTOR(ts), " +
+"INTERVAL '1' HOUR)) " +
+"GROUP BY user, window_start, window_end "
+);
+```
+
+
+
+### 开窗（Over）聚合
+
+在标准 SQL 中还有另外一类比较特殊的聚合方式，可以针对每一行计算一个聚合值。
+比如说，我们可以以每一行数据为基准，计算它之前 1 小时内所有数据的平均值；
+也可以计算它之前 10 个数的平均值。就好像是在每一行上打开了一扇窗户、收集数据进行统计一样，这就是所谓的“开窗函数”。
+开窗函数的聚合与之前两种聚合有本质的不同：分组聚合、窗口 TVF聚合都是“多对一”的关系，将数据分组之后每组只会得到一个聚合结果；而开窗函数是对每行都要做一次开窗聚合，因此聚合之后表中的行数不会有任何减少，是一个“多对多”的关系。
+
+
+
+与标准 SQL 中一致，Flink SQL 中的开窗函数也是通过 OVER 子句来实现的，所以有时开窗聚合也叫作“OVER 聚合”（Over Aggregation）。基本语法如下：
+
+```java
+SELECT
+<聚合函数> OVER (
+[PARTITION BY <字段 1>[, <字段 2>, ...]]
+ORDER BY <时间属性字段> <开窗范围>),
+...
+FROM ...
+```
+
+这里 OVER 关键字前面是一个聚合函数，它会应用在后面 OVER 定义的窗口上。在 OVER
+
+子句中主要有以下几个部分：
+
+⚫ PARTITION BY（可选）
+
+用来指定分区的键（key），类似于 GROUP BY 的分组，这部分是可选的；
+
+⚫ ORDER BY
+
+OVER 窗口是基于当前行扩展出的一段数据范围，选择的标准可以基于时间也可以基于数量。不论那种定义，数据都应该是以某种顺序排列好的；而表中的数据本身是无序的。所以在OVER 子句中必须用 ORDER BY 明确地指出数据基于那个字段排序。在 Flink 的流处理中，目前只支持按照时间属性的升序排列，所以这里 ORDER BY 后面的字段必须是定义好的时间属性。
+
+⚫ 开窗范围
+
+对于开窗函数而言，还有一个必须要指定的就是开窗的范围，也就是到底要扩展多少行来做聚合。这个范围是由 BETWEEN <下界> AND <上界> 来定义的，也就是“从下界到上界”的范围。目前支持的上界只能是 CURRENT ROW，也就是定义一个“从之前某一行到当前行”的范围，所以一般的形式为：BETWEEN ... PRECEDING AND CURRENT ROW前面我们提到，开窗选择的范围可以基于时间，也可以基于数据的数量。
+
+所以开窗范围还应该在两种模式之间做出选择：范围间隔（RANGE intervals）和行间隔（ROW intervals）。
+
+⚫ 范围间隔
+
+范围间隔以 RANGE 为前缀，就是基于 ORDER BY 指定的时间字段去选取一个范围，一般就是当前行时间戳之前的一段时间。例如开窗范围选择当前行之前 1 小时的数据：RANGE BETWEEN INTERVAL '1' HOUR PRECEDING AND CURRENT ROW
+
+下面是一个具体示例：
+
+```sql
+SELECT user, ts,
+  COUNT(url) OVER (
+  PARTITION BY user
+  ORDER BY ts
+  RANGE BETWEEN INTERVAL '1' HOUR PRECEDING AND CURRENT ROW
+  ) AS cnt
+FROM EventTable
+```
+
+这里我们以 ts 作为时间属性字段，对 EventTable 中的每行数据都选取它之前 1 小时的所有数据进行聚合，统计每个用户访问 url 的总次数，并重命名为 cnt。最终将表中每行的 user，ts 以及扩展出 cnt 提取出来。
+
+可以看到，整个开窗聚合的结果，是对每一行数据都有一个对应的聚合值，因此就像将表中扩展出了一个新的列一样。由于聚合范围上界只能到当前行，新到的数据一般不会影响之前数据的聚合结果，所以结果表只需要不断插入（INSERT）就可以了。执行上面 SQL 得到的结果表，**可以用 toDataStream()直接转换成流打印输出。**
+
+
+
+```SQL
+SELECT user, ts,
+	COUNT(url) OVER w AS cnt,
+	MAX(CHAR_LENGTH(url)) OVER w AS max_url
+	FROM EventTable
+	WINDOW w AS (
+	PARTITION BY user
+	ORDER BY ts
+	ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)
+```
+
+
+
+上面的 SQL 中定义了一个选取之前 2 行数据的 OVER 窗口，并重命名为 w；接下来就可以基于它调用多个聚合函数，扩展出更多的列提取出来。比如这里除统计 url 的个数外，还统计了 url 的最大长度：首先用 CHAR_LENGTH()函数计算出 url 的长度，再调用聚合函数 MAX()进行聚合统计。这样，我们就可以方便重复引用定义好的 OVER 窗口了，大大增强了代码的可读性。
+
+
+
+## 应用实例  Top N
+
+
+
+## 函数
+
+ 比如：COUNT()、CHAR_LENGTH()、UPPER()等等
+
+
+
+### 系统函数
+
+Flink SQL 中的系统函数又主要可以分为两大类：标量函数（Scalar Functions）和聚合函数（Aggregate Functions）。
+
+- 标量函数
+
+	- ```
+		⚫ 比较函数（Comparison Functions）
+		比较函数其实就是一个比较表达式，用来判断两个值之间的关系，返回一个布尔类型的值。
+		这个比较表达式可以是用 <、>、= 等符号连接两个值，也可以是用关键字定义的某种判断。
+		例如：
+		（1）value1 = value2 判断两个值相等；
+		（2）value1 <> value2 判断两个值不相等
+		（3）value IS NOT NULL 判断 value 不为空
+		⚫ 逻辑函数（Logical Functions）
+		逻辑函数就是一个逻辑表达式，也就是用与（AND）、或（OR）、非（NOT）将布尔类型
+		的值连接起来，也可以用判断语句（IS、IS NOT）进行真值判断；返回的还是一个布尔类型
+		的值。例如：
+		（1）boolean1 OR boolean2 布尔值 boolean1 与布尔值 boolean2 取逻辑或
+		（2）boolean IS FALSE 判断布尔值 boolean 是否为 false
+		（3）NOT boolean 布尔值 boolean 取逻辑非
+		⚫ 算术函数（Arithmetic Functions）
+		进行算术计算的函数，包括用算术符号连接的运算，和复杂的数学运算。例如：
+		（1）numeric1 + numeric2 两数相加
+		（2）POWER(numeric1, numeric2) 幂运算，取数 numeric1 的 numeric2 次方
+		（3）RAND() 返回（0.0, 1.0）区间内的一个 double 类型的伪随机数
+		⚫ 字符串函数（String Functions）
+		进行字符串处理的函数。例如：
+		（1）string1 || string2 两个字符串的连接
+		（2）UPPER(string) 将字符串 string 转为全部大写
+		（3）CHAR_LENGTH(string) 计算字符串 string 的长度
+		⚫ 时间函数（Temporal Functions）
+		进行与时间相关操作的函数。例如：
+		（1）DATE string 按格式"yyyy-MM-dd"解析字符串 string，返回类型为 SQL Date
+		（2）TIMESTAMP string 按格式"yyyy-MM-dd HH:mm:ss[.SSS]"解析，返回类型为 SQL 
+		timestamp
+		（3）CURRENT_TIME 返回本地时区的当前时间，类型为 SQL time（与 LOCALTIME
+		等价）
+		（4）INTERVAL string range 返回一个时间间隔。string 表示数值；range 可以是 DAY，
+		MINUTE，DAT TO HOUR 等单位，也可以是 YEAR TO MONTH 这样的复合单位。如“2 年
+		10 个月”可以写成：INTERVAL '2-10' YEAR TO MONTH
+		```
+
+	- 聚合函数（Aggregate Functions）
+
+		- ```
+			标准 SQL 中常见的聚合函数 Flink SQL 都是支持的，目前也在不断扩展，为流处理应用
+			提供更强大的功能。例如：
+			⚫ COUNT(*) 返回所有行的数量，统计个数
+			⚫ SUM([ ALL | DISTINCT ] expression) 对某个字段进行求和操作。默认情况
+			下省略了关键字 ALL，表示对所有行求和；如果指定 DISTINCT，则会对数据进行去
+			重，每个值只叠加一次。
+			⚫ RANK() 返回当前值在一组值中的排名
+			⚫ ROW_NUMBER() 对一组值排序后，返回当前值的行号。与 RANK()的
+			功能相似
+			其中，RANK()和 ROW_NUMBER()一般用在 OVER 窗口中，在实现 Top N 的过程中起到了非常重要的作用。
+			```
+
+
+
+
+
+### 自定义函数（UDF）
+
+Flink 的 Table API 和 SQL 提供了多种自定义函数的接口，以抽象类的形式定义。当前 UDF
+
+主要有以下几类：
+
+⚫ 标量函数（Scalar Functions）：将输入的标量值转换成一个新的标量值；
+
+⚫ 表函数（Table Functions）：将标量值转换成一个或多个新的行数据，也就是扩展成一个表；
+
+⚫ 聚合函数（Aggregate Functions）：将多行数据里的标量值转换成一个新的标量值；
+
+⚫ 表聚合函数（Table Aggregate Functions）：将多行数据里的标量值转换成一个或多个新的行数据。
+
+
+
+
+
+
+
+## SQL客户端
+
+
+
+
+
+# 第 12 章 Flink CEP
 
