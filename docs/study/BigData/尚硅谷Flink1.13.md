@@ -5645,11 +5645,8 @@ Flink 的 Table API 和 SQL 提供了多种自定义函数的接口，以抽象�
 
 
 总结起来，复杂事件处理（CEP）的流程可以分成三个步骤：
-
 （1）定义一个匹配规则
-
 （2）将匹配规则应用到事件流上，检测满足规则的复杂事件
-
 （3）对检测到的复杂事件进行处理，得到结果进行输出
 
 ![image-20230403184127924](尚硅谷Flink1.13.assets/image-20230403184127924.png)
@@ -5696,5 +5693,371 @@ CEP 的第一步所定义的匹配规则，我们可以把它叫作“模式”�
 
 ## 模式API
 
+chatgpt说的flink cep模式
 
+```java
+在Flink CEP（Complex Event Processing，复杂事件处理）中，模式用于定义事件序列的结构和限制。它是一个表达式，指定了一组事件及其关系，并描述了在输入数据流中匹配这些事件所需的条件和规则。
+
+以下是Flink CEP支持的一些常见模式类型：
+	1.简单模式：简单模式是由单个事件组成的模式，通常用于识别某个特定事件。例如，可以使用简单模式匹配某个股票价格是否超出了阈值。
+	2.序列模式：序列模式可以匹配一系列事件，这些事件按照预定义的顺序发生。例如，可以使用序列模式检测用户是否先点击搜索按钮并随后购买商品。
+	3.无限重复模式：无限重复模式可以匹配任意次重复事件序列。例如，可以使用无限重复模式检测使用者在一段时间内不断打电话给同一个号码。
+	4.带计数限制的模式：带计数限制的模式可以匹配指定次数的事件序列。例如，可以使用带计数限制的模式检测交易金额是否超过某个特定阈值且交易次数是否达到5次。
+	5.时间窗口模式：时间窗口模式可以根据时间间隔来匹配事件序列。例如，可以使用时间窗口模式检测用户是否在5分钟内查看了同一件物品3次。
+
+ 第1个模式是个体模式，第2-5的模式是组合模式
+上述模式类型可以组合使用，并可以通过逻辑运算符（AND、OR和NOT）进行组合。可以使用Java或Scala编写表达式，也可以使用Flink CEP提供的DSL（Domain Specific Language）来定义模式。这个就是组合模式， Flink CEP还支持嵌套组合模式，以便更灵活地定义事件结构。
+
+需要注意的是，Flink CEP支持自定义操作，例如在匹配事件序列时触发输出、过滤事件等等。这些操作可以帮助开发者更好地分析和处理匹配的事件序列。
+```
+
+
+
+模式（Pattern）其实就是将一组简单事件组合成复杂事件的“匹配规则”。
+
+
+
+### 个体模式
+
+1. 基本形式
+2. 量词
+3. 条件
+
+
+
+> 基本形式
+
+这里的每一个简单事件并不是任意选取的，也需要有一定的条件规则；所以我们就把每个简单事件的匹配规则，叫作“个体模式”（Individual Pattern）。
+
+每个个体模式都以一个“连接词”开始定义的，比如 begin、next 等等，这是 Pattern 对象的一个方法（begin 是 Pattern 类的静态方法），返回的还是一个 Pattern。
+
+> 量词
+
+另外，个体模式可以匹配接收一个事件，也可以接收多个事件。这听起来有点奇怪，一个单独的匹配规则可能匹配到多个事件吗？这是可能的，我们可以给个体模式增加一个“量词”（quantifier），就能够让它进行循环匹配，接收多个事件。
+
+​		个体模式后面可以跟一个“量词”，用来指定循环的次数。从这个角度分类，个体模式可以包括“单例（singleton）模式”和“循环（looping）模式”。默认情况下，个体模式是单例模式，匹配接收一个事件；当定义了量词之后，就变成了循环模式，可以匹配接收多个事件。
+
+​		在循环模式中，对同样特征的事件可以匹配多次。比如我们定义个体模式为“匹配形状为三角形的事件”，再让它循环多次，就变成了“匹配连续多个三角形的事件”。注意这里的“连续”，只要保证前后顺序即可，中间可以有其他事件，所以是“宽松近邻”关系。
+
+```java
+// 匹配事件出现 4 次
+pattern.times(4);
+// 匹配事件出现 4 次，或者不出现
+pattern.times(4).optional();
+// 匹配事件出现 2, 3 或者 4 次
+pattern.times(2, 4);
+// 匹配事件出现 2, 3 或者 4 次，并且尽可能多地匹配
+pattern.times(2, 4).greedy();
+// 匹配事件出现 2, 3, 4 次，或者不出现
+pattern.times(2, 4).optional();
+// 匹配事件出现 2, 3, 4 次，或者不出现；并且尽可能多地匹配
+pattern.times(2, 4).optional().greedy();		
+// 匹配事件出现 1 次或多次
+pattern.oneOrMore();
+// 匹配事件出现 1 次或多次，并且尽可能多地匹配
+pattern.oneOrMore().greedy();
+// 匹配事件出现 1 次或多次，或者不出现
+pattern.oneOrMore().optional();
+// 匹配事件出现 1 次或多次，或者不出现；并且尽可能多地匹配
+pattern.oneOrMore().optional().greedy();
+// 匹配事件出现 2 次或多次
+pattern.timesOrMore(2);
+// 匹配事件出现 2 次或多次，并且尽可能多地匹配
+pattern.timesOrMore(2).greedy();
+// 匹配事件出现 2 次或多次，或者不出现
+pattern.timesOrMore(2).optional()
+// 匹配事件出现 2 次或多次，或者不出现；并且尽可能多地匹配
+pattern.timesOrMore(2).optional().greedy();
+```
+
+
+
+> 条件
+
+​		对于每个个体模式，匹配事件的核心在于定义匹配条件，也就是选取事件的规则。Flink CEP 会按照这个规则对流中的事件进行筛选，判断是否接受当前的事件。
+
+​		对于条件的定义，主要是通过调用 Pattern 对象的.where()方法来实现的，主要可以分为简单条件、迭代条件、复合条件、终止条件几种类型。此外，也可以调用 Pattern 对象的.subtype()方法来限定匹配事件的子类型。接下来我们就分别进行介绍
+
+- 简单条件
+	- 本质就是一个filter操作
+
+- 迭代条件
+	- 需要依靠之前事件来做判断的条件
+	- 在 Flink CEP 中，提供了 IterativeCondition 抽象类。这其实是更加通用的条件表达，查看源码可以发现， .where()方法本身要求的参数类型就是 IterativeCondition；而之前 的SimpleCondition 是它的一个子类。
+	- 在 IterativeCondition 中同样需要实现一个 filter()方法，不过与 SimpleCondition 中不同的是，这个方法有两个参数：除了当前事件之外，还有一个上下文 Context。调用这个上下文的.getEventsForPattern()方法，传入一个模式名称，就可以拿到这个模式中已匹配到的所有数据了。
+
+- 组合条件
+	- 最简单的组合条件，就是.where()后面再接一个.where()。
+
+- 终止条件
+  - 表示遇到某个特定事件时当前模式就不再继续循环匹配了。
+  - 终 止 条 件 的 定 义 是 通 过 调 用 模 式 对 象 的 .until() 方 法 来 实 现 的 ， 同 样 传 入 一 个IterativeCondition 作为参数。需要注意的是，终止条件只与 oneOrMore() 或 者oneOrMore().optional()结合使用。
+
+
+
+
+### 组合模式
+
+ -  初始模式（Initial Pattern）
+	-  所有的组合模式，都必须以一个“初始模式”开头；而初始模式必须通过调用 Pattern 的静态方法.begin()来创建。如
+
+ -  近邻条件（Contiguity Conditions）
+
+  - 严格近邻（Strict Contiguity）
+
+    - Pattern 的.next()方法， 匹配的事件严格地按顺序一个接一个出现
+
+  - 宽松近邻（Relaxed Contiguity）
+
+    - 宽松近邻只关心事件发生的顺序，而放宽了对匹配事件的“距离”要求，也就是说两个匹配的事件之间可以有其他不匹配的事件出现。代码中对应.followedBy()方法，很明显这表示“跟在后面”就可以，不需要紧紧相邻。
+
+  - 非确定性宽松近邻（Non-Deterministic Relaxed Contiguity）
+
+    - 代码中对应.followedByAny()方法。
+
+  - 其他限制条件
+  	- 除了上面提到的 next()、followedBy()、followedByAny()可以分别表示三种近邻条件，我们还可以用否定的“连接词”来组合个体模式。主要包括：
+    		- .notNext()
+  	- 表示前一个模式匹配到的事件后面，不能紧跟着某种事件。
+    		- .notFollowedBy()
+
+  - 循环模式中的近邻关系
+  	- 近邻关系同样有三种：严格近邻、宽松近邻以及非确定性宽松近邻。
+  	- 对于定义了量词（如 oneOrMore()、times()）的循环模式，默认内部采用的是宽松近邻。也就是说，当循环匹配多个事件时，它们中间是可以有其他不匹配事件的；相当于用单例模式分别定义、再用 followedBy()连接起来。
+  	- .consecutive()
+    		- 为循环模式中的匹配事件增加严格的近邻条件，保证所有匹配事件是严格连续的。也就是说，一旦中间出现了不匹配的事件，当前循环检测就会终止。这起到的效果跟模式序列中的next()一样，需要与循环量词 times()、oneOrMore()配合使用。即在next()后面调用.consecutive()
+  	- .allowCombinations()
+    		- 除严格近邻外，也可以为循环模式中的事件指定非确定性宽松近邻条件，表示可以重复使用 已 经 匹 配 的 事 件 。 这 需 要 调 用 .allowCombinations() 方 法 来 实 现 ， 实 现 的 效 果与.followedByAny()相同。
+
+ -  Flink CEP 中还可以为模式指定一个时间限制，这是通过调用.within()方法实现的。方法传入一个时间参数，这是模式序列中第一个事件到最后一个事件之间的最大时间间隔，只有在这期间成功匹配的复杂事件才是有效的。一个模式序列中只能有一个时间限制，调用 .within() 的位置不限；如果多次调用则会以最小的那个时间间隔为准。
+
+```java
+// 严格近邻条件
+Pattern<Event, ?> strict = start.next("middle").where(...);
+// 宽松近邻条件
+Pattern<Event, ?> relaxed = start.followedBy("middle").where(...);
+// 非确定性宽松近邻条件
+Pattern<Event, ?> nonDetermin = 
+start.followedByAny("middle").where(...);
+// 不能严格近邻条件
+Pattern<Event, ?> strictNot = start.notNext("not").where(...);
+// 不能宽松近邻条件
+Pattern<Event, ?> relaxedNot = start.notFollowedBy("not").where(...);
+// 时间限制条件
+middle.within(Time.seconds(10));
+```
+
+
+
+![image-20230404110850003](尚硅谷Flink1.13.assets/image-20230404110850003.png)
+
+<img src="尚硅谷Flink1.13.assets/image-20230404110908345.png" alt="image-20230404110908345" style="zoom:50%;" />
+
+
+
+### 模式组
+
+​		一般来说，代码中定义的模式序列，就是我们在业务逻辑中匹配复杂事件的规则。不过在有些非常复杂的场景中，可能需要划分多个“阶段”，每个“阶段”又有一连串的匹配规则。为了应对这样的需求，Flink CEP 允许我们以“嵌套”的方式来定义模式。
+
+​		之前在模式序列中，我们用 begin()、next()、followedBy()、followedByAny()这样的“连接词”来组合个体模式，这些方法的参数就是一个个体模式的名称；而现在它们可以直接以一个模式序列作为参数，就将模式序列又一次连接组合起来了。这样得到的就是一个“模式组”（Groups of Patterns）。
+
+​		在模式组中，每一个模式序列就被当作了某一阶段的匹配条件，返回的类型是一个GroupPattern。而 GroupPattern 本身是 Pattern 的子类；所以个体模式和组合模式能调用的方法，比如 times()、oneOrMore()、optional()之类的量词，模式组一般也是可以用的。
+
+```java
+
+// 以模式序列作为初始模式
+Pattern<Event, ?> start = Pattern.begin(
+Pattern.<Event>begin("start_start").where(...)
+.followedBy("start_middle").where(...)
+);
+
+// 在 start 后定义严格近邻的模式序列，并重复匹配两次
+Pattern<Event, ?> strict = start.next(
+Pattern.<Event>begin("next_start").where(...)
+.followedBy("next_middle").where(...)
+).times(2);
+
+// 在 start 后定义宽松近邻的模式序列，并重复匹配一次或多次
+Pattern<Event, ?> relaxed = start.followedBy(
+Pattern.<Event>begin("followedby_start").where(...)
+.followedBy("followedby_middle").where(...)
+).oneOrMore();
+
+//在 start 后定义非确定性宽松近邻的模式序列，可以匹配一次，也可以不匹配
+Pattern<Event, ?> nonDeterminRelaxed = start.followedByAny(
+Pattern.<Event>begin("followedbyany_start").where(...)
+.followedBy("followedbyany_middle").where(...)
+).optional();
+
+```
+
+
+
+### 跳过策略
+
+在 Flink CEP 中，提供了模式的“匹配后跳过策略”（After Match Skip Strategy），专门用来精准控制循环模式的匹配结果。这个策略可以在 Pattern 的初始模式定义中，作为 begin()的第二个参数传入：
+
+```java
+Pattern.begin("start", AfterMatchSkipStrategy.noSkip())
+.where(...)
+...
+```
+
+
+
+匹配后跳过策略 AfterMatchSkipStrategy 是一个抽象类，它有多个具体的实现，可以通过调用对应的静态方法来返回对应的策略实例。这里我们配置的是不做跳过处理，这也是默认策略。
+
+
+
+下面我们举例来说明不同的跳过策略。例如我们要检测的复杂事件模式为：开始是用户名为 a 的事件（简写为事件 a，下同），可以重复一次或多次；然后跟着一个用户名为 b 的事件，a 事件和 b 事件之间可以有其他事件（宽松近邻）。用简写形式可以直接写作：
+“a+ followedBy b”。在代码中定义 Pattern 如下：
+
+
+
+```java
+Pattern.<Event>begin("a").where(new SimpleCondition<Event>() {
+      @Override
+      public boolean filter(Event value) throws Exception {
+      return value.user.equals("a");
+      }
+    }).oneOrMore()
+    .followedBy("b").where(new SimpleCondition<Event>() {
+      @Override
+      public boolean filter(Event value) throws Exception {
+      return value.user.equals("b");
+    }
+});
+```
+
+我们如果输入事件序列“a a a b”——这里为了区分前后不同的 a 事件，可以记作“a1 a2 a3 b”——那么应该检测到 6 个匹配结果：（a1 a2 a3 b），（a1 a2 b），（a1 b），（a2 a3 b），（a2 b），（a3 b）。如果在初始模式的量词.oneOrMore()后加上.greedy()定义为贪心匹配，那么结果就是：（a1 a2 a3 b），（a2 a3 b），（a3 b），每个事件作为开头只会出现一次。
+
+
+
+跳过策略
+
+1. 不跳过（NO_SKIP）
+	代码调用 AfterMatchSkipStrategy.noSkip()。这是默认策略，所有可能的匹配都会输出。所以这里会输出完整的 6 个匹配。
+
+2. 跳至下一个（SKIP_TO_NEXT）
+	代码调用 AfterMatchSkipStrategy.skipToNext()。找到一个 a1 开始的最大匹配之后，跳过a1 开始的所有其他匹配，直接从下一个 a2 开始匹配起。当然 a2 也是如此跳过其他匹配。最终得到（a1 a2 a3 b），（a2 a3 b），（a3 b）。可以看到，这种跳过策略跟使用.greedy()效果是相同的。
+
+3. 跳过所有子匹配（SKIP_PAST_LAST_EVENT）
+	代码调用 AfterMatchSkipStrategy.skipPastLastEvent()。找到 a1 开始的匹配（a1 a2 a3 b）之后，直接跳过所有 a1 直到 a3 开头的匹配，相当于把这些子匹配都跳过了。最终得到（a1 a2 a3 b），这是最为精简的跳过策略。
+
+4. 跳至第一个（SKIP_TO_FIRST[a]）
+	代码调用 AfterMatchSkipStrategy.skipToFirst(“a”)，这里传入一个参数，指明跳至哪个模式的第一个匹配事件。找到 a1 开始的匹配（a1 a2 a3 b）后，跳到以最开始一个 a（也就是 a1）为开始的匹配，相当于只留下 a1 开始的匹配。最终得到（a1 a2 a3 b），（a1 a2 b），（a1 b）。
+
+5. 跳至最后一个（SKIP_TO_LAST[a]）
+	代码调用 AfterMatchSkipStrategy.skipToLast(“a”)，同样传入一个参数，指明跳至哪个模式的最后一个匹配事件。找到 a1 开始的匹配（a1 a2 a3 b）后，跳过所有 a1、a2 开始的匹配，跳到以最后一个 a（也就是 a3）为开始的匹配。最终得到（a1 a2 a3 b），（a3 b）。
+
+	
+
+	
+
+## 模式检测的处理
+
+1. 将模式应用到流上
+2. 处理匹配事件
+3. 处理超时事件
+4. 处理迟到数据
+
+
+
+### 将模式应用到流上
+
+​		将模式应用到事件流上的代码非常简单，只要调用 CEP 类的静态方法.pattern()，将数据流（DataStream）和模式（Pattern）作为两个参数传入就可以了。最终得到的是一个 PatternStream
+
+
+
+### 处理匹配事件
+
+​		基于 PatternStream 可以调用一些转换方法，对匹配的复杂事件进行检测和处理，并最终得到一个正常的 DataStream。这个转换的过程与窗口的处理类似：将模式应用到流上得到PatternStream，就像在流上添加窗口分配器得到 WindowedStream；而之后的转换操作，就像定义具体处理操作的窗口函数，对收集到的数据进行分析计算，得到结果进行输出，最后回到DataStream 的类型来。
+
+​		PatternStream 的转换操作主要可以分成两种：简单便捷的选择提取（select）操作，和更加通用、更加强大的处理（process）操作。与 DataStream 的转换类似，具体实现也是在调用API 时传入一个函数类：
+​		选择操作传入的是一个 PatternSelectFunction，
+​		处理操作传入的则是一个 PatternProcessFunction。
+
+
+
+### 处理超时事件
+
+1. 使用 PatternProcessFunction 的侧输出流
+2. 使用 PatternTimeoutFunction
+
+
+
+> 使用 PatternProcessFunction 的侧输出流
+
+```java
+class MyPatternProcessFunction extends PatternProcessFunction<Event, String> 
+implements TimedOutPartialMatchHandler<Event> {
+ 		// 正常匹配事件的处理
+    @Override
+     public void processMatch(Map<String, List<Event>> match, Context ctx, 
+    Collector<String> out) throws Exception{
+     ...
+ 	}
+  
+ 		// 超时部分匹配事件的处理
+     @Override
+     public void processTimedOutMatch(Map<String, List<Event>> match, Context ctx) 
+    throws Exception{
+     Event startEvent = match.get("start").get(0);
+     OutputTag<Event> outputTag = new OutputTag<Event>("time-out"){};
+     ctx.output(outputTag, startEvent);
+ 	}
+}
+```
+
+
+
+> PatternTimeoutFunction
+
+在调用 PatternStream 的.select()方法时需要传入三个参数：侧输出流标签（ OutputTag ）， 超 时 事 件 处 理 函 数 PatternTimeoutFunction ， 匹 配 事 件 提 取 函 数PatternSelectFunction。下面是一个代码中的调用方式：
+
+```java
+// 定义一个侧输出流标签，用于标识超时侧输出流
+OutputTag<String> timeoutTag = new OutputTag<String>("timeout"){};
+
+// 将匹配到的，和超时部分匹配的复杂事件提取出来，然后包装成提示信息输出
+SingleOutputStreamOperator<String> resultStream = patternStream.select(timeoutTag,
+
+                                                                       // 超时部分匹配事件的处理
+ new PatternTimeoutFunction<Event, String>() {
+ @Override
+ public String timeout(Map<String, List<Event>> pattern, long 
+timeoutTimestamp) throws Exception {
+ Event event = pattern.get("start").get(0);
+ return "超时：" + event.toString();
+ }
+ },
+                                                                       
+// 正常匹配事件的处理
+ new PatternSelectFunction<Event, String>() {
+ @Override
+ public String select(Map<String, List<Event>> pattern) throws Exception 
+{
+...
+ }
+ }
+);
+
+// 将正常匹配和超时部分匹配的处理结果流打印输出
+resultStream.print("matched");
+resultStream.getSideOutput(timeoutTag).print("timeout");
+```
+
+
+
+### 处理迟到数据
+
+ 
+
+Flink CEP 中沿用了通过设置水位线（watermark）延迟来处理乱序数据的做法。当一个事件到来时，并不会立即做检测匹配处理，而是先放入一个缓冲区（buffer）。缓冲区内的数据，会按照时间戳由小到大排序；当一个水位线到来时，就会将缓冲区中所有时间戳小于水位线的事件依次取出，进行检测匹配。这样就保证了匹配事件的顺序和事件时间的进展一致，处理的顺序就一定是正确的。这里水位线的延迟时间，也就是事件在缓冲区等待的最大时间。
+
+
+
+##  CEP 的状态机实现
+
+ Flink CEP 的底层工作原理其实与正则表达式是一致的，是一个“非确定有限状态自动机”（Nondeterministic Finite Automaton，NFA）
 
