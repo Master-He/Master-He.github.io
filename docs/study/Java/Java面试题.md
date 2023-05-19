@@ -41,6 +41,10 @@ a = a+b 和 a+=b的区别在于，a+=b会将类型进行强转
 
 参考：https://zhuanlan.zhihu.com/p/50206657
 
+如果相同的对象没有相同的hashcode， 比如你用set进行去重时，去重可能就会失效， 因为set会调用hashCode()的方法获取hash值，通过hash值判断是不是同一个对象。所以规定了相同的对象必须要有相同的hashcode， 也就是equals方法重写后还要重写hashCode()
+
+
+
 ------
 
 final,finalize,finally的区别？
