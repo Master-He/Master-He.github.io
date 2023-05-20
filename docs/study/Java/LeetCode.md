@@ -1,3 +1,320 @@
+
+
+# 代码随想录
+
+
+
+
+
+## 动态规划
+
+
+
+### 背包总结
+
+问能否能装满背包（或者最多装多少）：dp[j] = max(dp[j], dp[j - nums[i]] + nums[i]); ，对应题⽬如下：
+
+动态规划：416.分割等和⼦集
+
+动态规划：1049.最后⼀块⽯头的重量 II
+
+
+
+问装满背包有⼏种⽅法：dp[j] += dp[j - nums[i]] ，对应题⽬如下：
+
+动态规划：494.⽬标和
+
+动态规划：518. 零钱兑换 II
+
+动态规划：377.组合总和Ⅳ
+
+动态规划：70. 爬楼梯进阶版（完全背包）
+
+
+
+问背包装满最⼤价值：dp[j] = max(dp[j], dp[j - weight[i]] + value[i]); ，对应题⽬如下：
+
+动态规划：474.⼀和零
+
+
+
+问装满背包所有物品的最⼩个数：dp[j] = min(dp[j - coins[i]] + 1, dp[j]); ，对应题⽬如下：
+
+动态规划：322.零钱兑换
+
+动态规划：279.完全平⽅数
+
+
+
+>  0-1背包基础, 二维dp数组
+
+```java
+import java.util.Arrays;
+
+public class Tmp {
+    public static void main(String[] args) {
+        int[] weight = new int[]{1, 3, 4};
+        int[] value = new int[]{15, 20, 30};
+        int bagWeight = 4;
+
+        int[][] dp = new int[weight.length][bagWeight + 1];
+
+        // 初始化, 这个是必须的。 本质就是物品0放入各种重量的背包。 因为dp[i][j] 依赖于 dp[i-1][j]和dp[i-1][j-weight[i]]
+        for (int j = bagWeight; j >= weight[0]; j--) {
+            dp[0][j] = dp[0][j - weight[0]] + value[0];  // 物品0 放入各种重量的背包
+        }
+
+//        for (int i = 1; i < weight.length; i++) {  // 遍历物品，
+//            for (int j = 0; j <= bagWeight; j++) { // 遍历背包容量
+//                if (j < weight[i]) {
+//                    dp[i][j] = dp[i-1][j];
+//                } else {
+//                    dp[i][j] = Math.max(dp[i - 1][j], dp[i - 1][j - weight[i]] + value[i]);
+//                }
+//            }
+//        }
+        // [[0, 15, 15, 15, 15], [0, 15, 15, 20, 35], [0, 15, 15, 20, 35]]
+
+        for (int i = 1; i < weight.length; i++) {  // 遍历物品，
+            for (int j = 0; j <= bagWeight; j++) { // 遍历背包容量
+                if (j - weight[i] >= 0) { // 实际我们只要dp[weight.length-1][bagWeight]这一个元素的值
+                    dp[i][j] = Math.max(dp[i - 1][j], dp[i - 1][j - weight[i]] + value[i]);
+                }
+            }
+        }
+        // [[0, 15, 15, 15, 15], [0, 0, 0, 20, 35], [0, 0, 0, 0, 35]]
+
+        // 打印dp数组
+        System.out.println(Arrays.deepToString(dp));
+
+    }
+}
+
+```
+
+
+
+```java
+        for (int i = 1; i < weight.length; i++) {  // 遍历物品，
+            for (int j = 0; j <= bagWeight; j++) { // 遍历背包容量
+                if (j - weight[i] >= 0) { // 实际我们只要dp[weight.length-1][bagWeight]这一个元素的值
+                    dp[i][j] = Math.max(dp[i - 1][j], dp[i - 1][j - weight[i]] + value[i]);
+                }
+            }
+        }
+        // 打印结果如下
+```
+
+<img src="LeetCode.assets/image-20230409132626446.png" alt="image-20230409132626446" style="zoom:33%;" />
+
+
+
+```java
+//        for (int i = 1; i < weight.length; i++) {  // 遍历物品，
+//            for (int j = 0; j <= bagWeight; j++) { // 遍历背包容量
+//                if (j < weight[i]) {
+//                    dp[i][j] = dp[i-1][j];
+//                } else {
+//                    dp[i][j] = Math.max(dp[i - 1][j], dp[i - 1][j - weight[i]] + value[i]);
+//                }
+//            }
+//        }
+				// 打印结果如下， 可以发现有些地方状态是可以不存的，因为一般情况只要最右下角的结果。
+```
+
+<img src="LeetCode.assets/image-20230409132842983.png" alt="image-20230409132842983" style="zoom:33%;" />
+
+
+
+> 0-1 背包 ，一维dp滚动数组
+
+```java
+import java.util.Arrays;
+
+public class Tmp {
+    public static void main(String[] args) {
+        int[] weight = new int[]{1, 3, 4};
+        int[] value = new int[]{15, 20, 30};
+        int bagWeight = 4;
+
+        int[] dp = new int[bagWeight + 1];
+
+        for (int i = 0; i < weight.length; i++) { // 遍历物品
+            for (int j = bagWeight; j >= weight[i]; j--) { //遍历背包， 注意是逆序的
+                dp[j] = Math.max(dp[j], dp[j-weight[i]] + value[i]);
+            }
+        }
+
+        System.out.println(Arrays.toString(dp));
+        // [0, 15, 15, 20, 35]
+    }
+}
+
+```
+
+
+
+假如正序遍历背包，代码如下
+
+```java
+import java.util.Arrays;
+
+public class Tmp {
+    public static void main(String[] args) {
+        int[] weight = new int[]{1, 3, 4};
+        int[] value = new int[]{15, 20, 30};
+        int bagWeight = 4;
+
+        int[] dp = new int[bagWeight + 1];
+
+        for (int i = 0; i < weight.length; i++) {
+            // 如果是正序遍历背包，会怎么样？ 物品会重复使用
+            for (int j = weight[i]; j <= bagWeight; j++) {
+
+                String format = String.format(
+                        "i=%d,j=%d;  dp[%d]=%d, dp[j-weight[i]] + value[i] --> dp[%d-%d] + %d = %d, 取最大值： %d",
+                        i, j, j, dp[j], j, weight[i], value[i], dp[j - weight[i]] + value[i], Math.max(dp[j], dp[j - weight[i]] + value[i])
+                );
+                System.out.println(format);
+
+                dp[j] = Math.max(dp[j], dp[j - weight[i]] + value[i]);
+            }
+            System.out.println(Arrays.toString(dp));
+        }
+
+        /* 打印结果如下：
+            i=0,j=1;  dp[1]=0, dp[j-weight[i]] + value[i] --> dp[1-1] + 15 = 15, 取最大值： 15
+            i=0,j=2;  dp[2]=0, dp[j-weight[i]] + value[i] --> dp[2-1] + 15 = 30, 取最大值： 30
+            i=0,j=3;  dp[3]=0, dp[j-weight[i]] + value[i] --> dp[3-1] + 15 = 45, 取最大值： 45
+            i=0,j=4;  dp[4]=0, dp[j-weight[i]] + value[i] --> dp[4-1] + 15 = 60, 取最大值： 60
+            [0, 15, 30, 45, 60]
+            i=1,j=3;  dp[3]=45, dp[j-weight[i]] + value[i] --> dp[3-3] + 20 = 20, 取最大值： 45
+            i=1,j=4;  dp[4]=60, dp[j-weight[i]] + value[i] --> dp[4-3] + 20 = 35, 取最大值： 60
+            [0, 15, 30, 45, 60]
+            i=2,j=4;  dp[4]=60, dp[j-weight[i]] + value[i] --> dp[4-4] + 30 = 30, 取最大值： 60
+            [0, 15, 30, 45, 60]
+        * */
+
+        // 最后结果是： [0, 15, 30, 45, 60]， 重量为1，价值为15的物品放了4次。。。
+    }
+}
+
+
+```
+
+
+
+假如先遍历背包，再遍历物品，代码如下：
+
+```java
+import java.util.Arrays;
+
+public class Tmp {
+    public static void main(String[] args) {
+        int[] weight = new int[]{1, 3, 4};
+        int[] value = new int[]{15, 20, 30};
+        int bagWeight = 4;
+
+        int[] dp = new int[bagWeight + 1];
+
+        // 假如先遍历背包再遍历物品
+        for (int j=bagWeight; j > 0; j--) {
+            for (int i=0; i< weight.length; i++) {
+                if (j >= weight[i]) {
+                    String format = String.format(
+                            "i=%d,j=%d;  dp[%d]=%d, dp[j-weight[i]] + value[i] --> dp[%d-%d] + %d = %d, 取最大值： %d",
+                            i, j, j, dp[j], j, weight[i], value[i], dp[j - weight[i]] + value[i], Math.max(dp[j], dp[j - weight[i]] + value[i])
+                    );
+                    System.out.println(format);
+
+                    dp[j] = Math.max(dp[j], dp[j-weight[i]] + value[i]);
+                }
+            }
+            System.out.println(Arrays.toString(dp));
+        }
+
+        /* 打印结果如下， 可以发现，只取一个最大价值物品放入背包，重点：一个物品，一个最大价值的物品
+            i=0,j=4;  dp[4]=0, dp[j-weight[i]] + value[i] --> dp[4-1] + 15 = 15, 取最大值： 15
+            i=1,j=4;  dp[4]=15, dp[j-weight[i]] + value[i] --> dp[4-3] + 20 = 20, 取最大值： 20
+            i=2,j=4;  dp[4]=20, dp[j-weight[i]] + value[i] --> dp[4-4] + 30 = 30, 取最大值： 30
+            [0, 0, 0, 0, 30]
+            i=0,j=3;  dp[3]=0, dp[j-weight[i]] + value[i] --> dp[3-1] + 15 = 15, 取最大值： 15
+            i=1,j=3;  dp[3]=15, dp[j-weight[i]] + value[i] --> dp[3-3] + 20 = 20, 取最大值： 20
+            [0, 0, 0, 20, 30]
+            i=0,j=2;  dp[2]=0, dp[j-weight[i]] + value[i] --> dp[2-1] + 15 = 15, 取最大值： 15
+            [0, 0, 15, 20, 30]
+            i=0,j=1;  dp[1]=0, dp[j-weight[i]] + value[i] --> dp[1-1] + 15 = 15, 取最大值： 15
+            [0, 15, 15, 20, 30]
+        * */
+
+        // [0, 15, 15, 20, 30]
+    }
+}
+
+
+```
+
+
+
+先遍历背包再遍历物品, 正序背包。 代码如下
+
+```java
+import java.util.Arrays;
+
+public class Tmp {
+    public static void main(String[] args) {
+        int[] weight = new int[]{1, 3, 4};
+        int[] value = new int[]{15, 20, 30};
+        int bagWeight = 4;
+
+        int[] dp = new int[bagWeight + 1];
+
+        // 假如先遍历背包再遍历物品, 正序背包
+        for (int j=0; j <= bagWeight; j++) {
+            for (int i=0; i< weight.length; i++) {
+                if (j >= weight[i]) {
+                    String format = String.format(
+                            "i=%d,j=%d;  dp[%d]=%d, dp[j-weight[i]] + value[i] --> dp[%d-%d] + %d = %d, 取最大值： %d",
+                            i, j, j, dp[j], j, weight[i], value[i], dp[j - weight[i]] + value[i], Math.max(dp[j], dp[j - weight[i]] + value[i])
+                    );
+                    System.out.println(format);
+
+                    dp[j] = Math.max(dp[j], dp[j-weight[i]] + value[i]);
+                }
+            }
+            System.out.println(Arrays.toString(dp));
+        }
+
+        /* 打印结果如下， 可以发现，只取一个最大价值物品放入背包，重点：一个物品，一个最大价值的物品
+            [0, 0, 0, 0, 0]
+            i=0,j=1;  dp[1]=0, dp[j-weight[i]] + value[i] --> dp[1-1] + 15 = 15, 取最大值： 15
+            [0, 15, 0, 0, 0]
+            i=0,j=2;  dp[2]=0, dp[j-weight[i]] + value[i] --> dp[2-1] + 15 = 30, 取最大值： 30
+            [0, 15, 30, 0, 0]
+            i=0,j=3;  dp[3]=0, dp[j-weight[i]] + value[i] --> dp[3-1] + 15 = 45, 取最大值： 45
+            i=1,j=3;  dp[3]=45, dp[j-weight[i]] + value[i] --> dp[3-3] + 20 = 20, 取最大值： 45
+            [0, 15, 30, 45, 0]
+            i=0,j=4;  dp[4]=0, dp[j-weight[i]] + value[i] --> dp[4-1] + 15 = 60, 取最大值： 60
+            i=1,j=4;  dp[4]=60, dp[j-weight[i]] + value[i] --> dp[4-3] + 20 = 35, 取最大值： 60
+            i=2,j=4;  dp[4]=60, dp[j-weight[i]] + value[i] --> dp[4-4] + 30 = 30, 取最大值： 60
+            [0, 15, 30, 45, 60]
+        * */
+        
+    }
+}
+
+
+
+```
+
+
+
+
+
+
+
+# Leetbook中的图解算法数据结构
+
 ## 参考
 
 https://leetcode-cn.com/leetbook/read/illustration-of-algorithm/px2ds5/
@@ -2829,6 +3146,14 @@ public class spiralOrderSolution {
     }   
 }
 ```
+
+
+
+
+
+
+
+
 
 
 
