@@ -16,6 +16,8 @@
 
 ![image-20230517111350877](MySQL.assets/image-20230517111350877.png)
 
+优化器会进行成本计算。会修改SQL语句
+
 
 
 ![image-20230517111550444](MySQL.assets/image-20230517111550444.png)
@@ -131,17 +133,23 @@ EXPLAIN SELECT b, c, d FROM test WHERE d = 2;
 
 
 
-
-
 为什么要使用联合索引？
 
-减少开销。建一个联合索引(col1,col2,col3)，实际相当于建了(col1),(col1,col2),(col1,col2,col3)三个索引。每多一个索引，都会增加写操作的开销和磁盘空间的开销。对于大量数据的表，使用联合索引会大大的减少开销！
+- 减少开销。建一个联合索引(col1,col2,col3)，实际相当于建了(col1),(col1,col2),(col1,col2,col3)三个索引。每多一个索引，都会增加写操作的开销和磁盘空间的开销。对于大量数据的表，使用联合索引会大大的减少开销！
 
-覆盖索引。对联合索引(col1,col2,col3)，如果有如下的sql: select col1,col2,col3 from test where col1=1 and col2=2。那么MySQL可以直接通过遍历索引取得数据，而无需回表，这减少了很多的随机io操作。减少io操作，特别的随机io其实是dba主要的优化策略。所以，在真正的实际应用中，覆盖索引是主要的提升性能的优化手段之一。
+- 覆盖索引。对联合索引(col1,col2,col3)，如果有如下的sql: select col1,col2,col3 from test where col1=1 and col2=2。那么MySQL可以直接通过遍历索引取得数据，而无需回表，这减少了很多的随机io操作。减少io操作，特别的随机io其实是dba主要的优化策略。所以，在真正的实际应用中，覆盖索引是主要的提升性能的优化手段之一。
 
-效率高。索引列越多，通过索引筛选出的数据越少。有1000W条数据的表，有如下sql:select from table where col1=1 and col2=2 and col3=3,假设假设每个条件可以筛选出10%的数据，如果只有单值索引，那么通过该索引能筛选出1000W10%=100w条数据，然后再回表从100w条数据中找到符合col2=2 and col3= 3的数据，然后再排序，再分页；如果是联合索引，通过索引筛选出1000w10% 10% *10%=1w，效率提升可想而知！
+- 效率高。索引列越多，通过索引筛选出的数据越少。有1000W条数据的表，有如下sql:select from table where col1=1 and col2=2 and col3=3,假设假设每个条件可以筛选出10%的数据，如果只有单值索引，那么通过该索引能筛选出1000W10%=100w条数据，然后再回表从100w条数据中找到符合col2=2 and col3= 3的数据，然后再排序，再分页；如果是联合索引，通过索引筛选出1000w10% 10% *10%=1w，效率提升可想而知！
 
 
+
+
+
+## 索引失效的情况
+
+select * from t1 order by b,c,d --其中b,c,d是联合索引， 因为 select * ,所以每个索引都要回表，这个时候就不如直接全表扫描，然后排序 ， 所以这个时候索引就失效了
+
+select b from t1 order by b,c,d --其中b,c,d是联合索引 ， 这种情况索引没有失效。
 
 
 
@@ -150,7 +158,9 @@ EXPLAIN SELECT b, c, d FROM test WHERE d = 2;
 #  优化SQL
 
 1. 根据慢日志来定位慢查询
-2. 根据expalin等工具来分析sql
+2. 根据expalin等工具来分析sql， 
+    - 看有没有走索引， 走的索引是不是最优
+    - 减少字段的返回， 减少回表的操作
 3. 修改sql或者尽量让sql走索引 
 
 
@@ -170,6 +180,125 @@ show VARIABLES like '%query%';
 ![image-20230511232255490](MySQL.assets/image-20230511232255490.png)
 
 
+
+
+
+## Explain
+
+explain的列都是什么意思？
+
+参考：https://www.bilibili.com/video/BV1EP411S7Uk/?spm_id_from=333.337.search-card.all.click&vd_source=6cd527c3a43bcb0943d3d64a7923b3bc
+
+1. id列：
+    1. id都相同时，从上往下扫描
+    2. id都不同时，先扫描id大的
+    3. id既有相同，也有不同时，比如有衍生表，先扫描id大的，然后相同的id从上往下执行
+    4. id有为空的， 先扫描id大的，然后相同的id从上往下执行，最后执行union表（id为空）
+2. table列:
+    1. 表示用到了哪些表
+3. select_type列：
+    1. 表示查询语句执行的查询操作类型
+    2. 值为：simple 表示简单的select， 不包含union和子查询
+    3. 值为：primary 表示复杂查询中的最外层查询， 比如使用union和union all， id为1的记录select_type通常为primary
+    4. 值为： subquery， select中出现的子查询（不在from语句中）
+    5. 值为：dependent subquery select中出现的子查询, 而且依赖于外部表的字段
+    6. 值为： derived , select中出现的子查询, 在from语句中 
+        1. 需要关闭衍生表优化： set session optimizer_switch='derived_merge=off'
+    7. 值为 union和 union all
+4. type列
+    1. 查询时所用的访问类型
+    2. 效率从高到底分别为
+        1. system
+            1. system是const的特殊类型
+        2. const
+            1. 常量查询
+        3. eq_ref
+            1. 索引只有一条匹配记录 （唯一索引）
+        4. ref 
+            1. 索引可能有多条匹配记录（非唯一索引）
+            2. 使用二级索引（普通索引） 也是ref
+        5. fulltext
+        6. ref_or_null
+            1. 
+        7. range
+            1. .使用二级索引，并且范围查找，就会被标记为range 
+        8. index
+            1. index是覆盖索引
+        9. ALL
+5. possible_keys列
+    1. 可能使用到某个索引或者多个索引。如果没有选择的索引，显示null
+6. key列
+    1. 表示查询中实际使用的索引, 如果没有使用索引，显示null
+7. key_len列
+    1. 索引的长度 
+    2. id 是int类型4个字节，如果id可以为空则长度为5个字节
+    3. varchar(n)类型，3\*n字节+2个可变字节, 比如varchar(50) 就是50*3+2=132， 如果可以为null，则再加1为133
+    4. char(n) ： n个字节
+    5. tinyint ；1个字节
+    6. smallint： 2个字节
+    7. bigint 8字节
+    8. date 3字节
+    9. timestamp 4字节
+    10. datetime 8字节
+    11. 字段为null是， 需要额外一个字节记录
+8. ref列
+    1. const 常量匹配
+    2. 字段匹配
+    3. func 函数匹配
+9. rows列
+    1. 全表扫描时，行数的估计量，值越小越好。
+10. filtered列
+    1. 表示符合查询条件的数据的百分比
+11. extra列
+    1. sql执行查询的一些额外信息
+    2. Use Index 使用非主键索引就可以查询所需要的查询， 即覆盖索引
+    3. use where 不使用索引查询数据
+    4. use index condition 需要回表查询
+    5. using temporary 使用临时表
+    6. usring filesort 当前查询中包含order by操作，而且无法利用索引完成的排序操作，数据较少时从内存排序，数据较多时需要在磁盘中排序，需要优化成索引排序
+    7. select table optimized away： 使用某些聚合函数（min,max）来访问某个索引值
+
+
+
+## 实践经验
+
+1. 应尽量避免在 where 子句中对字段进行 null 值判断，否则将导致引擎放弃使用索引而进行全表扫描，如：`select id from t where num is null`
+
+2. 应尽量避免在 where 子句中使用 != 或 <> 操作符，否则将引擎放弃使用索引而进行全表扫描。
+
+3. 应尽量避免在 where 子句中使用 or 来连接条件，如果一个字段有索引，一个字段没有索引，将导致引擎放弃使用索引而进行全表扫描，如`select id from t where num=10 or Name = 'admin'` ,可以改成 
+
+    ```sql
+    select id from t where num = 10
+    union all
+    select id from t where Name = 'admin'
+    ```
+
+4. in和not in也要慎用，否则会导致全表扫描，如`select id from t where num in(1,2,3)`
+    对于连续的数值，能用 between 就不要用 in 了： select id from t where num between 1 and 3
+    很多时候用 exists 代替 in 是一个好的选择：select num from a where num in(select num from b) 用select num from a where exists(select 1 from b where num=a.num) 替代
+
+5. like 也将导致全表扫描
+
+6. 应尽量避免在 where 子句中对字段进行表达式操作，这将导致引擎放弃使用索引而进行全表扫描。如：
+    select id from t where num/2 = 100，应改为 select id from t where num = 100*2
+
+7. 应尽量避免在where子句中对字段进行函数操作，这将导致引擎放弃使用索引而进行全表扫描。
+
+    ```sql
+    select id from t where substring(name,1,3) = ’abc’       -–name以abc开头的id
+    select id from t where datediff(day,createdate,’2005-11-30′) = 0    -–‘2005-11-30’    --生成的id
+    ```
+
+8. 对于多张大数据量（这里几百条就算大了）的表JOIN，要先分页再JOIN，否则逻辑读会很高，性能很差。
+
+9. .索引并不是越多越好，索引固然可以提高相应的 select 的效率，但同时也降低了 insert 及 update 的效率，因为 insert 或 update 时有可能会重建索引，所以怎样建索引需要慎重考虑，视具体情况而定。一个表的索引数最好不要超过6个，若太多则应考虑一些不常使用到的列上建的索引是否有 必要。
+
+10. 尽量使用数字型字段，若只含数值信息的字段尽量不要设计为字符型，这会降低查询和连接的性能，并会增加存储开销。这是因为引擎在处理查询和连 接时会逐个比较字符串中每一个字符，而对于数字型而言只需要比较一次就够了。
+
+11. 尽量避免使用游标，因为游标的效率较差，如果游标操作的数据超过1万行，那么就应该考虑改写。
+
+12. 尽量避免大事务操作，提高系统并发能力。
 
 
 
@@ -199,6 +328,22 @@ ACID
 4. 序列化 Serializable 
 
 持久性durability，事务提交了永久存储在磁盘上
+
+
+
+
+
+事务靠什么保证？
+
+参考：https://www.bilibili.com/video/BV1Ys4y1J7iY?p=17&vd_source=6cd527c3a43bcb0943d3d64a7923b3bc
+
+A 有undolog保证
+
+C 由其他3大性质保证
+
+I 隔离性又MVCC保证
+
+D 持久性由redolog保证，mysql更新时在内存和redolog记录操作，宕机恢复时从redolog恢复
 
 
 
@@ -253,24 +398,34 @@ update book set count=96 where id = 1 and count = 97;  -- 加一个控制：  co
 
 
 
+
+
 ## 锁
+
+参考
+
+https://www.bilibili.com/video/BV1zK4y1X7oG/?spm_id_from=333.337.search-card.all.click&vd_source=6cd527c3a43bcb0943d3d64a7923b3bc
 
 按锁粒度分类
 
-1. 行锁
+1. 行锁(InnoDB)
+    1. 更新数据未使用索引时，行级锁会上升为表级锁
+    2. 更新数据时使用索引，会使用行级锁
+    3. seleft ... for update会使用行级锁
 2. 表锁
 3. 间隙锁
+4. 页锁（BDB）
 
 
 
-还可分为
+按操作上可以还可分为
 
 1. 共享锁，也就是读锁，一个事务给某行数据加了读锁，其他事务也可以读，但是不能写
 2. 排它锁， 也就是写锁， 一个事务给某行数据加了写锁，其他事务也不能读，也不是写
 
 
 
-还可以分为
+按实现上还可以分为
 
 	1. 乐观锁： 并不会真正的去锁某行记录，而是通过一个版本号来实现的
 	2. 悲观锁： 上面所有的行锁，表锁都是悲观锁
@@ -278,6 +433,85 @@ update book set count=96 where id = 1 and count = 97;  -- 加一个控制：  co
 
 
 在事务的隔离级别实现中，就需要利用锁来解决幻读
+
+
+
+乐观锁CAS（Compare And Swap）比较并替换，是线程并发运行时用到的一种技术
+
+
+
+![image-20230517122756833](MySQL.assets/image-20230517122756833.png)
+
+mysql layer层就是server层
+
+元数据，换句话就是表结构。。
+
+
+
+DDL和DML： 
+
+- **DML**（data manipulation language）是对数据内容进行操作的语言，它的最小操作单位是行；
+-  **DDL**（data definition language）是对数据对象和对象属性进行操作的语言，它的操作会改变表结构，表类型等等数据属性，但是不会改变数据内容。
+
+
+
+![image-20230517123653499](MySQL.assets/image-20230517123653499.png)
+
+
+
+![image-20230517131535080](MySQL.assets/image-20230517131535080.png)
+
+其中，间隙锁，防止insert的操作
+
+
+
+
+
+![image-20230517132709901](MySQL.assets/image-20230517132709901.png)
+
+![image-20230517132805822](MySQL.assets/image-20230517132805822.png)
+
+没用用索引加锁， 所有的行（记录）和间隙都会加锁，由于，InnoDB引擎的行锁机制是基于索引实现记录锁定的，所以，没有索引时会导致全表锁定
+
+
+
+
+
+![image-20230517134310357](MySQL.assets/image-20230517134310357.png)
+
+
+
+![image-20230517135616067](MySQL.assets/image-20230517135616067.png)
+
+id是非唯一键， id=10的时候，首先弄好记录锁， 然后再加锁间隙
+
+
+
+![image-20230517135826117](MySQL.assets/image-20230517135826117.png)
+
+因为会把记录全锁了，间隙也全锁了，就变成了表锁
+
+
+
+
+
+![image-20230517140003819](MySQL.assets/image-20230517140003819.png)
+
+ 
+
+![image-20230517140220967](MySQL.assets/image-20230517140220967.png)
+
+解决方案。用户A访问是同时锁住表A和表B，用完再同时释放
+
+
+
+
+
+![image-20230517140430973](MySQL.assets/image-20230517140430973.png)
+
+解决方案，使用乐观锁
+
+
 
 
 
@@ -439,7 +673,7 @@ innodb 和myisam的数据存储结构不同
 
 # 分表分库？
 
-sql优化到了极限了。才考虑分库分表， 此时需要单表的数量特别大， 单库的数量特别大
+sql优化到了极限了。才考虑分库分表， 此时需要单表的数量特别大， 单库的数量特别大（500W）
 
 
 
@@ -457,20 +691,43 @@ sql优化到了极限了。才考虑分库分表， 此时需要单表的数量�
 - 分库: 每个库结构一样，数据不一样，没有交集。库多了可以缓解io和cpu压力
 - 分表:每个表结构一样，数据不一样，没有交集。表数量减少可以提高sql执行效率、减轻Cpu压力
 
-垂直: 将字段拆分为多张表，需要一定的重构
+垂直: 将字段拆分为多张表，需要一定的重构 （可能这个用的更多了）
 
 - 分库: 每个库结构、数据都不一样，所有库的并集为全量数据
 - 分表:每个表结构、数据不一样，至少有一列交集，用于关联数据，所有表的并集为全量数据
 
 
 
-怎么避免分库分表？
+分表的id怎么确定唯一性。 
+
+- 用分布式id算法， 比如雪花算法（**Twitter开源的由64位整数组成分布式ID** ） 参考： https://zhuanlan.zhihu.com/p/85837641
+    - 用uuid性能很低，因为他是字符串，所以uuid不用
+- 取模，比较low, 缺点就是以后再次分表分库会很麻烦
+    - 也可以hash取模
+- 按范围分片
 
 
 
 
 
-这个没有实际经验
+## 分库分表需要解决哪些问题？
+
+1. 主键唯一性
+    1. 需要用分布式id
+2. 分布式事务
+    1. 怎么解决分布式事务问题？
+3. sql路由
+    1. sql分发到哪个节点执行？可以原封不动转发吗？
+4. 结果归并
+    1. 每个节点只包含一部分结果，如何归并？
+
+
+
+## 什么时候分表分库
+
+![image-20230517175642729](MySQL.assets/image-20230517175642729.png)
+
+
 
 
 
@@ -480,11 +737,29 @@ sql优化到了极限了。才考虑分库分表， 此时需要单表的数量�
 
 # MySQL的主从同步
 
-略
+主从复制是指将主数据库的DDL和 DML 操作通过二进制日志（binlog）传到从库服务器中，然后在从库上对这些日志重新执行(也叫重做》，从而使得从库和主库的数据保持同步。
+
+![image-20230517142015812](MySQL.assets/image-20230517142015812.png)
 
 
 
 
+
+#### MySQL主从复制？
+
+主要涉及三个线程: binlog 线程、I/O 线程和 SQL 线程。
+
+- **binlog 线程** : 负责将主服务器上的数据更改写入二进制日志中。
+- **I/O 线程** : 负责从主服务器上读取二进制日志，并写入从服务器的中继日志中。
+- **SQL 线程** : 负责读取中继日志并重放其中的 SQL 语句。
+
+------
+
+著作权归@pdai所有 原文链接：https://pdai.tech/md/interview/x-interview.html
+
+
+
+![img](MySQL.assets/master-slave.png)
 
 
 
@@ -607,3 +882,88 @@ undo log 和 redo log 也是引擎层的 log 文件，undo log 提供了回滚�
 ## 总结
 
 redo log 用来保证 crash-safe，binlog 用来保证可以将数据库状态恢复到任一时刻，undo log 是用来保证事务需要回滚时数据状态的回滚和 MVCC 时，记录各版本数据信息。
+
+
+
+
+
+# Buffer Pool
+
+参考 https://www.bilibili.com/video/BV1JW4y1179m/?spm_id_from=333.337.search-card.all.click&vd_source=6cd527c3a43bcb0943d3d64a7923b3bc
+
+Buffer Pool 是 MySQL 的一个非常重要的组件，因为针对数据库的增删改操作都是在 Buffer Pool 中完成的
+
+缓冲池处于计算机系统主存中的某个区域，用于lnnoDB访问时缓存表以及索引数据。缓冲池允许直接从内存访问常用数据，从而加快处理速度。在专用服务器上，通常多达80%的物理内存分配给缓冲池。
+
+Mysql数据是以页的方式进行存储的。默认一页是16K数据（B+树的一个节点也是16K）
+
+
+
+缓冲池使用的是类似LRU的算法（最近最少使用算法）， 分年轻page和老年page(被淘汰概率加大).
+
+![image-20230517165211262](MySQL.assets/image-20230517165211262.png)
+
+注意，mysqldump或者一个不带where的查询语句引起的全表扫描， 可能会充满缓冲池。 所以尽量不要出现全表扫描
+
+
+
+buffer pool 默认128M
+
+你可以缓冲池的各种方面来提高性能:
+
+- 理想地，你可以根据实际情况将缓冲池的大小设置得尽可能大，从而留出足够多的内存给服务器上的其他进程运行，而不会出现过多的分页。缓冲池越大，InnoDB就越像一个内存数据库，从磁盘读取数据一次，后续的读取期间从内存访问数据。详情见配置InnoDB缓冲池大小。
+- 在具有足够内存的64位系统上，您可以将缓冲池拆分成多个部分，以减少并发操作之间对内存结构的争用。详情见配置多个缓冲池实例。
+- 你可以将经常访问的数据保留在内存中，而不管操作的活动突然激增，这些操作会将大量不常用的数据带入缓冲池。详情见使缓冲池扫描具有抵抗性
+- 你可以控制如何以及何时执行预读取请求来将分页异步地预取到缓冲池中，以应对即将到来的需求。详情见配置InnoDB缓冲池预取(预读)
+- 你可以控制后台何时刷新以及是否根据工作负载动态调整刷新速率。详情见配置缓冲池刷新
+
+
+
+
+
+# 其他面试题
+
+
+
+怎么保证mysql和redis的最终一致性
+
+https://tobebetterjavaer.com/mysql/redis-shuju-yizhixing.html
+
+![img](MySQL.assets/redis-shuju-yizhixing-537a505f-1f3f-4f23-b5e3-209c8c8a9281.png)
+
+不好的方案，不好在哪里？
+
+1. 先写mysql，再写redis，如果是两次写，mysql先写1，再写2， redis可能会先写2，再写1
+2. 先写redis, 再写mysql。 同上
+3. 先删redis，再写mysql。 如果写mysql的时候，有读mysql，就会把旧的mysql数据回写到redis缓存，因为写操作比较耗时。
+
+
+
+好的方案
+
+1. 先删除 Redis，再写 MySQL，再删除 Redis （缓存双删）
+    1. 第二次“删除缓存 ”必须在“回写缓存”后面（用消息队列实现串行执行，队列也有重试机制 ）
+2. 先写mysql ，再删redis
+    1. 在mysql写的时候，有读redis操作，返回的还是旧数据， 虽然不是强一致性，但是可以容忍
+    2. 是实时性中最好的方案，在一些高并发场景中，推荐这种。
+3. 先写 MySQL，通过 Binlog，异步更新 Redis
+    1. **对于异地容灾、数据汇总等，建议会用这种方式**，比如 binlog + kafka，数据的一致性也可以达到秒级
+    2. 纯粹的高并发场景，不建议用这种方案，比如抢购、秒杀等。
+
+
+
+**个人结论：**
+
+- **实时一致性方案**：采用“先写 MySQL，再删除 Redis”的策略，这种情况虽然也会存在两者不一致，但是需要满足的条件有点苛刻，**所以是满足实时性条件下，能尽量满足一致性的最优解。**
+- **最终一致性方案**：采用“先写 MySQL，通过 Binlog，异步更新 Redis”，可以通过 Binlog，结合消息队列异步更新 Redis，**是最终一致性的最优解。**
+
+
+
+其他一致性解決方案： 使用canal组件， canal就是模拟mysql的从节点，读取binlog日志
+
+SpringBoot整合Canal实现缓存一致性(Redis同步MySQL)
+
+其他资料： https://blog.csdn.net/qq_49059667/article/details/124076985
+
+
+
