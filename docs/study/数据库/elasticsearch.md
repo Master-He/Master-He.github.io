@@ -2630,7 +2630,16 @@ https://pdai.tech/md/db/nosql-es/elasticsearch-x-dsl-term.html
 
 
 - **DSL**
-    - 基于文本 - match, query string interval
+    - 基于文本
+        - match
+            - sort （相当与order by）
+            - from (相当于offset)
+            - size (相当于limit)
+        - match_all
+        - query string
+        - interval
+        - match_phrase
+        - highlight 高亮查询
     - 基于词项 - term
         - exists
         - ids
@@ -2640,6 +2649,8 @@ https://pdai.tech/md/db/nosql-es/elasticsearch-x-dsl-term.html
         - term set 按某个数字字段分词匹配
         - wildcard 通配符查询
         - range 范围
+            - lt
+            - gt
         - regexp 正则
         - fuzzy 模糊查询  （编辑距离是将一个术语转换为另一个术语所需的一个字符更改的次数。）
             - 更改字符（box→ fox）

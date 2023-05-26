@@ -2315,6 +2315,24 @@ mvn -Dtest=TestSquare,TestCi*le test #maven运行特定的test case
        <encoding>utf-8</encoding>
     </configuration>
  </plugin>
+ 
+ 
+ 	<build>
+        <plugins>
+            <plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.6.2</version>
+                    <configuration>
+                        <target>1.8</target>
+                        <source>1.8</source>
+                        <encoding>utf-8</encoding>
+                    </configuration>
+                </plugin>
+            </plugin>
+        </plugins>
+    </build>
 ```
 
 

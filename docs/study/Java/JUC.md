@@ -62,6 +62,8 @@ wait/sleep相同点
 
 
 
+
+
 # 3. Lock锁（重点）
 
 - idea 快捷键 `Ctrl + Alt +T`
@@ -2459,6 +2461,55 @@ public class VDemo {
 
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20200921113628979.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2ZhbmppYW5oYWk=,size_16,color_FFFFFF,t_70#pic_center)
 
+参考：
+
+https://www.bilibili.com/video/BV1yN4y157N7/?p=5&spm_id_from=pageDriver&vd_source=6cd527c3a43bcb0943d3d64a7923b3bc
+
+实例代码：
+
+```
+public class orderProblem {
+    private static int x = 0;
+    private static int y = 0;
+    private static int a = 0;
+    private static int b = 0;
+
+
+    public static void main(String[] args) throws InterruptedException {
+        HashSet<String> set = new HashSet<>();
+
+        for (int i = 0; i < 1000000; i++) {
+            x = 0;
+            y = 0;
+            a = 0;
+            b = 0;
+            Thread one = new Thread(()->{
+                a = y;  // 指令顺序不保证
+                x = 1;
+            });
+
+            Thread other = new Thread(()->{
+                b = x;
+                y = 1;
+            });
+
+            one.start();
+            other.start();
+            one.join();
+            other.join();
+
+            set.add("a="+a+",b="+b);
+            System.out.println(set);  // 会出现这种情况 [a=0,b=0, a=1,b=0, a=0,b=1, a=1,b=1], a=1,b=1是指令集重排导致的问题
+        }
+
+    }
+}
+```
+
+
+
+
+
 **volatile指令可以避免指令编排**
 
 内存屏障 CPU指令，作用：
@@ -2927,6 +2978,57 @@ jmap -dump:live,format=b,file=/lihm.hprof 129665 # dump堆到文件，format指�
 jhat # 查看dump的文件  jhat -J-Xmx1024M lihm.hprof
 ```
 
+
+
+
+
+# 22.顺序一致性原则和happens-before原则
+
+> 顺序一致性原则
+
+顺序一致性原则, 不管怎么重排序（编译期和处理器为了提高并行度）， （单线程）程序的执行结果不能被改变
+
+编译器, runtime和处理器都必须准守顺序一致性原则 （as-if-serial）语义
+
+为了准守as-if-serial语义， **编译器和处理器**不会对存在数据依赖关系的操作做重排序，因为这种重排序会改变执行结果，但是如果两个操作之间不存在数据依赖关系，这些操作就可能被编译器和处理器重排序
+
+
+
+> happens-before原则
+
+定义了哪些代码必须排在哪些代码之前运行！！！
+
+
+
+参考： https://developer.huawei.com/consumer/cn/forum/topic/0204723701747450490?fid=0101592429757310384
+
+只靠sychronized和volatle关键字来保证原子性、可见性以及有序性，那么编写并发程序可能会显得十分麻烦，幸运的是，从JDK5开始，Java使用新的JSR-133内存模型，提供了happens-before 原则来辅助保证程序执行的原子性、可见性以及有序性的问题，它是判断数据是否存在竞争、线程是否安全的依据，happens-before 原则内容如下
+
+1. 程序顺序原则: 即在一个线程内必须保证**语义串行性**，也就是说按照代码顺序执行
+2. 锁规则: 解锁(unlock)操作必然发生在后续的同一个锁的加锁(lock)之前，也就是说，如果对于一个锁解锁后，再加锁，那么加锁
+    的动作必须在解锁动作之后(同一个锁)。
+3. volatile规则: volatle变量的写，先发生于读，这保证了volatile变量的可见性，简单的理解就是，volatile变量在每次被线程访问时，都强迫从主内存中读该变量的值，而当该变量发生变化时，又会强迫将最新的值刷新到主内存，任何时刻，不同的线程总是能够看到该变量的最新值.
+4. 线程启动规则: 线程的start()方法先于它的每一个动作，即如果线程A在执行线程B的stat()方法之前修改了共享变量的值，那么当线程B执行start方法时，线程A对共享变量的修改对线程B可见
+5. 传递性: A先于B ，B先于C 那么A必然先于C
+6. 线程终止规则: 线程的所有操作先于线程的终结，Thread.join()方法的作用是等待当前执行的线程终止。假设在线程B终止之前，修改了共享变量，线程A从线程B的join方法成功返回后，线程B对共享变量的修改将对线程A可见。
+7. 线程中断规则:对线程 interrupt)方法的调用先行发生于被中断线程的代码检测到中断事件的发生，可以通过Thread.interrupted()方法检测线程是否中断。
+8. 对象终结规则: 对象的构造函数执行，结束先于finalize()方法
+
+
+
+## 内存屏障
+
+加了内存屏障，内存屏障附近就不会进行重排序
+
+| 屏障类型   | 指令示例                   | 说明                                                         |
+| ---------- | -------------------------- | ------------------------------------------------------------ |
+| LoadLoad   | Load1; LoadLoad; Load2     | 保证load1的读取操作在load2及后续读取操作之前执行             |
+| StoreStore | Store1; StoreStore; Store2 | 在store2及其后的写操作执行前，保证store1的写操作已刷新到主内存 |
+| LoadStore  | Load1; LoadStore; Store2   | 在stroe2及其后的写操作执行前，保证load1的读操作已读取结束    |
+| StoreLoad  | Store1: StoreLoad: Load2   | 保证store1的写操作已刷新到主内存之后，load2及其后的读操作才能执行 |
+
+
+Java规定 volatile 需要实现的内存屏障
 
 
 
