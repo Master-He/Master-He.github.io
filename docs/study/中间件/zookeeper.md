@@ -677,15 +677,6 @@ public class Ticket12306 implements Runnable{
 
 
 ```java
-import org.apache.curator.RetryPolicy;
-import org.apache.curator.framework.CuratorFramework;
-import org.apache.curator.framework.CuratorFrameworkFactory;
-import org.apache.curator.framework.recipes.cache.*;
-import org.apache.curator.retry.ExponentialBackoffRetry;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
 public class LockTest {
 
 
@@ -730,6 +721,20 @@ Zxid：数据ID
 在Leader选举的过程中，如果某台ZooKeeper获得了超过半数的选票，则此ZooKeeper就可以成为Leader了。
 
 
+
+
+
+## 安装
+
+1. cp zoo_sample.cfg zoo.cfg
+2. 修改zoo.cfg文件 : 
+    1. dataDir=/opt/module/apache-zookeeper-3.5.10-bin/zkdata
+    2. server.1=192.168.0.111:2821:3831
+        server.2=192.168.0.112:2821:3831
+        server.3=192.168.0.113:2821:3831
+3. 创建 /opt/module/apache-zookeeper-3.5.10-bin/zkdata 目录
+4. zkServer.sh start启动
+5. zkServer.sh status 查看状态， 并jps查看zookeeper入口类QuorumPeerMain
 
 
 
