@@ -34,7 +34,8 @@ kafka是分布式的，基于发布/订阅模式的 消息队列
 
 消息队列，两种模式
 
-1. 点对点
+1. 点对点	
+    1. 可以有多个消费者，但是一个消息只能被一个消费者组消费
 2. 发布/订阅模式
     1. 可以有多个topic
     2. 消费者消费后，不删除数据
@@ -96,7 +97,7 @@ kafka-topics.sh --bootstrap-server 192.168.0.111:9092,192.168.0.112:9092 --list
 kafka-topics.sh --bootstrap-server 192.168.0.111:9092 --create --partitions 1 --replication-factor 3 --topic first
 
 # 查看主题详情
-kafka-topics.sh --bootstrap-server 192.168.0.111:9092 --describe --topic first、
+kafka-topics.sh --bootstrap-server 192.168.0.111:9092 --describe --topic first
 
 # 修改分区数，只能增加不能减少
 kafka-topics.sh --bootstrap-server 192.168.0.111:9092 --alter --topic first --partitions 3
@@ -473,7 +474,7 @@ Controller 的信息同步工作是依赖于 Zookeeper 的。
 
 ### 生产经验：手动调整分区副本存储
 
-创建执行机会。
+创建执行计划。
 
 略
 

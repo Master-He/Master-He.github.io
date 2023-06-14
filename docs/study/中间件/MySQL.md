@@ -521,7 +521,29 @@ id是非唯一键， id=10的时候，首先弄好记录锁， 然后再加锁�
 
 # MVCC
 
-参考
+参考1
+
+https://www.bilibili.com/video/BV1864y1976i/?vd_source=6cd527c3a43bcb0943d3d64a7923b3bc
+
+3个隐藏字段
+
+1. row_id
+
+2. trx_id
+
+3. roll_pointer
+
+undolog
+
+readview
+
+
+
+
+
+
+
+参考2
 
 https://www.bilibili.com/video/BV1hL411479T/?spm_id_from=pageDriver&vd_source=6cd527c3a43bcb0943d3d64a7923b3bc
 
