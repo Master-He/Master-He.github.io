@@ -2206,6 +2206,66 @@ public class GuiceMultiBinderDemo {
 
 
 
+## Gradle
+
+
+
+
+
+
+
+linux下安装gradle
+
+```
+...
+```
+
+
+
+gradle的版本是7.3.1 bootJar的时候排除resource的某些文件
+
+ `build.gradle` 文件的代码
+
+```groovy
+// 定义一个配置块，用于指定要排除的资源文件
+def excludedResources = ['**/excluded-file.txt', 'path/to/excluded-directory/**']
+
+// 配置 processResources 任务
+tasks.processResources {
+    // 排除资源文件
+    exclude(excludedResources)
+}
+```
+
+动态排除某些文件
+
+```groovy
+// 定义一个属性，用于指定要排除的资源文件
+ext {
+    excludedResources = []
+}
+
+// 配置 bootJar 任务
+tasks.bootJar {
+    // 在任务执行前，将命令行参数赋值给 excludedResources 属性
+    doFirst {
+        if (project.hasProperty('excludeResources')) {
+            excludedResources = excludeResources.split(',')
+        }
+        exclude(excludedResources)
+    }
+}
+
+// 运行命令
+gradle bootJar -PexcludeResources="**/excluded-file.txt,path/to/excluded-directory/**"
+```
+
+
+
+
+
+
+
 
 
 ## 日志操作
@@ -2518,6 +2578,20 @@ https://blog.csdn.net/w605283073/article/details/90120722
 
 
 
+### optional 和 scope 元素
+
+参考： https://my.oschina.net/u/2364451/blog/4819891
+
+optional 表示依赖传递
+
+
+
+### linux 下安装
+
+
+
+
+
 ### 其他
 
 >  Maven打jar包把配置文件放在META-INF目录下
@@ -2623,6 +2697,12 @@ https://blog.csdn.net/xiaxiaorui2003/article/details/52062216
 最后在大佬的操作下完成了任务， 删除maven仓库下所有的_remote.repositories文件， 让maven只能去公司的镜像去下载jar包
 
 参考： https://blog.csdn.net/jiajane/article/details/104396079
+
+
+
+
+
+
 
 
 
@@ -2767,6 +2847,112 @@ json序列化
 fastjson2
 
 ## jackson
+
+依赖
+
+```
+<dependency>
+    <groupId>com.fasterxml.jackson.core</groupId>
+    <artifactId>jackson-databind</artifactId>
+    <version>2.15.0-rc3</version>
+</dependency>
+
+会包含 jackson-core 和 jackson-annotations
+```
+
+
+
+> 使用jackson自动解析非固定格式json
+
+参考： https://blog.csdn.net/qq_38524629/article/details/106258718
+
+
+
+> jackson如果读取json元素有几种类型怎么办
+
+在 Jackson 中，可以使用泛型来处理 JSON 数据中的不同类型。例如，假设我们有一个 JSON 数据，其中一个属性可以是整数或字符串类型。我们可以定义一个包含一个泛型属性的类来表示该属性：
+
+
+
+```
+public class Property<T> {
+    private T value;
+
+    public Property() {}
+
+    public Property(T value) {
+        this.value = value;
+    }
+
+    public T getValue() {
+        return value;
+    }
+
+    public void setValue(T value) {
+        this.value = value;
+    }
+}
+```
+
+
+
+然后，我们可以在包含该属性的类中使用 `Property` 类型来表示该属性
+
+
+
+```
+public class Person {
+    private String name;
+    private Property<Object> property;
+
+    public Person() {}
+
+    public Person(String name, Property<Object> property) {
+        this.name = name;
+        this.property = property;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public Property<Object> getProperty() {
+        return property;
+    }
+
+    public void setProperty(Property<Object> property) {
+        this.property = property;
+    }
+}
+```
+
+在这个例子中，我们使用 `Property<Object>` 类型来表示 `Person` 类中的 `property` 属性，它可以是整数或字符串类型。在反序列化过程中，Jackson 将根据 JSON 数据中的实际类型来反序列化 `Property` 类型的属性，并将其存储在 `value` 属性中。
+
+以下是一个示例，演示如何使用 Jackson 反序列化包含 `Property` 类型的 JSON 数据：
+
+```
+ObjectMapper objectMapper = new ObjectMapper();
+String json = "{\"name\":\"Alice\",\"property\":{\"value\":25}}";
+try {
+    Person person = objectMapper.readValue(json, Person.class);
+    System.out.println(person.getName());
+    System.out.println(person.getProperty().getValue());
+} catch (IOException e) {
+    e.printStackTrace();
+}
+```
+
+在这个例子中，我们将一个包含整数类型的 `Property` 对象的 JSON 数据反序列化为 `Person` 对象，并输出 `name` 和 `value` 属性的值。如果 JSON 数据中的 `property` 属性的值是字符串类型，Jackson 也可以正确地反序列化该属性。
+
+
+
+
+
+
 
 Jackson(1)之ObjectMapper配置详解
 
@@ -3179,6 +3365,8 @@ for (StackTraceElement stackElement : stackElements) {
 ​		在大佬看源码后解决！！！java加载模型的代码里面要多传一个参数，我怎么就不知道呢？我怎么不仔细看源码呢？
 
 为什么大佬会仔细看源码？ 还有，我对机器学习的认知，知识也不够，没有胆量。。。细究原理。。。
+
+
 
 
 
@@ -3603,6 +3791,351 @@ Jedis 对 Redis Cluster 提供了 JedisCluster 客户端，但是没有 Pipeline
 
 
 
+## 计算文件sha1值
+
+```java
+import java.io.FileInputStream;
+import java.security.MessageDigest;
+
+public class SHA1Example {
+    public static void main(String[] args) throws Exception {
+        String filename = "path/to/file";
+        MessageDigest sha1 = MessageDigest.getInstance("SHA-1");
+        FileInputStream fileInputStream = new FileInputStream(filename);
+        byte[] buffer = new byte[1024];
+        int n = 0;
+        while ((n = fileInputStream.read(buffer)) != -1) {
+            sha1.update(buffer, 0, n);
+        }
+        fileInputStream.close();
+        byte[] sha1Hash = sha1.digest();
+        String sha1HashHex = bytesToHex(sha1Hash);
+        System.out.println("SHA-1 hash of file " + filename + ": " + sha1HashHex);
+    }
+
+    private static final char[] HEX_ARRAY = "0123456789abcdef".toCharArray();
+
+    public static String bytesToHex(byte[] bytes) {
+        char[] hexChars = new char[bytes.length * 2];
+        for (int i = 0; i < bytes.length; i++) {
+            int v = bytes[i] & 0xff;
+            hexChars[i * 2] = HEX_ARRAY[v >>> 4];
+            hexChars[i * 2 + 1] = HEX_ARRAY[v & 0x0f];
+        }
+        return new String(hexChars);
+    }
+}
+```
+
+
+
+
+
+## Java读取缩进文件
+
+https://stackoverflow.com/questions/21735468/parse-indented-text-tree-in-java
+
+
+
+c#的实现方式
+
+```c#
+namespace MyNamespace
+{
+    using System;
+    using System.Collections.Generic;
+    using System.Diagnostics;
+    using System.Text;
+
+    public static class IndentedTextToTreeParser
+    {
+        // https://stackoverflow.com/questions/21735468/parse-indented-text-tree-in-java
+
+        public static List<IndentTreeNode> Parse(IEnumerable<string> lines, int rootDepth = 0, char indentChar = '\t')
+        {
+            var roots = new List<IndentTreeNode>();
+
+            // --
+
+            IndentTreeNode prev = null;
+
+            foreach (var line in lines)
+            {
+                if (string.IsNullOrEmpty(line.Trim(indentChar)))
+                    throw new Exception(@"Empty lines are not allowed.");
+
+                var currentDepth = countWhiteSpacesAtBeginningOfLine(line, indentChar);
+
+                if (currentDepth == rootDepth)
+                {
+                    var root = new IndentTreeNode(line, rootDepth);
+                    prev = root;
+
+                    roots.Add(root);
+                }
+                else
+                {
+                    if (prev == null)
+                        throw new Exception(@"Unexpected indention.");
+                    if (currentDepth > prev.Depth + 1)
+                        throw new Exception(@"Unexpected indention (children were skipped).");
+
+                    if (currentDepth > prev.Depth)
+                    {
+                        var node = new IndentTreeNode(line.Trim(), currentDepth, prev);
+                        prev.AddChild(node);
+
+                        prev = node;
+                    }
+                    else if (currentDepth == prev.Depth)
+                    {
+                        var node = new IndentTreeNode(line.Trim(), currentDepth, prev.Parent);
+                        prev.Parent.AddChild(node);
+
+                        prev = node;
+                    }
+                    else
+                    {
+                        while (currentDepth < prev.Depth) prev = prev.Parent;
+
+                        // at this point, (currentDepth == prev.Depth) = true
+                        var node = new IndentTreeNode(line.Trim(indentChar), currentDepth, prev.Parent);
+                        prev.Parent.AddChild(node);
+                    }
+                }
+            }
+
+            // --
+
+            return roots;
+        }
+
+        public static string Dump(IEnumerable<IndentTreeNode> roots)
+        {
+            var sb = new StringBuilder();
+
+            foreach (var root in roots)
+            {
+                doDump(root, sb, @"");
+            }
+
+            return sb.ToString();
+        }
+
+        private static int countWhiteSpacesAtBeginningOfLine(string line, char indentChar)
+        {
+            var lengthBefore = line.Length;
+            var lengthAfter = line.TrimStart(indentChar).Length;
+            return lengthBefore - lengthAfter;
+        }
+
+        private static void doDump(IndentTreeNode treeNode, StringBuilder sb, string indent)
+        {
+            sb.AppendLine(indent + treeNode.Text);
+            foreach (var child in treeNode.Children)
+            {
+                doDump(child, sb, indent + @"    ");
+            }
+        }
+    }
+
+   
+```
+
+
+
+java的实现方式
+
+```java
+package com.synopsys.integration.detectable.detectables.nuget.statics.pojo;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class IndentTreeNode {
+
+    private String text;
+    private int depth;
+    private IndentTreeNode parent;
+    private List<IndentTreeNode> children;
+
+    public IndentTreeNode(String text, int depth) {
+        this(text, depth, null);
+    }
+
+    public IndentTreeNode(String text, int depth, IndentTreeNode parent) {
+        this.text = text;
+        this.depth = depth;
+        this.parent = parent;
+        this.children = new ArrayList<>();
+    }
+
+    public void addChild(IndentTreeNode child) {
+        this.children.add(child);
+    }
+
+    public String getText() {
+        return text;
+    }
+
+    public void setText(String text) {
+        this.text = text;
+    }
+
+    public int getDepth() {
+        return depth;
+    }
+
+    public void setDepth(int depth) {
+        this.depth = depth;
+    }
+
+    public IndentTreeNode getParent() {
+        return parent;
+    }
+
+    public void setParent(IndentTreeNode parent) {
+        this.parent = parent;
+    }
+
+    public List<IndentTreeNode> getChildren() {
+        return children;
+    }
+
+    public void setChildren(List<IndentTreeNode> children) {
+        this.children = children;
+    }
+
+}
+
+```
+
+
+
+```java
+package com.synopsys.integration.detectable.detectables.nuget.statics.parser;
+
+
+import com.synopsys.integration.detectable.detectables.nuget.statics.pojo.IndentTreeNode;
+import org.apache.commons.lang3.StringUtils;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+public class IndentTextParser {
+
+    private final static int ROOT_DEPTH = 0;
+    private static int INDENT_LEN = 2;
+
+    public void setIndentLen(int indentLen) throws IOException {
+        if (indentLen < 2) {
+            throw new IOException("Indent length must be greater than or equal to 2");
+        }
+        INDENT_LEN = indentLen;
+    }
+
+    public List<IndentTreeNode> parse(File file) throws IOException {
+
+        List<IndentTreeNode> rootList = new ArrayList<>();
+
+        IndentTreeNode prev = null;
+        try (BufferedReader bufferedReader = new BufferedReader(new FileReader(file))) {
+            String line;
+            int lineNum = 0;
+            while ((line = bufferedReader.readLine()) != null) {
+                lineNum += 1;
+                if (StringUtils.isBlank(line.trim())) {
+                    // throw new IOException("Empty line are not allowed, lineNum: " + lineNum);
+                    continue;
+                }
+
+                int currentDepth = getHeadSpaceLen(line);
+
+                if (currentDepth == ROOT_DEPTH) {
+                    IndentTreeNode root = new IndentTreeNode(line, ROOT_DEPTH);
+                    rootList.add(root);
+                    prev = root;
+                } else {
+                    // indent不为0时，prev不能为null
+                    if (prev == null || currentDepth > prev.getDepth() + INDENT_LEN
+                            || (currentDepth > prev.getDepth() && currentDepth < prev.getDepth() + INDENT_LEN)) {
+                        throw new IOException("Unexpected indent, lineNum: " + lineNum);
+                    }
+
+                    if (currentDepth == prev.getDepth() + INDENT_LEN) {
+                        IndentTreeNode node = new IndentTreeNode(line.trim(), currentDepth, prev);
+                        prev.addChild(node);
+                        prev = node;
+                    } else if (currentDepth == prev.getDepth()) {
+                        IndentTreeNode node = new IndentTreeNode(line.trim(), currentDepth, prev.getParent());
+                        prev.getParent().addChild(node);
+                        prev = node;
+                    } else {
+                        while (currentDepth < prev.getDepth()) {
+                            prev = prev.getParent();
+                        }
+                        // 此时currentDepth == prev.getDepth()
+                        IndentTreeNode node = new IndentTreeNode(line.trim(), currentDepth, prev.getParent());
+                        prev.getParent().addChild(node);
+                        prev = node;
+                    }
+                }
+
+            }
+        }
+
+        return rootList;
+
+    }
+
+    private int getHeadSpaceLen(String s) {
+        int count = 0;
+        for (int i = 0; i < s.length(); i++) {
+            if (s.charAt(i) != ' ') {
+                break;
+            }
+            count++;
+        }
+        return count;
+    }
+
+    public String dumpRootList(List<IndentTreeNode> rootList) {
+        StringBuilder stringBuilder = new StringBuilder();
+        for (IndentTreeNode treeNode : rootList) {
+            doDumpTreeNode(treeNode, stringBuilder, "");
+        }
+        return stringBuilder.toString();
+    }
+
+    private String getIndentString() {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < INDENT_LEN; i++) {
+            sb.append(" ");
+        }
+        return sb.toString();
+    }
+
+    private void doDumpTreeNode(IndentTreeNode treeNode, StringBuilder stringBuilder, String indent) {
+        stringBuilder.append(indent)
+                .append(treeNode.getText())
+                .append("\n");
+
+        for (IndentTreeNode child : treeNode.getChildren()) {
+            doDumpTreeNode(child, stringBuilder, indent + getIndentString());
+        }
+    }
+
+
+}
+
+```
+
+
+
 
 
 # 大数据处理算法
@@ -3698,6 +4231,31 @@ public static void main(String[] args) {
 
 
 
+
+# 进程问题
+
+
+
+进程阻塞问题
+
+```
+`java.lang.ProcessImpl.waitFor()` 方法是用于等待子进程完成的方法。如果该方法一直阻塞而无法返回，可能有以下几个可能的原因：
+
+1. 子进程未正常退出：如果子进程在执行过程中出现问题，例如死锁、无限循环等，它可能无法正常退出。这会导致父进程在调用 `waitFor()` 方法时一直等待子进程的退出信号，从而导致卡死的情况。
+2. 子进程的输出流或错误流未读取：当子进程的输出流或错误流中的数据量超过系统缓冲区的限制时，如果父进程没有及时读取这些流中的数据，就可能导致子进程阻塞无法继续执行，进而导致父进程的 `waitFor()` 方法无法返回。
+3. 子进程产生了大量输出：如果子进程在执行过程中产生大量的输出数据（标准输出或错误输出），而父进程没有及时读取和处理这些数据，那么子进程的输出缓冲区可能会被填满，从而导致子进程无法继续执行，父进程的 `waitFor()` 方法也无法返回。
+4. 操作系统限制：在某些情况下，操作系统可能对进程的等待时间或资源使用进行了限制，导致 `waitFor()` 方法无法返回。这可能是由于操作系统配置、权限限制或其他系统限制引起的。
+
+如果 `waitFor()` 方法卡死了，你可以尝试以下方法来解决问题：
+
+- 检查子进程的执行情况，确认它是否正常退出。
+- 确保在调用 `waitFor()` 方法之前，已经读取了子进程的输出流和错误流中的数据，或者将它们重定向到其他地方进行处理。
+- 如果子进程产生了大量输出，可以考虑使用异步方式读取和处理子进程的输出，而不是在父进程中同步等待。
+- 检查操作系统的限制，确保没有对进程等待时间或资源使用进行了限制。
+- 在调用 `waitFor()` 方法时设置一个合理的超时时间，并采取相应的处理措施。
+
+如果问题仍然存在，可能需要进一步调查子进程的执行情况和环境，以确定导致 `waitFor()` 方法卡死的具体原因。
+```
 
 
 

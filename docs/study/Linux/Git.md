@@ -1,3 +1,24 @@
+
+
+# github 常用技巧
+
+
+
+搜索内容含有"PackageReference"， 且文件名正则是*.vbproj的文件
+
+```shell
+path:/^*.vbproj$/ PackageReference
+path:/^*\.xproj$/ PackageReference
+
+path:/^*\.nuspec$/
+```
+
+
+
+
+
+
+
 git 常用命令
 
 ```shell
@@ -103,3 +124,24 @@ Host github.com
 ![image-20220524220654156](Git.assets/image-20220524220654156.png)
 
 清空之前在C:\Users\Admin\\.ssh加的config文件内容， 让config变成空文件， 就可以正常提交了！ 我被搞晕了。。。
+
+
+
+
+
+## 忽略不想提交的文件
+
+参考： https://www.cnblogs.com/wt645631686/p/10007328.html
+
+
+
+```shell
+git update-index --assume-unchanged sp_edaijia/protected/controllers/ApiController.php  //这里忽略ApiController.php 文件
+```
+
+
+
+```shell
+git update-index --no-assume-unchanged   sp_edaijia/protected/controllers/ApiController.php  //恢复跟踪
+```
+

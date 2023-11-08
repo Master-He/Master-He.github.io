@@ -17,3 +17,4 @@ fi
 查看/etc目录下哪个文件的内容包含"system_set_cfg.ini"
 
 egrep -rn system_set_cfg.ini /etc
+

@@ -430,6 +430,29 @@ docker build -t diytomcat .
 
 
 
+> go容器
+
+```shell
+FROM alpine:latest
+
+RUN mkdir /app
+
+# 设置工作目录
+WORKDIR /app
+
+# 将已提前编译好的 Go 程序复制到镜像中
+COPY bin/my_gin_test /app
+
+EXPOSE 8080
+
+# 设置容器的入口点为 Go 程序
+CMD ["./my_gin_test"]
+```
+
+
+
+
+
 # Centos7 Dockerfile
 
 设置了镜像源,基本环境的dockerfile
@@ -628,6 +651,12 @@ ingress, 就是特殊的overlay网络
 
 
 # Docker服务
+
+
+
+# IDEA 远程使用docker 
+
+
 
 
 

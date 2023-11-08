@@ -13,6 +13,50 @@ https://docs.oracle.com/javase/8/docs/technotes/tools/unix/java.html
 
 
 
+
+
+# 常用
+
+```shell
+# 打印oom信息
+java -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/root/hwj/output/oom.heap -jar yours.jar
+
+# 查看jvm默认的xmx参数
+java -XX:+PrintFlagsFinal -version | grep MaxHeapSize
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # 1. JVM和Java体系结构
 
 
